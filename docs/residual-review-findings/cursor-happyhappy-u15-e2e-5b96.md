@@ -17,16 +17,20 @@ inline (no subagents available in this run). Browser tests were skipped: no UI p
 - U2 residual: the real webhook and `/mcp` routes are asserted to answer unauthenticated requests
   themselves rather than redirecting to sign-in.
 - U4 residual: the `angry_slack` fixture's thread key now carries the `C0COMMUNITY:` prefix.
+- U18 gap: agent claims, reports, releases, and the overdue sweep move items with `update_all`, so
+  they skipped `Item`'s after_commit `MoodChannel` ping. `ItemEvent` now pings for those event kinds.
+- `.env.example` on main listed `SLACK_BOT_TOKEN` and `PUBLIC_BASE_URL` twice; the second copies are gone.
 
 ## Residual review findings
 
 - P3 `app/services/escalations/check.rb` (`trigger`): when an item.classified event has no message,
   the fallback trigger is the angriest open message, which may be off-topic and now blocks the
   escalation. No production caller publishes without a message today.
-- P3 merge note for U16: its branch carries duplicated blocks in `config/routes.rb` and
-  `.env.example` from an earlier main merge. This branch kept main's version plus U16's two routes
-  and one comment change; the U16 PR should resolve the same way.
 - P3 `config/initializers/filter_parameter_logging.rb`: matching is partial, so keys such as Slack's
   `event_context` are filtered too. Log-only effect.
 - P3 `app/frontend/components/app-nav.tsx` (U2 residual): still no sign-out control. Left to the
   unit that owns navigation (U18 owns the home page).
+- P2 pre-existing on main `test/controllers/dev_login/sessions_controller_test.rb`: order-dependent.
+  Run alone it fails at every seed (the stand-in routes lack `pwa_manifest_path` used by the layout,
+  and a `dev_login_path` helper leaks from `with_routing`); in the full parallel suite it fails about
+  one run in ten. Owned by U2's files; not changed here.
