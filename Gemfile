@@ -39,7 +39,7 @@ gem "image_processing", "~> 1.2"
 gem "inertia_rails"
 
 # First-class LLM access (OpenAI / Anthropic / Gemini) with a unified API.
-gem "ruby_llm", "~> 1.16"
+gem "ruby_llm", "~> 2.0"
 
 # Durable, resumable workflows backed by Active Record
 gem "geneva_drive", "~> 0.5.0"
