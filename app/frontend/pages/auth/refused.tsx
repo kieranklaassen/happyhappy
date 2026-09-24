@@ -17,6 +17,9 @@ export default function Refused({ email }: RefusedProps) {
           {email ? <>You signed in as <strong>{email}</strong>. </> : null}
           Only verified every.to accounts can use happyhappy.
         </p>
+        <p className="text-sm text-gray-600">
+          To switch accounts, sign out of every.to first, then sign in again.
+        </p>
         <a
           href={EVERY_SIGN_IN_PATH}
           className="rounded border border-gray-300 px-3 py-2 text-center text-sm hover:bg-gray-50"
