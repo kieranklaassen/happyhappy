@@ -43,7 +43,9 @@ module Webhooks
 
     def to_h
       {
-        id: "evt_#{@item_event.id}",
+        # One timeline row can emit two events (a report that moves the item), so the
+        # event name is part of the id that receivers dedupe on.
+        id: "evt_#{@item_event.id}_#{@event.tr('.', '_')}",
         event: @event,
         occurred_at: @item_event.created_at.iso8601,
         untrusted_fields: UNTRUSTED_FIELDS,

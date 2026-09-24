@@ -79,6 +79,8 @@ class Webhooks::FanOutTest < ActiveSupport::TestCase
       status: "in_progress", from: "in_progress")
 
     assert_equal %w[agent.reported item.status_changed agent.reported].sort, endpoint.deliveries.pluck(:event).sort
+    ids = endpoint.deliveries.map { |delivery| delivery.payload["id"] }
+    assert_equal ids.uniq, ids
   end
 
   test "the payload carries the item as the event left it, not as it was before" do
