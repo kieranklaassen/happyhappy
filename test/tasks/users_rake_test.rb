@@ -7,19 +7,30 @@ class UsersRakeTest < ActiveSupport::TestCase
     Rake::Task["users:create"].reenable
   end
 
-  test "users:create creates a persisted, authenticatable user" do
-    ENV["EMAIL"] = "rake-created@example.com"
-    ENV["PASSWORD"] = "Secret-Passw0rd"
+  teardown do
+    ENV.delete("EMAIL")
+    ENV.delete("NAME")
+  end
+
+  test "users:create pre-provisions an every.to person with no password" do
+    ENV["EMAIL"] = "rake-created@every.to"
+    ENV["NAME"] = "Rake Person"
 
     assert_difference -> { User.count }, 1 do
-      Rake::Task["users:create"].invoke
+      assert_output(/Created user rake-created@every.to/) { Rake::Task["users:create"].invoke }
     end
 
-    assert User.authenticate_by(email_address: "rake-created@example.com", password: "Secret-Passw0rd"),
-      "the user created by the rake task should authenticate"
-  ensure
-    ENV.delete("EMAIL")
-    ENV.delete("PASSWORD")
+    user = User.find_by!(email_address: "rake-created@every.to")
+    assert_equal "Rake Person", user.name
+    assert_nil user.every_user_id
+  end
+
+  test "users:create refuses an address outside every.to" do
+    ENV["EMAIL"] = "someone@gmail.com"
+
+    assert_no_difference -> { User.count } do
+      assert_raises(SystemExit) { capture_io { Rake::Task["users:create"].invoke } }
+    end
   end
 
   test "no open registration route exists" do

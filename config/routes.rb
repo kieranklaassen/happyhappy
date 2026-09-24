@@ -1,5 +1,8 @@
 Rails.application.routes.draw do
-  resource :session
+  # --- Sign in with Every (U2). /auth/every itself is the OmniAuth middleware. ---
+  resource :session, only: %i[new destroy]
+  get "auth/every/callback", to: "sessions/every#create"
+  draw :dev_login if Rails.env.development?
 
   # Redirect to localhost from 127.0.0.1 to use same IP address with Vite server
   constraints(host: "127.0.0.1") do
