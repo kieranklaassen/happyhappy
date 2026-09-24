@@ -11,6 +11,10 @@ module Connectors
     LOOKUP_TTL = 1.day
 
     def self.ingestible?(envelope)
+      customer_message?(envelope) && active_source_for(envelope["event"]).present?
+    end
+
+    def self.customer_message?(envelope)
       event = envelope["event"]
       envelope["type"] == "event_callback" &&
         event.is_a?(Hash) &&
@@ -18,19 +22,14 @@ module Connectors
         event["channel_type"] == "channel" &&
         INGESTED_SUBTYPES.include?(event["subtype"]) &&
         event["bot_id"].blank? &&
+        event["ts"].present? &&
         event["user"].present? &&
-        !own_bot_user?(envelope, event["user"]) &&
-        source_for(event)&.active?
+        Array(envelope["authorizations"]).none? { |auth| auth["is_bot"] && auth["user_id"] == event["user"] }
     end
 
-    def self.source_for(event)
-      Source.for(:slack, event["channel"])
+    def self.active_source_for(event)
+      Source.for(:slack, event["channel"])&.then { |source| source if source.active? }
     end
-
-    def self.own_bot_user?(envelope, user_id)
-      Array(envelope["authorizations"]).any? { |auth| auth["is_bot"] && auth["user_id"] == user_id }
-    end
-    private_class_method :own_bot_user?
 
     def initialize(client: ::Slack::Web::Client.new(token: ENV["SLACK_BOT_TOKEN"]), cache: Rails.cache)
       @client = client
@@ -38,10 +37,10 @@ module Connectors
     end
 
     def ingest(envelope)
-      return unless self.class.ingestible?(envelope)
+      return unless self.class.customer_message?(envelope)
 
       event = envelope["event"]
-      source = self.class.source_for(event)
+      source = self.class.active_source_for(event) or return
       channel, ts = event.values_at("channel", "ts")
       inbound = Items::InboundMessage.new(
         external_id: "#{channel}:#{ts}",
