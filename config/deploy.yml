@@ -67,6 +67,9 @@ env:
     - X_BEARER_TOKEN
     # Jev classification
     - TYPESAFE_API_KEY
+    - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
+    - ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
+    - ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
   clear:
     # Public https origin of the app: the Every OAuth redirect URI and the item
     # links in Slack posts are built from it. Required, no default.
