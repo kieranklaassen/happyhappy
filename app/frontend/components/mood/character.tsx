@@ -531,6 +531,8 @@ export default function Character({ seed, mood, bandage = false, className, titl
     '--hh-phase': `-${traits.phase}s`,
   } as CSSProperties
 
+  const pose = `rotate(${traits.lean} ${CX} 140) scale(${traits.scale}) translate(${((1 - traits.scale) * CX) / traits.scale} ${((1 - traits.scale) * 140) / traits.scale})`
+
   let front: ReactNode = null
   if (armSet.front.length > 0) {
     front = (
@@ -545,70 +547,77 @@ export default function Character({ seed, mood, bandage = false, className, titl
     )
   }
 
+  // The filtered body never animates; extras move in their own layer so the
+  // watercolor filters are not re-run every frame.
   return (
-    <svg
-      viewBox="0 -26 120 172"
-      className={className}
-      style={style}
-      role={title ? 'img' : undefined}
-      aria-hidden={title ? undefined : true}
-      aria-label={title}
-      data-mood={mood}
-    >
-      <defs>
-        <clipPath id={clipId}>
-          <path d={bodyPath(g)} />
-          <circle cx={CX} cy={g.headY} r={g.headR} />
-        </clipPath>
-      </defs>
-      <ellipse cx={CX} cy={142} rx={g.bw + 8} ry={4} fill="#3E3542" opacity={0.08} />
-      <g transform={`rotate(${traits.lean} ${CX} 140) scale(${traits.scale}) translate(${(1 - traits.scale) * CX / traits.scale} ${(1 - traits.scale) * 140 / traits.scale})`}>
-        <g filter={washFilter} opacity={0.94}>
-          <g fill={wash} stroke="none">
-            <ellipse cx={CX - g.bw * 0.45} cy={138} rx={g.bw * 0.36} ry={6} />
-            <ellipse cx={CX + g.bw * 0.45} cy={138} rx={g.bw * 0.36} ry={6} />
+    <span className={`relative block ${className ?? ''}`} style={style}>
+      <svg
+        viewBox="0 -26 120 172"
+        className="block w-full"
+        role={title ? 'img' : undefined}
+        aria-hidden={title ? undefined : true}
+        aria-label={title}
+        data-mood={mood}
+      >
+        <defs>
+          <clipPath id={clipId}>
             <path d={bodyPath(g)} />
             <circle cx={CX} cy={g.headY} r={g.headR} />
-          </g>
-          <g clipPath={`url(#${clipId})`}>
-            <path d={`M ${CX - g.bw} 116 Q ${CX} 126 ${CX + g.bw} 114 L ${CX + g.bw} 140 L ${CX - g.bw} 140 Z`} fill={traits.body.ink} opacity={0.18} />
-            <ellipse cx={CX - g.headR * 0.38} cy={g.headY - g.headR * 0.45} rx={g.headR * 0.34} ry={g.headR * 0.22} fill="#FFFDF8" opacity={0.45} transform={`rotate(-30 ${CX - g.headR * 0.38} ${g.headY - g.headR * 0.45})`} />
-          </g>
-          <g stroke={wash} strokeWidth={9} strokeLinecap="round" fill="none">
-            {armSet.back.map((d) => (
-              <path key={d} d={d} />
+          </clipPath>
+        </defs>
+        <ellipse cx={CX} cy={142} rx={g.bw + 8} ry={4} fill="#3E3542" opacity={0.08} />
+        <g transform={pose}>
+          <g filter={washFilter} opacity={0.94}>
+            <g fill={wash} stroke="none">
+              <ellipse cx={CX - g.bw * 0.45} cy={138} rx={g.bw * 0.36} ry={6} />
+              <ellipse cx={CX + g.bw * 0.45} cy={138} rx={g.bw * 0.36} ry={6} />
+              <path d={bodyPath(g)} />
+              <circle cx={CX} cy={g.headY} r={g.headR} />
+            </g>
+            <g clipPath={`url(#${clipId})`}>
+              <path d={`M ${CX - g.bw} 116 Q ${CX} 126 ${CX + g.bw} 114 L ${CX + g.bw} 140 L ${CX - g.bw} 140 Z`} fill={traits.body.ink} opacity={0.18} />
+              <ellipse cx={CX - g.headR * 0.38} cy={g.headY - g.headR * 0.45} rx={g.headR * 0.34} ry={g.headR * 0.22} fill="#FFFDF8" opacity={0.45} transform={`rotate(-30 ${CX - g.headR * 0.38} ${g.headY - g.headR * 0.45})`} />
+            </g>
+            <g stroke={wash} strokeWidth={9} strokeLinecap="round" fill="none">
+              {armSet.back.map((d) => (
+                <path key={d} d={d} />
+              ))}
+            </g>
+            {armSet.fists.map(([x, y]) => (
+              <circle key={`${x}-${y}`} cx={x} cy={y} r={6} fill={wash} />
             ))}
           </g>
-          {armSet.fists.map(([x, y]) => (
-            <circle key={`${x}-${y}`} cx={x} cy={y} r={6} fill={wash} />
-          ))}
+          <g filter="url(#hh-pencil)" fill="none" stroke={traits.body.ink} strokeWidth={1.2} opacity={0.55} transform="translate(0.9 -0.7)">
+            <circle cx={CX} cy={g.headY} r={g.headR} />
+            <path d={bodyPath(g)} />
+          </g>
+          {front}
+          <g filter="url(#hh-wash-2)">
+            <ellipse cx={CX - traits.eyeGap - 5} cy={g.eyeY + 7} rx={5} ry={3} fill="#F08A9A" opacity={mood === 'furious' ? 0.7 : 0.45} />
+            <ellipse cx={CX + traits.eyeGap + 5} cy={g.eyeY + 7} rx={5} ry={3} fill="#F08A9A" opacity={mood === 'furious' ? 0.7 : 0.45} />
+            {mood === 'furious' && <ellipse cx={CX} cy={g.headY - 2} rx={g.headR * 0.85} ry={g.headR * 0.6} fill="#E8505A" opacity={0.32} />}
+          </g>
+          <g filter="url(#hh-wash-1)">
+            <Headwear traits={traits} g={g} />
+          </g>
+          <g filter="url(#hh-pencil)">
+            <Eyes mood={mood} g={g} gap={traits.eyeGap} />
+            <Mouth mood={mood} g={g} />
+            <Accessory traits={traits} g={g} gap={traits.eyeGap} />
+            {bandage && (
+              <g transform={`translate(${CX + traits.eyeGap + 2} ${g.headY - g.headR * 0.55}) rotate(-28)`}>
+                <rect x={-8} y={-3} width={16} height={6} rx={3} fill="#F5D7B8" stroke="#C9A27E" strokeWidth={0.6} />
+                <rect x={-2.5} y={-2.2} width={5} height={4.4} rx={1} fill="#EBC49F" />
+              </g>
+            )}
+          </g>
         </g>
-        <g filter="url(#hh-pencil)" fill="none" stroke={traits.body.ink} strokeWidth={1.2} opacity={0.55} transform="translate(0.9 -0.7)">
-          <circle cx={CX} cy={g.headY} r={g.headR} />
-          <path d={bodyPath(g)} />
+      </svg>
+      <svg viewBox="0 -26 120 172" className="absolute inset-0 block w-full" aria-hidden="true">
+        <g transform={pose}>
+          <Extras mood={mood} g={g} traits={traits} />
         </g>
-        {front}
-        <g filter="url(#hh-wash-2)">
-          <ellipse cx={CX - traits.eyeGap - 5} cy={g.eyeY + 7} rx={5} ry={3} fill="#F08A9A" opacity={mood === 'furious' ? 0.7 : 0.45} />
-          <ellipse cx={CX + traits.eyeGap + 5} cy={g.eyeY + 7} rx={5} ry={3} fill="#F08A9A" opacity={mood === 'furious' ? 0.7 : 0.45} />
-          {mood === 'furious' && <ellipse cx={CX} cy={g.headY - 2} rx={g.headR * 0.85} ry={g.headR * 0.6} fill="#E8505A" opacity={0.32} />}
-        </g>
-        <g filter="url(#hh-wash-1)">
-          <Headwear traits={traits} g={g} />
-        </g>
-        <g filter="url(#hh-pencil)">
-          <Eyes mood={mood} g={g} gap={traits.eyeGap} />
-          <Mouth mood={mood} g={g} />
-          <Accessory traits={traits} g={g} gap={traits.eyeGap} />
-          {bandage && (
-            <g transform={`translate(${CX + traits.eyeGap + 2} ${g.headY - g.headR * 0.55}) rotate(-28)`}>
-              <rect x={-8} y={-3} width={16} height={6} rx={3} fill="#F5D7B8" stroke="#C9A27E" strokeWidth={0.6} />
-              <rect x={-2.5} y={-2.2} width={5} height={4.4} rx={1} fill="#EBC49F" />
-            </g>
-          )}
-        </g>
-        <Extras mood={mood} g={g} traits={traits} />
-      </g>
-    </svg>
+      </svg>
+    </span>
   )
 }

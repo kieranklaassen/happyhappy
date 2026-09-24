@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react'
-import { type CSSProperties, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Character from './character'
 import Flora from './flora'
 import { MOOD_COLORS, plural, sourceLabel, timeAgo } from './format'
@@ -158,6 +158,22 @@ function useRowBottoms(count: number) {
   return { listRef, bottoms }
 }
 
+// Off-screen meadows pause their animations; SVG animation repaints on the main thread.
+function useOnScreen<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  const [onScreen, setOnScreen] = useState(true)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { rootMargin: '120px' })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  return { ref, onScreen }
+}
+
 function Hill({ wash, seed, rowBottom }: { wash: string; seed: string; rowBottom?: number }) {
   const style = rowBottom === undefined ? { bottom: 0 } : { top: `calc(${rowBottom}px - var(--hh-hill))` }
   return (
@@ -177,14 +193,16 @@ export default function Meadow({ group, history }: { group: MoodGroup; history: 
   const characters = [...group.characters].sort((a, b) => hashSeed(a.seed) - hashSeed(b.seed))
   const shouter = loudest(group.characters)
   const { listRef, bottoms } = useRowBottoms(characters.length)
+  const { ref: meadowRef, onScreen } = useOnScreen<HTMLElement>()
   const headingId = `meadow-${group.product?.slug ?? 'none'}`
   const smiling = group.counts.beaming + group.counts.content
   const grumpy = group.counts.grumpy + group.counts.furious
 
   return (
     <section
+      ref={meadowRef}
       aria-labelledby={headingId}
-      className={`hh-meadow relative min-w-0 grow basis-full rounded-[2rem] px-4 pb-5 pt-4 sm:px-6 ${group.characters.length >= WIDE_CROWD ? '' : 'lg:basis-[calc(50%-0.75rem)]'}`}
+      className={`hh-meadow ${onScreen ? '' : 'hh-offscreen'} relative min-w-0 grow basis-full rounded-[2rem] px-4 pb-5 pt-4 sm:px-6 ${group.characters.length >= WIDE_CROWD ? '' : 'lg:basis-[calc(50%-0.75rem)]'}`}
     >
       <header className="relative flex flex-wrap items-center gap-x-4 gap-y-1">
         <Sky mood={group.mood} className="h-12 w-14 shrink-0" />

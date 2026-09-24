@@ -22,4 +22,10 @@ class MoodChannelTest < ActionCable::Channel::TestCase
     payload = broadcasts(MoodChannel::STREAM).last
     assert_equal %w[changed_at], ActiveSupport::JSON.decode(payload).keys
   end
+
+  test "a broken cable never fails the item save" do
+    ActionCable.server.stub(:broadcast, ->(*) { raise "cable down" }) do
+      assert items(:angry_slack).update!(anger_probability: 0.5)
+    end
+  end
 end

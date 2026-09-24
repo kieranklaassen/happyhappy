@@ -238,6 +238,10 @@
   font-weight: 600;
 }
 
+.hh-offscreen * {
+  animation-play-state: paused !important;
+}
+
 .hh-meadow {
   background: rgb(255 253 248 / 0.55);
   box-shadow: 0 1px 0 rgb(62 53 66 / 0.04), 0 12px 32px -18px rgb(62 53 66 / 0.25);
@@ -276,16 +280,8 @@
   }
 }
 
-.hh-spin {
-  animation: hh-spin 40s linear infinite;
-}
-
 .hh-live {
   animation: hh-live 2s ease-in-out infinite;
-}
-
-@keyframes hh-spin {
-  to { transform: rotate(360deg); }
 }
 
 @keyframes hh-live {
@@ -294,7 +290,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hh-spin,
   .hh-live {
     animation: none !important;
   }

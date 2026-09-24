@@ -17,7 +17,7 @@ function Sun({ x, y, r, rays = true }: { x: number; y: number; r: number; rays?:
   return (
     <g>
       {rays && (
-        <g className="hh-spin" style={{ transformOrigin: `${x}px ${y}px` }} stroke="#F2C46B" strokeWidth={4} strokeLinecap="round" filter="url(#hh-wash-1)">
+        <g stroke="#F2C46B" strokeWidth={4} strokeLinecap="round" filter="url(#hh-wash-1)">
           {Array.from({ length: 10 }, (_, i) => {
             const angle = (i / 10) * Math.PI * 2
             return (
