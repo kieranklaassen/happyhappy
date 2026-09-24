@@ -81,12 +81,27 @@ class PwaTest < ActionDispatch::IntegrationTest
   end
 
   test "the layout's application-name and default title read config.x.pwa" do
-    with_pwa_config(name: "Overridden App") do
+    with_pwa_config(name: "Overridden App", title: "Overridden title") do
       get new_session_path
 
       assert_select "meta[name=application-name][content='Overridden App']"
-      assert_select "title", text: "Overridden App"
+      assert_select "title", text: "Overridden title"
     end
+  end
+
+  test "the layout describes happyhappy and links a preview image by absolute URL" do
+    get new_session_path
+
+    assert_select "meta[name=description][content=?]", PWA.description
+    assert_match(/Slack, Discord, Intercom, email, and X/, PWA.description)
+    assert_select "meta[property='og:title'][content=?]", PWA.title
+    assert_select "meta[property='og:url'][content='https://happyhappy.every.to']"
+    assert_select "meta[property='og:image'][content='https://happyhappy.every.to/og-image.png']"
+    assert_select "meta[name='twitter:card'][content='summary_large_image']"
+    assert_select "meta[name='twitter:image'][content='https://happyhappy.every.to/og-image.png']"
+
+    png = Rails.public_path.join("og-image.png").binread
+    assert_equal [ 1200, 630 ], png.byteslice(16, 8).unpack("NN")
   end
 
   test "the offline page exists and is the path the service worker precaches" do

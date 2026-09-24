@@ -4,6 +4,8 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 import RiffrecProvider, { type RiffrecConfig } from '../lib/riffrec_provider'
 
 void createInertiaApp({
+  title: (title) => (title ? `${title} · happyhappy` : 'happyhappy: how your customers feel'),
+
   // Resolve page components from app/frontend/pages using the snake_case
   // "controller/action" identifier Rails passes to `render inertia:`.
   pages: '../pages',

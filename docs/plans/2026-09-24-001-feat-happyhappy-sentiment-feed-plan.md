@@ -1063,6 +1063,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 1. One sun mark drawn in SVG: eight rays, a warm disc, closed happy eyes, a smile, and blush. `public/icon.svg` is rendered from the component, and `public/icon.png` is the same mark on paper at 512 pixels with room for maskable cropping. The PWA theme and background become the paper colour, and the service worker cache version is bumped for the new icon.
 2. The sign-in page shows the mark beside the hand-lettered wordmark. Eleven fixed, seeded, made-up people stand on a hill at the bottom: mostly beaming or content, one grumpy, one under a storm cloud, and one saying "Welcome back!". Phones show the middle five. The crowd sits below the form in normal flow, so it never covers the button, and it is hidden from assistive tech. No customer data reaches this public page.
 3. The idle animation moves onto the element that sets each character's tempo and phase, so characters no longer bob in step, on the dashboard too.
+4. Every page gets a friendly default title and meta description (a clear read on how your customers feel across Slack, Discord, Intercom, email, and X, handled by your agents), page titles end in "· happyhappy", and link previews use `public/og-image.png`: a 1200 by 630 card with the sun, the wordmark, the tagline, and a small crowd, referenced by `og:` and `twitter:` tags with absolute `https://happyhappy.every.to` URLs.
 
 **Test scenarios:**
 - Happy path: the crowd is mostly happy with exactly one grumpy and one furious person, and phones still see both.
@@ -1070,6 +1071,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Happy path: the sign-in page shows the wordmark, and the crowd comes after the sign-in button, outside the form.
 - Happy path: the nav brand links home with the sun beside the wordmark.
 - Integration: `public/icon.svg` is the sun and `public/icon.png` is a 512 by 512 PNG.
+- Integration: the layout carries the description and absolute `og:` and `twitter:` image URLs, and `public/og-image.png` is 1200 by 630.
 
 **Verification:** `bin/rails test` and `npm run check` pass, and the sign-in page looks right on desktop and mobile with reduced motion on and off.
 
