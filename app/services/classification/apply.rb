@@ -9,9 +9,11 @@ module Classification
   # - needs review when a relevant item has a machine label below the
   #   low-confidence threshold
   #
-  # Open messages are those received since the item's last status change. Labels
-  # a human set are never overwritten. Writes a classified event and publishes
-  # item.classified after commit.
+  # Open messages are those received since the item's last status change. A
+  # claimed or in-progress item with no relevant open message keeps its labels,
+  # relevance, and anger, so an off-topic reply cannot drop it from the feed
+  # while an agent holds it. Labels a human set are never overwritten. Writes a
+  # classified event and publishes item.classified after commit.
   class Apply
     RELEVANCE_THRESHOLD = 0.5
 
@@ -50,6 +52,8 @@ module Classification
       # siblings; judge the thread by everything classified so far.
       open = classified if open.empty?
       relevant = open.select { |message| relevant?(message) }
+      return if relevant.empty? && held_relevant?(item)
+
       labels = (relevant.last || classified.last).classification_answers
 
       item.relevance_probability = open.map { |message| noul(message.classification_answers, "relevant") }.max
@@ -88,6 +92,10 @@ module Classification
         probability = item.public_send(:"#{label}_probability")
         probability.nil? || probability < threshold
       end
+    end
+
+    def held_relevant?(item)
+      item.status.in?(Item::HELD_STATUSES) && item.relevant?
     end
 
     def relevant?(message)

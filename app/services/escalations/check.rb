@@ -33,6 +33,7 @@ module Escalations
         product&.slack_channel_id.present? &&
         angry?(@item.anger_probability) &&
         trigger.present? &&
+        !off_topic?(trigger) &&
         angry?(trigger.anger_probability) &&
         trigger.occurred_at >= MAX_MESSAGE_AGE.ago &&
         !escalated_since_status_change?
@@ -44,6 +45,13 @@ module Escalations
 
     def angry?(probability)
       probability.present? && probability >= product.effective_escalation_threshold
+    end
+
+    # A held item keeps its anger through off-topic replies (Classification::Apply),
+    # so the triggering message itself must not be off-topic.
+    def off_topic?(message)
+      relevance = message.classification_answers&.dig("relevant", "noul")
+      relevance.present? && relevance.to_f < Classification::Apply::RELEVANCE_THRESHOLD
     end
 
     # The message whose classification fired the event, else the angriest open message.
