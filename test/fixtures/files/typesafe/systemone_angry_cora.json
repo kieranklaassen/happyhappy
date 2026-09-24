@@ -1,0 +1,52 @@
+{
+  "model": "jev-latest",
+  "answers": {
+    "relevant": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "product": {
+      "type": "choice",
+      "choice": "cora",
+      "confidence": 1.0,
+      "probabilities": {
+        "sparkle": 0.0,
+        "cora": 1.0,
+        "spiral": 0.0,
+        "none": 0.0
+      }
+    },
+    "category": {
+      "type": "choice",
+      "choice": "bug",
+      "confidence": 0.96,
+      "probabilities": {
+        "bug": 0.96,
+        "praise": 0.0,
+        "feature request": 0.0,
+        "onboarding": 0.0,
+        "other": 0.04,
+        "billing": 0.0
+      }
+    },
+    "sentiment": {
+      "type": "choice",
+      "choice": "complaint",
+      "confidence": 1.0,
+      "probabilities": {
+        "praise": 0.0,
+        "complaint": 1.0,
+        "neutral": 0.0,
+        "question": 0.0
+      }
+    },
+    "anger": {
+      "type": "noul",
+      "noul": 0.99
+    }
+  },
+  "usage": {
+    "input_tokens": 512,
+    "output_tokens": 64
+  }
+}
