@@ -18,6 +18,8 @@ class ItemEvent < ApplicationRecord
 
   validates :actor_type, inclusion: { in: %w[User Agent] }, allow_nil: true
 
+  after_create_commit -> { Webhooks::FanOut.call(self) }
+
   def readonly?
     persisted? || super
   end
