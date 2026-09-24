@@ -70,9 +70,12 @@ module Connectors
     def call
       ingested = Items::Ingest.call(source: @source, inbound: inbound_message(payload),
         classify_wait: (SYNC_FALLBACK_DELAY if @sync))
-      classify_inline(ingested.message) if @sync && !ingested.duplicate?
+      if @sync && !ingested.duplicate?
+        classify_inline(ingested.message)
+        ingested.item.reload
+      end
 
-      Result.new(item: ingested.item.reload, message: ingested.message.reload, duplicate: ingested.duplicate?)
+      Result.new(item: ingested.item, message: ingested.message, duplicate: ingested.duplicate?)
     rescue ActiveModel::ValidationError => error
       raise InvalidPayload, error.model.errors.full_messages.to_sentence
     end
