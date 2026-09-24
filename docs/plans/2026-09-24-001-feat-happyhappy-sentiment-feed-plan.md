@@ -258,7 +258,7 @@ stateDiagram-v2
 ### Key technical decisions
 
 - KTD1. **One foundation unit owns the whole schema and the ingest contract.** U1 creates every table, model, fixture, and gem before parallel work starts. Parallel Rails branches that each add migrations collide on `db/schema.rb`; one schema owner removes that hazard. A later unit that finds a schema gap adds its own migration and regenerates `db/schema.rb` when it rebases on `main`.
-- KTD2. **An item is a customer thread; messages hang off it.** Each connector maps a message to a thread key that is unique per provider (Slack channel plus `thread_ts`, Discord channel plus reply chain, Intercom conversation id, email `In-Reply-To`/`References` or normalized subject plus sender, X `conversation_id`). Items are unique on source kind plus thread key, so a thread stays one item even when it moves between sources of the same kind. Classification runs per message. The item carries the latest labels and the highest anger among its open messages, meaning messages received since the item's last status change. A new message reopens a handled or dismissed item to new; a claimed or in-progress item keeps its status and gains the timeline event. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
+- KTD2. **An item is a customer thread; messages hang off it.** Each connector maps a message to a thread key that is unique per provider (Slack channel plus `thread_ts` or `ts`, Discord channel plus reply chain, Intercom conversation id, the email thread's root `Message-ID` taken from `References`/`In-Reply-To` and from the first mail's own `Message-ID` header, X `conversation_id`). Items are unique on source kind plus thread key, so a thread stays one item even when it moves between sources of the same kind; every key therefore carries whatever scopes it, such as the Slack channel. Classification runs per message. The item is relevant when any of its open messages is relevant; its product, category, and sentiment come from the latest relevant open message, falling back to the latest message while none are relevant; its anger is the highest among its relevant open messages, so an off-topic angry reply cannot raise it or trigger an escalation. Open messages are those received since the item's last status change. A new message reopens a handled or dismissed item to new; a claimed or in-progress item keeps its status and gains the timeline event. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
 - KTD3. **Connectors are thin adapters over one ingest service.** Each connector verifies its provider, normalizes to one inbound-message shape, and calls `Items::Ingest`. Dedupe is a unique index on source plus external message id. Governs R8, R10, R11.
 - KTD4. **Provider credentials live in ENV, not the database.** One account per provider (see assumed defaults). Sources are rows that select channels, inboxes, addresses, and queries. This matches the deploy module's env-driven secrets and avoids Active Record encryption setup.
 - KTD5. **Webhook endpoints sit outside the session gate.** They inherit from `ActionController::Base` directly, skip CSRF, and authenticate by provider signature or HTTP basic auth. `McpController` follows the same rule and authenticates by bearer token only. Each responds within the provider's ack window and enqueues any slow work.
@@ -548,7 +548,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Verify the v0 signature with `SLACK_SIGNING_SECRET` using `Slack::Events::Request#verify!` from `slack-ruby-client`, which also rejects timestamps older than five minutes.
 2. Answer `url_verification` with the challenge.
-3. For `message.channels` events in a channel that matches a Slack source, map to an inbound message: external id `channel:ts`, thread key `thread_ts` or `ts`, author from the user id with a cached `users.info` lookup, permalink from `chat.getPermalink`, cached per message.
+3. For `event_callback` envelopes whose `event.type` is `message` with `channel_type` `channel` (`message.channels` is the subscription name, not the payload type) in a channel that matches a Slack source, map to an inbound message: external id `channel:ts`, thread key `channel:thread_ts` or `channel:ts`, author from the user id with a cached `users.info` lookup, permalink from `chat.getPermalink`, cached per message.
 4. Ignore bot messages, edits, deletes, and messages from happyhappy's own bot user.
 5. Return 200 fast; Slack retries carry the same event and dedupe by external id.
 
@@ -563,6 +563,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Edge case: a retried event with `X-Slack-Retry-Num` stores one message.
 - Edge case: a bot message is ignored.
 - Happy path: a thread reply attaches to the parent message's item.
+- Edge case: the same `ts` seen in two configured channels creates two items.
 
 **Verification:** Signed Slack events produce items with thread grouping; tests pass.
 
@@ -614,7 +615,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Answer Intercom's HEAD validation request with 200.
 2. Verify `X-Hub-Signature` as an HMAC-SHA1 of the raw body with `INTERCOM_CLIENT_SECRET`.
-3. Handle `conversation.user.created` and `conversation.user.replied`. For created, the message is `data.item.source` with the author email at `source.author.email`; for replied, it is the last entry of `conversation_parts`. External id is the part id (the source id for the first message), thread key is the conversation id. Intercom resends when it gets no 200 within 5 seconds, so answer fast; message-level dedupe covers the resend. Send `Intercom-Version: 2.16` on any conversation fetch.
+3. Handle `conversation.user.created` and `conversation.user.replied`. For created, the message is `data.item.source` with the author email at `source.author.email`; for replied, it is the last entry of the nested array at `data.item.conversation_parts.conversation_parts`, because the outer value is a `conversation_part.list` object rather than the list itself. External id is the part id (the source id for the first message), thread key is the conversation id. Intercom resends when it gets no 200 within 5 seconds, so answer fast; message-level dedupe covers the resend. Send `Intercom-Version: 2.16` on any conversation fetch.
 4. Match the conversation to an Intercom source by team assignee or inbox id; fall back to a catch-all Intercom source when one exists. A conversation already on an item stays on that item even after reassignment (KTD2).
 5. Strip HTML from part bodies to plain text.
 
@@ -646,7 +647,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Authenticate with HTTP basic auth using `POSTMARK_INBOUND_USER` and `POSTMARK_INBOUND_PASSWORD`, set in the Postmark inbound webhook URL.
 2. Route by the recipient address to an email source whose selector is that address.
-3. Map to an inbound message: external id the `MessageID`, thread key from `In-Reply-To` or the first `References` id, else the normalized subject plus sender; body from `StrippedTextReply` when present, else `TextBody`.
+3. Map to an inbound message: external id the top-level `MessageID`, which is Postmark's own id and serves dedupe only. Thread key is the thread's root `Message-ID`, read from the `Headers` array rather than any top-level field: the first `References` id, else `In-Reply-To`, else this mail's own `Message-ID`, so a first mail and its replies land on one key; fall back to the normalized subject plus sender when the mail carries none of those headers. Body from `StrippedTextReply` when present, else `TextBody`.
 4. Replace `require "rails/all"` in `config/application.rb` with explicit framework requires that leave out `action_mailbox/engine`. The scaffold draws 14 `/rails/action_mailbox` routes today; after this unit it draws none. Do not install or configure Action Mailbox.
 
 **Patterns to follow:** KTD3, KTD5.
@@ -675,7 +676,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Test: `test/jobs/x_poll_job_test.rb`, `test/services/connectors/x_budget_test.rb`
 
 **Approach:**
-1. Every 15 minutes, for each active X source, call `GET /2/tweets/search/recent` with `X_BEARER_TOKEN`, the source query, `since_id`, `max_results` up to 100, and author expansions. Page with `next_token`, then store the response's `newest_id` as the next `since_id`. Recent search only covers 7 days, so a source paused longer loses the gap.
+1. Every 15 minutes, for each active X source, call `GET /2/tweets/search/recent` with `X_BEARER_TOKEN`, the source query, `since_id`, `max_results` up to 100, and author expansions. Keep the first page's `meta.newest_id` and store that as the next `since_id`; recent search is reverse-chronological, so each later `next_token` page is older and its own `newest_id` would move the cursor backwards into posts already read. Recent search only covers 7 days, so a source paused longer loses the gap.
 2. Map each post to an inbound message: external id the post id, thread key `conversation_id`, author username, post URL.
 3. Before calling, skip and mark the source paused for budget when the worst-case cost would pass the limit; after calling, add actual cost and advance `since_id`.
 4. Reset month spend and unpause when the month key changes.
@@ -686,7 +687,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Test scenarios:**
 - Happy path: a stubbed search response creates items and advances `since_id`.
 - Covers AE4. When the limit is reached, the next run makes no HTTP call and the source shows paused for budget.
-- Happy path: a response with `next_token` fetches the next page, and `since_id` advances to `newest_id`.
+- Happy path: a response with `next_token` fetches the next page, and `since_id` advances to the first page's `newest_id`, not the last page's.
 - Edge case: a new month resets spend and resumes polling.
 - Error path: a 429 response records the error and keeps `since_id` unchanged.
 - Edge case: replies in one conversation join one item.
@@ -710,7 +711,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Build one schema per message from active products and categories per KTD7, including a none option for product and an other option for category.
 2. Send the message body with its source and author as structured state.
-3. Apply results: relevance below 0.5 marks not relevant; any label below the low-confidence threshold sets needs review; labels a human set are not overwritten; item anger is the highest anger among open messages.
+3. Apply results per message: relevance below 0.5 marks that message not relevant; any label below the low-confidence threshold sets needs review; labels a human set are not overwritten. Roll the messages up to the item per KTD2, so an off-topic reply cannot hide a thread whose complaint is still open.
 4. Write a `classified` event and publish `item.classified`.
 5. Retry on provider errors with backoff; after final failure, record the error on the message and keep the item visible.
 
@@ -721,6 +722,8 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Covers AE2. A product probability of 0.45 keeps the best guess and flags review.
 - Covers AE3. A low relevance answer marks the item not relevant.
 - Edge case: a human-set product is not replaced by a new classification.
+- Edge case: an off-topic reply on an angry product thread leaves the item relevant and keeps the product label from the last relevant message.
+- Edge case: an off-topic reply with anger 0.95 on a calm product thread leaves the item anger unchanged and posts no escalation.
 - Edge case: a retired product is not offered in the schema.
 - Error path: a provider error retries, and after the final attempt the message shows the error and the item stays in the feed.
 - Integration: classification publishes `item.classified` with the item id.
