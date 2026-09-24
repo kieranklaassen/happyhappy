@@ -42,6 +42,10 @@ Rails.application.routes.draw do
   end
   resources :sources, only: %i[index new create edit update]
   resource :settings, only: %i[show update]
+  # Agents and their tokens (U11)
+  resources :agents, only: %i[index create] do
+    patch :revoke, on: :member
+  end
   # Postmark inbound email webhook (U7)
   post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
 

@@ -16,6 +16,11 @@ production: &recurring
     class: "GenevaDrive::HousekeepingJob"
     schedule: "*/30 * * * *"
 
+  # Overdue agent claims (U11)
+  overdue_sweep:
+    class: "OverdueSweepJob"
+    schedule: every 5 minutes
+
 development:
   <<: *recurring
 
