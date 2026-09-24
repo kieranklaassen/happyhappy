@@ -42,6 +42,8 @@ Rails.application.routes.draw do
   end
   resources :sources, only: %i[index new create edit update]
   resource :settings, only: %i[show update]
+  # Postmark inbound email webhook (U7)
+  post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
 
   # Defines the root path route ("/")
   root "home#index"
