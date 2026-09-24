@@ -18,6 +18,7 @@ class Item < ApplicationRecord
 
   before_validation :copy_source_kind, if: -> { source && source_kind.blank? }
   before_validation -> { self.status_changed_at ||= Time.current }
+  after_commit -> { MoodChannel.refresh }
 
   validates :thread_key, presence: true, uniqueness: { scope: :source_kind }
   validates :source_kind, inclusion: { in: Source.kinds.values }
