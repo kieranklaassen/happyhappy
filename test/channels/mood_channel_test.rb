@@ -24,8 +24,12 @@ class MoodChannelTest < ActionCable::Channel::TestCase
   end
 
   test "a broken cable never fails the item save" do
-    ActionCable.server.stub(:broadcast, ->(*) { raise "cable down" }) do
+    ActionCable.server.define_singleton_method(:broadcast) { |*| raise "cable down" }
+
+    assert_error_reported(RuntimeError) do
       assert items(:angry_slack).update!(anger_probability: 0.5)
     end
+  ensure
+    ActionCable.server.singleton_class.remove_method(:broadcast)
   end
 end
