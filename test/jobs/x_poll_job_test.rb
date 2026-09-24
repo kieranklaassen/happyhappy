@@ -83,6 +83,20 @@ class XPollJobTest < ActiveJob::TestCase
     assert @source.reload.paused_for_budget?
   end
 
+  test "running out of budget mid-pagination pauses before the next page and keeps the first page's newest_id" do
+    @source.update!(month_spend: @source.monthly_limit - BigDecimal("0.16"))
+    first = stub_search("search_recent_page_1.json", "max_results" => "10")
+
+    XPollJob.perform_now
+
+    assert_requested first, times: 1
+    assert_not_requested :get, SEARCH_URL, query: hash_including("next_token" => "b26v89c19zqg8o3fosbpbf1u8r5i5ytzcd0dfyckbeb9")
+    @source.reload
+    assert @source.paused_for_budget?
+    assert_equal "1830000000000000203", @source.since_id
+    assert_equal @source.monthly_limit - BigDecimal("0.13"), @source.month_spend
+  end
+
   test "raising the limit resumes a budget-paused source" do
     paused = sources(:x_budget_paused)
     paused.update!(monthly_limit: 20)
@@ -136,6 +150,19 @@ class XPollJobTest < ActiveJob::TestCase
     @source.reload
     assert_equal "1830000000000000000", @source.since_id
     assert_match "HTTP 503", @source.last_error
+  end
+
+  test "an unexpected failure is recorded on the source and does not stop the job" do
+    stub_request(:get, SEARCH_URL).with(query: hash_including({}))
+      .to_return(status: 200, body: { data: [ { text: "no id" } ], meta: { newest_id: "1" } }.to_json, headers: json_headers)
+
+    assert_error_reported(ActiveModel::ValidationError) do
+      XPollJob.perform_now
+    end
+
+    @source.reload
+    assert_match "ValidationError", @source.last_error
+    assert_equal "1830000000000000000", @source.since_id
   end
 
   test "a missing bearer token records the error without calling X" do
