@@ -28,10 +28,14 @@ there, and open a PR. This holds for agents and humans alike.
 
 ## Users & auth
 
-There is **no open registration**. Create users only with:
+Sign in with Every is the only production login, and only verified every.to
+addresses get in (see [docs/modules/auth.md](docs/modules/auth.md)). There are
+no passwords and **no open registration**. In development, `bin/rails db:seed`
+adds dev login people to the sign-in page. To pre-provision a person before
+their first Every sign-in:
 
 ```sh
-EMAIL=you@example.com PASSWORD='a-long-password' bin/rails users:create
+EMAIL=ana@every.to NAME='Ana' bin/rails users:create
 ```
 
 Every Inertia page is authenticated by default (the gate lives on
