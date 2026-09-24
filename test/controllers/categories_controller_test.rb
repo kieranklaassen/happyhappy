@@ -34,6 +34,14 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "has already been taken" ], inertia.props[:errors]["name"]
   end
 
+  test "a failed add keeps its errors in its own error bag" do
+    post categories_path, params: { category: { name: "bug" } }, headers: { "X-Inertia-Error-Bag" => "new_category" }
+
+    follow_redirect!
+    assert_equal [ "has already been taken" ], inertia.props[:errors]["new_category"]["name"]
+    assert_nil inertia.props[:errors]["name"]
+  end
+
   test "update renames and reorders a category" do
     patch category_path(categories(:other)), params: { category: { name: "misc", position: "0" } }
 
