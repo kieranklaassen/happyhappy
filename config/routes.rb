@@ -62,6 +62,9 @@ Rails.application.routes.draw do
   # Postmark inbound email webhook (U7)
   post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
 
+  # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
+  match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
+
   # Defines the root path route ("/")
   root "home#index"
 end
