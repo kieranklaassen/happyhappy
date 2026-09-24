@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_24_180011) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_24_190000) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -240,6 +240,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_24_180011) do
     t.index ["every_user_id"], name: "index_users_on_every_user_id", unique: true
   end
 
+  create_table "webhook_deliveries", force: :cascade do |t|
+    t.integer "attempts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "event", null: false
+    t.integer "item_event_id"
+    t.datetime "last_attempted_at"
+    t.text "last_error"
+    t.json "payload", default: {}, null: false
+    t.integer "response_code"
+    t.string "status", default: "pending", null: false
+    t.boolean "test", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.integer "webhook_endpoint_id", null: false
+    t.index ["created_at"], name: "index_webhook_deliveries_on_created_at"
+    t.index ["item_event_id"], name: "index_webhook_deliveries_on_item_event_id"
+    t.index ["webhook_endpoint_id", "created_at"], name: "index_webhook_deliveries_on_webhook_endpoint_id_and_created_at"
+  end
+
+  create_table "webhook_endpoints", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.json "category_ids", default: [], null: false
+    t.datetime "created_at", null: false
+    t.json "events", default: [], null: false
+    t.string "name", null: false
+    t.json "product_ids", default: [], null: false
+    t.text "secret", null: false
+    t.json "sentiments", default: [], null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+  end
+
   add_foreign_key "digests", "products"
   add_foreign_key "escalations", "items"
   add_foreign_key "escalations", "messages"
@@ -254,4 +285,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_24_180011) do
   add_foreign_key "messages", "sources"
   add_foreign_key "sessions", "users"
   add_foreign_key "sources", "products", column: "default_product_id"
+  add_foreign_key "webhook_deliveries", "item_events", on_delete: :nullify
+  add_foreign_key "webhook_deliveries", "webhook_endpoints", on_delete: :cascade
 end
