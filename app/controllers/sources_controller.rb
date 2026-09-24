@@ -13,7 +13,8 @@ class SourcesController < InertiaController
   end
 
   def create
-    source = Source.new(source_params(params.expect(source: %i[kind name selector default_product_id monthly_limit])))
+    source = Source.new(params.expect(source: %i[kind name selector default_product_id monthly_limit]))
+    source.monthly_limit = nil unless source.x?
     if source.save
       redirect_to sources_path, notice: "#{source.name} connected."
     else
@@ -26,7 +27,8 @@ class SourcesController < InertiaController
   end
 
   def update
-    @source.assign_attributes(source_params(params.expect(source: %i[name selector default_product_id monthly_limit])))
+    @source.assign_attributes(params.expect(source: %i[name selector default_product_id monthly_limit]))
+    @source.monthly_limit = nil unless @source.x?
     if @source.save
       redirect_to sources_path, notice: "#{@source.name} saved."
     else
@@ -38,12 +40,6 @@ class SourcesController < InertiaController
 
   def set_source
     @source = Source.find(params[:id])
-  end
-
-  def source_params(permitted)
-    kind = permitted.fetch(:kind, @source&.kind)
-    permitted[:monthly_limit] = nil unless kind == "x"
-    permitted
   end
 
   def render_form(source)

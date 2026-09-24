@@ -15,8 +15,9 @@ class CategoriesController < InertiaController
   end
 
   def create
-    category = Category.new(category_params)
-    category.position = Category.maximum(:position).to_i + 1 if category_params[:position].blank?
+    attributes = category_params
+    category = Category.new(attributes)
+    category.position = Category.maximum(:position).to_i + 1 if attributes[:position].blank?
     if category.save
       redirect_to categories_path, notice: "Added #{category.name}."
     else

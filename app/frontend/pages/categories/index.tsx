@@ -28,7 +28,7 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
   function submit(event: FormEvent) {
     event.preventDefault()
     form.transform((data) => ({ category: data }))
-    form.patch(`/categories/${category.id}`, { preserveScroll: true })
+    form.patch(`/categories/${category.id}`, { preserveScroll: true, onSuccess: () => form.setDefaults() })
   }
 
   return (
@@ -127,7 +127,7 @@ export default function CategoriesIndex({ categories, retired_categories }: Cate
 
         <div className="divide-y divide-gray-200 rounded border border-gray-200 bg-white">
           {categories.map((category) => (
-            <CategoryEditor key={`${category.id}-${category.name}-${category.position}`} category={category} />
+            <CategoryEditor key={category.id} category={category} />
           ))}
         </div>
 

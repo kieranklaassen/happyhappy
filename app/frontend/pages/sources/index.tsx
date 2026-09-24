@@ -4,7 +4,7 @@ import { FlashNotice, primaryButtonClass, secondaryButtonClass } from '../../com
 import { formatDateTime, formatUsd } from '../../lib/format'
 import { type SourceKind, selectorField } from '../../lib/source-kinds'
 
-export type SourceStatus = 'active' | 'paused' | 'paused_for_budget'
+type SourceStatus = 'active' | 'paused' | 'paused_for_budget'
 
 export interface SourceRow {
   id: number
