@@ -79,6 +79,20 @@ class Webhooks::CustomControllerTest < ActionDispatch::IntegrationTest
     assert_equal "pending", response.parsed_body["classification"]
   end
 
+  test "an error while applying labels in sync mode answers 200 with a pending status" do
+    use_fake_classifier
+    original = Classification::Apply.method(:call)
+    Classification::Apply.define_singleton_method(:call) { |**| raise ActiveRecord::RecordInvalid }
+    begin
+      deliver({ text: "Hello" }.to_json, sync: true)
+    ensure
+      Classification::Apply.define_singleton_method(:call, original)
+    end
+
+    assert_response :ok
+    assert_equal "pending", response.parsed_body["classification"]
+  end
+
   test "a bad signature answers 401 and stores nothing" do
     body = { text: "hi" }.to_json
 

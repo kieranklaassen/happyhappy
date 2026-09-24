@@ -148,6 +148,9 @@ module Connectors
           return
         end
       Classification::Apply.call(message: message, answers: answers)
+    rescue StandardError => error
+      Rails.error.report(error, context: { message_id: message.id })
+      nil
     end
   end
 end
