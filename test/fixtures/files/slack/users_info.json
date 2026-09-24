@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "user": {
+    "id": "U0CUSTOMER",
+    "team_id": "T0EVERY",
+    "name": "mara.writes",
+    "deleted": false,
+    "real_name": "Mara Lindqvist",
+    "tz": "Europe/Stockholm",
+    "is_bot": false,
+    "profile": {
+      "real_name": "Mara Lindqvist",
+      "display_name": "Mara",
+      "email": "mara@example.com",
+      "team": "T0EVERY"
+    }
+  }
+}
