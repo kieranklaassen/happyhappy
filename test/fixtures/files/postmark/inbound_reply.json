@@ -1,0 +1,46 @@
+{
+  "FromName": "Dana Customer",
+  "MessageStream": "inbound",
+  "From": "dana@example.com",
+  "FromFull": {
+    "Email": "dana@example.com",
+    "Name": "Dana Customer",
+    "MailboxHash": ""
+  },
+  "To": "Cora Support <help@cora.computer>",
+  "ToFull": [
+    {
+      "Email": "help@cora.computer",
+      "Name": "Cora Support",
+      "MailboxHash": ""
+    }
+  ],
+  "Cc": "",
+  "CcFull": [],
+  "Bcc": "",
+  "BccFull": [],
+  "OriginalRecipient": "3f9c2e1b7a4d4c0e9b1f@inbound.postmarkapp.com",
+  "Subject": "Re: Cora stopped sorting my inbox",
+  "MessageID": "b9d2a1e3-4c5f-4a6b-8d7e-8f9a0b1c2d3e",
+  "ReplyTo": "",
+  "MailboxHash": "",
+  "Date": "Thu, 24 Sep 2026 11:40:02 -04:00",
+  "TextBody": "Still broken this morning, and now my Brief is empty too.\n\nOn Thu, Sep 24, 2026 at 9:30 AM Cora Support <help@cora.computer> wrote:\n> Thanks Dana, we are looking into it.\n>\n> On Thu, Sep 24, 2026 at 9:12 AM Dana Customer <dana@example.com> wrote:\n>> Since yesterday Cora has stopped sorting anything into my Brief.",
+  "HtmlBody": "<html><body><p>Still broken this morning, and now my Brief is empty too.</p><blockquote>Thanks Dana, we are looking into it.</blockquote></body></html>",
+  "StrippedTextReply": "Still broken this morning, and now my Brief is empty too.",
+  "Tag": "",
+  "Headers": [
+    { "Name": "Return-Path", "Value": "<dana@example.com>" },
+    { "Name": "Received", "Value": "by p-pm-inboundg02a-aws-useast1a.inbound.postmarkapp.com (Postfix, from userid 996) id 7D4E2B0031; Thu, 24 Sep 2026 15:40:04 +0000 (UTC)" },
+    { "Name": "X-Spam-Checker-Version", "Value": "SpamAssassin 3.4.0 (2014-02-07) on p-pm-inboundg02a-aws-useast1a" },
+    { "Name": "X-Spam-Status", "Value": "No" },
+    { "Name": "X-Spam-Score", "Value": "-0.1" },
+    { "Name": "X-Spam-Tests", "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,SPF_PASS" },
+    { "Name": "X-Forwarded-To", "Value": "3f9c2e1b7a4d4c0e9b1f@inbound.postmarkapp.com" },
+    { "Name": "Message-ID", "Value": "<CAJx7=Qp3reply0dana@mail.gmail.com>" },
+    { "Name": "In-Reply-To", "Value": "<01000192support0reply@email.cora.computer>" },
+    { "Name": "References", "Value": "<CAJx7=Qp1first0dana@mail.gmail.com>\r\n <01000192support0reply@email.cora.computer>" },
+    { "Name": "MIME-Version", "Value": "1.0" }
+  ],
+  "Attachments": []
+}
