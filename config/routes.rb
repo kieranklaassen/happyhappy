@@ -27,6 +27,9 @@ Rails.application.routes.draw do
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker,
     defaults: { format: :js }, constraints: { format: "js" }
 
+  # Postmark inbound email webhook (U7)
+  post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
+
   # Defines the root path route ("/")
   root "home#index"
 end
