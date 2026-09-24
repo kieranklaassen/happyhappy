@@ -47,6 +47,8 @@ Rails.application.routes.draw do
     match "intercom", to: "intercom#validate", via: :head
     post "intercom", to: "intercom#create"
   end
+  # Postmark inbound email webhook (U7)
+  post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
 
   # Defines the root path route ("/")
   root "home#index"
