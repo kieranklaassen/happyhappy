@@ -15,3 +15,10 @@ Setting.current
     category.position = position
   end
 end
+
+# The dev login's people (development only; production signs in with Every).
+if Rails.env.development?
+  [ [ "dev@every.to", "Dev Person" ], [ "support@every.to", "Support Person" ] ].each do |email, name|
+    User.find_or_create_by!(email_address: email) { |user| user.name = name }
+  end
+end
