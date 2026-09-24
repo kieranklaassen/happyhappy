@@ -31,3 +31,7 @@ this file is the durable record.
   `bin/rails test` in CI (U15).
 - P3 `docs/modules/frontend.md`: still uses `home/index` as its example page; the page was removed
   because the root now redirects to the feed. Template doc, left as is.
+- P2 handoff to U7/U15 `config/application.rb` (on `main` since U1, not changed here):
+  `require "rails/all"` loads the Action Mailbox engine, so `bin/rails routes` lists 14
+  `/rails/action_mailbox/...` routes. The Verification Contract requires none. Requiring the frameworks
+  individually without `action_mailbox/engine` would fix it; the schema has no Action Mailbox tables.
