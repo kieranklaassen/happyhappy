@@ -68,17 +68,16 @@ module Slack
     end
 
     def standout_complaints
-      items.where(sentiment: "complaint").where.not(anger_probability: nil)
-        .order(anger_probability: :desc).limit(STANDOUT_COUNT)
+      items.complaint.where.not(anger_probability: nil).order(anger_probability: :desc).limit(STANDOUT_COUNT)
     end
 
     def standout_praise
-      items.where(sentiment: "praise").order(sentiment_probability: :desc).limit(STANDOUT_COUNT)
+      items.praise.order(sentiment_probability: :desc).limit(STANDOUT_COUNT)
     end
 
     def standouts_text(scope, probability, label)
-      lines = scope.includes(:messages).map do |item|
-        body = item.messages.select { |message| @window.cover?(message.occurred_at) }.last&.body
+      lines = scope.map do |item|
+        body = item.messages.where(occurred_at: @window).last&.body
         "#{link(item_url(item), customer_handle(item))} (#{label} #{percent(item.public_send(probability))})\n#{quote(body)}"
       end
       lines.presence&.join("\n") || "None"
