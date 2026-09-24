@@ -36,6 +36,17 @@ class RecurringScheduleTest < ActiveSupport::TestCase
     assert_operator GenevaDrive::HousekeepingJob, :<, ActiveJob::Base
   end
 
+  test "each environment polls X every 15 minutes" do
+    %w[production development test].each do |env|
+      x_poll = RECURRING.fetch(env).fetch("x_poll")
+
+      assert_equal "XPollJob", x_poll.fetch("class")
+      assert_equal "*/15 * * * *", x_poll.fetch("schedule")
+    end
+
+    assert_operator XPollJob, :<, ActiveJob::Base
+  end
+
   test "each environment sweeps overdue agent claims every 5 minutes" do
     %w[production development test].each do |env|
       sweep = RECURRING.fetch(env).fetch("overdue_sweep")

@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": "1830000000000000201",
+      "text": "Trying Cora for a week. Day one: my inbox is quiet for the first time in years. @every",
+      "author_id": "3308337011",
+      "conversation_id": "1830000000000000201",
+      "created_at": "2026-09-24T17:10:00.000Z",
+      "edit_history_tweet_ids": ["1830000000000000201"]
+    }
+  ],
+  "includes": {
+    "users": [
+      { "id": "3308337011", "name": "Priya Raman", "username": "priyabuilds" }
+    ]
+  },
+  "meta": {
+    "newest_id": "1830000000000000201",
+    "oldest_id": "1830000000000000201",
+    "result_count": 1
+  }
+}
