@@ -62,17 +62,17 @@ class PwaTest < ActionDispatch::IntegrationTest
   end
 
   test "the layout links the manifest and matches theme-color to config" do
-    get root_path
+    get new_session_path
 
     assert_response :success
-    assert_inertia_component "home/index"
+    assert_inertia_component "auth/sign_in"
     assert_select "link[rel=manifest][href='/manifest.json']"
     assert_select "meta[name=theme-color][content=?]", PWA.theme_color
   end
 
   test "the layout's application-name and default title read config.x.pwa" do
     with_pwa_config(name: "Overridden App") do
-      get root_path
+      get new_session_path
 
       assert_select "meta[name=application-name][content='Overridden App']"
       assert_select "title", text: "Overridden App"
