@@ -33,6 +33,15 @@ describe('Character', () => {
     expect(container.querySelector('svg')).toHaveAttribute('aria-label', 'Ana is meh')
   })
 
+  it('idles on the element that carries its own tempo and phase', () => {
+    const { container } = render(<Character seed="ana" mood="beaming" idle />)
+    const idler = container.querySelector('.hh-idle')
+
+    expect(idler).toHaveClass('hh-idle--beaming')
+    expect((idler as HTMLElement).style.getPropertyValue('--hh-tempo')).toMatch(/s$/)
+    expect(render(<Character seed="ana" mood="beaming" />).container.querySelector('.hh-idle')).toBeNull()
+  })
+
   it('draws a bandage on a mended customer', () => {
     const plain = render(<Character seed="ana" mood="grumpy" />).container.innerHTML
     const mended = render(<Character seed="ana" mood="grumpy" bandage />).container.innerHTML

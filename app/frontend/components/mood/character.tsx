@@ -517,9 +517,10 @@ export interface CharacterProps {
   bandage?: boolean
   className?: string
   title?: string
+  idle?: boolean
 }
 
-export default function Character({ seed, mood, bandage = false, className, title }: CharacterProps) {
+export default function Character({ seed, mood, bandage = false, className, title, idle = false }: CharacterProps) {
   const clipId = `hh-clip-${useId().replace(/:/g, '')}`
   const traits = traitsFor(seed)
   const g = geometryFor(traits)
@@ -548,9 +549,10 @@ export default function Character({ seed, mood, bandage = false, className, titl
   }
 
   // The filtered body never animates; extras move in their own layer so the
-  // watercolor filters are not re-run every frame.
+  // watercolor filters are not re-run every frame. The idle class sits where
+  // --hh-tempo and --hh-phase are set, so each character keeps its own rhythm.
   return (
-    <span className={`relative block ${className ?? ''}`} style={style}>
+    <span className={`relative block ${idle ? `hh-idle hh-idle--${mood}` : ''} ${className ?? ''}`} style={style}>
       <svg
         viewBox="0 -26 120 172"
         className="block w-full"
