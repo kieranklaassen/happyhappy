@@ -33,6 +33,7 @@ describe('AppNav', () => {
       'Categories',
       'Sources',
       'Agents',
+      'Webhooks',
       'Settings',
     ])
   })

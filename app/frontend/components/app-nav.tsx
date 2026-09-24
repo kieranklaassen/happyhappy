@@ -12,6 +12,7 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
   { label: 'Categories', href: '/categories' },
   { label: 'Sources', href: '/sources' },
   { label: 'Agents', href: '/agents' },
+  { label: 'Webhooks', href: '/webhook_endpoints' },
   { label: 'Settings', href: '/settings' },
 ]
 
