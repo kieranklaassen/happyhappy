@@ -16,6 +16,7 @@ class AdminScreensAccessTest < ActionDispatch::IntegrationTest
       [ :patch, retire_category_path(category) ], [ :patch, restore_category_path(category) ],
       [ :get, sources_path ], [ :get, new_source_path ], [ :post, sources_path ],
       [ :get, edit_source_path(source) ], [ :patch, source_path(source) ],
+      [ :patch, rotate_secret_source_path(sources(:cora_app_webhook)) ],
       [ :get, settings_path ], [ :patch, settings_path ]
     ]
 
@@ -24,5 +25,6 @@ class AdminScreensAccessTest < ActionDispatch::IntegrationTest
       assert_redirected_to new_session_path, "#{verb.upcase} #{path} should require sign-in"
     end
     assert_nil products(:cora).reload.retired_at
+    assert_equal "hhsec_cora-app-test-secret", sources(:cora_app_webhook).reload.signing_secret
   end
 end

@@ -268,7 +268,7 @@ stateDiagram-v2
 ### Key technical decisions
 
 - KTD1. **One foundation unit owns the whole schema and the ingest contract.** U1 creates every table, model, fixture, and gem before parallel work starts. Parallel Rails branches that each add migrations collide on `db/schema.rb`; one schema owner removes that hazard. A later unit that finds a schema gap adds its own migration and regenerates `db/schema.rb` when it rebases on `main`.
-- KTD2. **An item is a customer thread; messages hang off it.** Each connector maps a message to a thread key that is unique per provider (Slack channel plus `thread_ts` or `ts`, Discord channel plus reply chain, Intercom conversation id, the email thread's root `Message-ID` taken from `References`/`In-Reply-To` and from the first mail's own `Message-ID` header, X `conversation_id`). Items are unique on source kind plus thread key, so a thread stays one item even when it moves between sources of the same kind; every key therefore carries whatever scopes it, such as the Slack channel. Classification runs per message. The item is relevant when any of its open messages is relevant; its product, category, and sentiment come from the latest relevant open message, falling back to the latest message while none are relevant; its anger is the highest among its relevant open messages, so an off-topic angry reply cannot raise it or trigger an escalation. Open messages are those received since the item's last status change. A new message reopens a handled or dismissed item to new; a claimed or in-progress item keeps its status and gains the timeline event. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
+- KTD2. **An item is a customer thread; messages hang off it.** Each connector maps a message to a thread key that is unique per provider (Slack channel plus `thread_ts` or `ts`, Discord channel plus reply chain, Intercom conversation id, the email thread's root `Message-ID` taken from `References`/`In-Reply-To` and from the first mail's own `Message-ID` header, X `conversation_id`, a custom source's public token plus the payload's thread key). Items are unique on source kind plus thread key, so a thread stays one item even when it moves between sources of the same kind; every key therefore carries whatever scopes it, such as the Slack channel. Classification runs per message. The item is relevant when any of its open messages is relevant; its product, category, and sentiment come from the latest relevant open message, falling back to the latest message while none are relevant; its anger is the highest among its relevant open messages, so an off-topic angry reply cannot raise it or trigger an escalation. Open messages are those received since the item's last status change. A new message reopens a handled or dismissed item to new; a claimed or in-progress item keeps its status and gains the timeline event. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
 - KTD3. **Connectors are thin adapters over one ingest service.** Each connector verifies its provider, normalizes to one inbound-message shape, and calls `Items::Ingest`. Dedupe is a unique index on source plus external message id. Governs R8, R10, R11.
 - KTD4. **Provider credentials live in ENV, not the database.** One account per provider (see assumed defaults). Sources are rows that select channels, inboxes, addresses, and queries. This matches the deploy module's env-driven secrets and avoids Active Record encryption setup.
 - KTD5. **Webhook endpoints sit outside the session gate.** They inherit from `ActionController::Base` directly, skip CSRF, and authenticate by provider signature or HTTP basic auth. `McpController` follows the same rule and authenticates by bearer token only. Each responds within the provider's ack window and enqueues any slow work.
@@ -400,6 +400,7 @@ flowchart TB
   U1 --> U17[U17 Outbound webhooks]
   U9 --> U17
   U10 --> U17
+  U16 --> U17
   U16 --> U15
   U17 --> U15
   U9 --> U15
@@ -409,8 +410,9 @@ flowchart TB
 
 - Wave 0: U1.
 - Wave 1, in parallel: U2, U3, U4, U5, U6, U7, U8, U9, U10, U11, U13.
-- Wave 2, in parallel: U12, U14, U16, U17.
-- Wave 3: U15, after every other unit has merged.
+- Wave 2, in parallel: U12, U14, U16.
+- Wave 3: U17, after U16 has merged with `Webhooks::Signature` and the Active Record encryption setup.
+- Wave 4: U15, after every other unit has merged.
 
 Conflict hotspots across parallel branches are `config/routes.rb`, `config/recurring.yml`, `.env.example`, and the app navigation component. Each unit adds its own lines in those files and rebases on `main` before merging; resolve by keeping both sides.
 
@@ -447,7 +449,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U14 | Kamal deploy on Hetzner | `config/deploy.yml`, `.kamal/secrets`, `DEPLOYING.md` | U5 |
 | U15 | End-to-end flows and CI | `test/integration/`, `.github/workflows/ci.yml` | U2 to U14, U16, U17 |
 | U16 | Custom inbound webhook source | `app/controllers/webhooks/custom_controller.rb`, `docs/custom-webhooks.md` | U1, U3, U9 |
-| U17 | Outbound webhooks | `app/models/webhook_endpoint.rb`, `app/jobs/webhook_delivery_job.rb` | U1, U9, U10 |
+| U17 | Outbound webhooks | `app/models/webhook_endpoint.rb`, `app/jobs/webhook_delivery_job.rb` | U1, U9, U10, U16 |
 
 ### U1. Foundation: gems, schema, models, ingest core
 
@@ -955,7 +957,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 **Approach:**
 1. Each custom source has a public token in its URL (`/webhooks/custom/:token`) and a generated signing secret.
-2. Verify the signature per KTD17, parse the JSON, map to an inbound message (external id from `id` or a body hash, thread key from `thread_key` or the id, author, permalink, metadata kept in the raw payload), and call `Items::Ingest`.
+2. Verify the signature per KTD17, parse the JSON, map to an inbound message (external id from `id` or a body hash, thread key the source's public token plus the payload's `thread_key` or the id, author, permalink, metadata kept in the raw payload), and call `Items::Ingest`. Every custom source shares the `custom` kind, so the token prefix is what keeps two products that send the same local id from merging into one item.
 3. Sync mode runs classification inline per KTD18 and returns item id, status, and the labels with probabilities.
 4. `Webhooks::Signature` is shared with U17.
 5. Document the payload, signature, sync mode, limits, and a curl example in `docs/custom-webhooks.md`.
@@ -967,6 +969,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Error path: an unknown token answers 404.
 - Error path: a body over 16 KB answers 413.
 - Edge case: the same `id` twice stores one message.
+- Edge case: two custom sources sending the same `thread_key` create two items, one per source.
 - Edge case: sync requests over the rate limit answer 429.
 - Error path: a classifier timeout in sync mode answers 200 with a pending status and the item stays queued for classification.
 - Happy path: rotating the secret makes the old secret fail.
@@ -979,7 +982,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 **Requirements:** R40, R41, R42; KTD17, KTD19.
 
-**Dependencies:** U1, U9, U10.
+**Dependencies:** U1, U9, U10, U16 (for `Webhooks::Signature` and the Active Record encryption setup).
 
 **Files:**
 - Create: `db/migrate/*_create_webhook_endpoints_and_deliveries.rb`, `app/models/webhook_endpoint.rb`, `app/models/webhook_delivery.rb`, `app/services/webhooks/fan_out.rb`, `app/services/webhooks/payload.rb`, `app/jobs/webhook_delivery_job.rb`, `app/jobs/webhook_delivery_prune_job.rb`, `app/controllers/webhook_endpoints_controller.rb`, `app/frontend/pages/webhook_endpoints/{index,form,show}.tsx`

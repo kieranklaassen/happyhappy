@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_24_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_24_190001) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -220,12 +220,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_24_190000) do
     t.decimal "month_spend", precision: 10, scale: 4, default: "0.0", null: false
     t.decimal "monthly_limit", precision: 10, scale: 4
     t.string "name", null: false
+    t.string "public_token"
     t.string "selector", null: false
+    t.text "signing_secret"
     t.string "since_id"
     t.string "status", default: "active", null: false
     t.datetime "updated_at", null: false
     t.index ["default_product_id"], name: "index_sources_on_default_product_id"
     t.index ["kind", "selector"], name: "index_sources_on_kind_and_selector", unique: true
+    t.index ["public_token"], name: "index_sources_on_public_token", unique: true
   end
 
   create_table "users", force: :cascade do |t|

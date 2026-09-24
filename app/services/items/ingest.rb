@@ -16,20 +16,28 @@ module Items
       new(...).call
     end
 
-    def initialize(source:, inbound:)
+    # classify_wait delays the classification job, for callers that classify
+    # inline first and keep the job as the fallback.
+    def initialize(source:, inbound:, classify_wait: nil)
       @source = source
       @inbound = inbound
+      @classify_wait = classify_wait
     end
 
     def call
       @inbound.validate!
 
       result = with_unique_retry { store }
-      ClassifyMessageJob.perform_later(result.message) unless result.duplicate?
+      enqueue_classification(result.message) unless result.duplicate?
       result
     end
 
     private
+
+    def enqueue_classification(message)
+      job = @classify_wait ? ClassifyMessageJob.set(wait: @classify_wait) : ClassifyMessageJob
+      job.perform_later(message)
+    end
 
     def store
       ApplicationRecord.transaction do

@@ -12,7 +12,7 @@
 #   category      category id or name (list)
 #   status        new, claimed, in_progress, handled, dismissed (list)
 #   source        source id (list)
-#   source_kind   slack, discord, intercom, email, x (list)
+#   source_kind   slack, discord, intercom, email, x, custom (list)
 #   range         last message within 24h, 7d, 30d, or 90d
 #   since, until  last message at or after / before an ISO 8601 time
 #   needs_review  true for items flagged for human review
