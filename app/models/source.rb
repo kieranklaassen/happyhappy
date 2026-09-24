@@ -16,7 +16,7 @@ class Source < ApplicationRecord
   validates :name, :selector, presence: true
   validates :selector, uniqueness: { scope: :kind }
   validates :monthly_limit, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :default_product, presence: true, if: :custom?
+  validate :custom_source_has_product, if: :custom?
 
   scope :ordered, -> { order(:kind, :name) }
 
@@ -53,5 +53,9 @@ class Source < ApplicationRecord
     self.public_token ||= SecureRandom.base58(24)
     self.signing_secret ||= self.class.generate_signing_secret
     self.selector = public_token
+  end
+
+  def custom_source_has_product
+    errors.add(:default_product_id, :blank) if default_product.nil?
   end
 end

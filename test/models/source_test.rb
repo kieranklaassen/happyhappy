@@ -28,7 +28,7 @@ class SourceTest < ActiveSupport::TestCase
     source = Source.new(kind: "custom", name: "No product", selector: "")
 
     refute source.valid?
-    assert source.errors.key?(:default_product)
+    assert source.errors.key?(:default_product_id)
   end
 
   test "rotating the signing secret replaces it" do

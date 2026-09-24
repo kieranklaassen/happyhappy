@@ -1,6 +1,6 @@
 export type Sentiment = 'complaint' | 'praise' | 'question' | 'neutral'
 export type ItemStatus = 'new' | 'claimed' | 'in_progress' | 'handled' | 'dismissed'
-export type SourceKind = 'slack' | 'discord' | 'intercom' | 'email' | 'x'
+export type SourceKind = 'slack' | 'discord' | 'intercom' | 'email' | 'x' | 'custom'
 export type EventKind =
   | 'arrived'
   | 'classified'

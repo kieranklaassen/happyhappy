@@ -171,7 +171,7 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
     end
 
     follow_redirect!
-    assert inertia.props[:errors]["default_product"].present?
+    assert inertia.props[:errors]["default_product_id"].present?
   end
 
   test "index shows the webhook URL for custom sources only" do
