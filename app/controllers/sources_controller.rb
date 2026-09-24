@@ -29,6 +29,7 @@ class SourcesController < InertiaController
   def update
     @source.assign_attributes(params.expect(source: %i[name selector default_product_id monthly_limit]))
     @source.monthly_limit = nil unless @source.x?
+    @source.status = :active if limit_raised_above_spend?(@source)
     if @source.save
       redirect_to sources_path, notice: "#{@source.name} saved."
     else
@@ -60,6 +61,11 @@ class SourcesController < InertiaController
       monthly_limit: source.monthly_limit&.to_f,
       month_spend: current_month_spend(source)
     )
+  end
+
+  def limit_raised_above_spend?(source)
+    source.paused_for_budget? && source.monthly_limit_changed? &&
+      (source.monthly_limit.nil? || source.monthly_limit > current_month_spend(source))
   end
 
   def current_month_spend(source)

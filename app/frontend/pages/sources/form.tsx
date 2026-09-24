@@ -96,7 +96,7 @@ export default function SourceForm({ source, kinds, products }: SourceFormProps)
               label="Monthly limit (USD)"
               htmlFor="source_monthly_limit"
               error={form.errors.monthly_limit}
-              hint="Searches pause for the rest of the month once estimated spend would pass this."
+              hint="Searches pause once estimated spend would pass this. Raising it above this month's spend resumes a paused search."
             >
               <input
                 id="source_monthly_limit"

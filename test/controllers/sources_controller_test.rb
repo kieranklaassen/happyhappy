@@ -129,10 +129,20 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
     assert_equal products(:cora), source.default_product
   end
 
-  test "raising an X monthly limit saves" do
+  test "raising an X monthly limit above this month's spend resumes a budget-paused source" do
     patch source_path(sources(:x_budget_paused)), params: { source: { monthly_limit: "20" } }
 
-    assert_equal 20, sources(:x_budget_paused).reload.monthly_limit
+    source = sources(:x_budget_paused).reload
+    assert_equal 20, source.monthly_limit
+    assert source.active?
+  end
+
+  test "a limit still at or below this month's spend keeps the source paused for budget" do
+    patch source_path(sources(:x_budget_paused)), params: { source: { monthly_limit: "10" } }
+    assert sources(:x_budget_paused).reload.paused_for_budget?
+
+    patch source_path(sources(:x_budget_paused)), params: { source: { name: "X search for Spiral app" } }
+    assert sources(:x_budget_paused).reload.paused_for_budget?
   end
 
   test "a negative monthly limit is rejected" do
