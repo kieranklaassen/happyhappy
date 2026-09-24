@@ -15,7 +15,7 @@ module Slack
     end
 
     def link(url, label)
-      "<#{url}|#{escape(label)}>"
+      "<#{escape(url)}|#{escape(label)}>"
     end
 
     def item_url(item)

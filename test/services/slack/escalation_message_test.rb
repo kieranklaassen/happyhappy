@@ -25,6 +25,14 @@ class Slack::EscalationMessageTest < ActiveSupport::TestCase
     assert_equal "&gt; &lt;!channel&gt; refunds &amp; &lt;https://evil.example|click&gt;", quote
   end
 
+  test "escapes the customer handle in the notification fallback text" do
+    escalation = escalations(:angry_slack_posted)
+    escalation.item.update!(author_handle: "<!channel>")
+
+    assert_equal "Angry Cora customer &lt;!channel&gt; on Every community Slack",
+      Slack::EscalationMessage.new(escalation).to_h[:text]
+  end
+
   test "falls back to the email address when the customer has no handle" do
     escalation = Escalation.new(item: items(:claimed_intercom), product: products(:cora), slack_channel_id: "C0CORASUPPORT")
 

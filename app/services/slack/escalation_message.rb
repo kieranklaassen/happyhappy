@@ -10,7 +10,7 @@ module Slack
     end
 
     def to_h
-      { text: text, blocks: blocks }
+      { text: escape(text), blocks: blocks }
     end
 
     private
