@@ -33,13 +33,7 @@ module Happyhappy
     # in config/environments, which are processed later.
     #
     # config.time_zone = "Central Time (US & Canada)"
-    config.time_zone = ENV.fetch("APP_TIME_ZONE", "UTC")
+    config.time_zone = ENV["APP_TIME_ZONE"].presence || "UTC"
     # config.eager_load_paths << Rails.root.join("extras")
-
-    # Custom webhook signing secrets are the one database-held secret (KTD17).
-    # Generate values with `bin/rails db:encryption:init`.
-    config.active_record.encryption.primary_key = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"]
-    config.active_record.encryption.deterministic_key = ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"]
-    config.active_record.encryption.key_derivation_salt = ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"]
   end
 end

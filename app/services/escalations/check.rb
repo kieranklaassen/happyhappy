@@ -48,7 +48,7 @@ module Escalations
 
     # The message whose classification fired the event, else the angriest open message.
     def trigger
-      @trigger ||= @message || @item.open_messages.where.not(anger_probability: nil).order(anger_probability: :desc).first
+      @trigger ||= @message || @item.open_messages.where.not(anger_probability: nil).reorder(anger_probability: :desc).first
     end
 
     def escalated_since_status_change?

@@ -10,6 +10,7 @@ class Product < ApplicationRecord
   normalizes :name, with: ->(name) { name.strip }
   normalizes :slug, with: ->(slug) { slug.strip.parameterize }
   normalizes :hint_words, with: ->(words) { Array(words).map { |word| word.to_s.strip }.compact_blank.uniq }
+  normalizes :slack_channel_id, with: ->(channel_id) { channel_id.strip.presence }
 
   before_validation :derive_slug, if: -> { slug.blank? && name.present? }
 

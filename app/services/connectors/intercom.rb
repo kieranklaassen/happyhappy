@@ -100,14 +100,18 @@ module Connectors
     end
 
     # A conversation already on an item keeps flowing to that item's source
-    # after it is reassigned to a team no source selects (KTD2).
+    # after it is reassigned to a team no source selects (KTD2). Matching
+    # ignores status so a paused source stops its own conversations instead of
+    # letting them fall through to the catch-all.
     def source_for_conversation
-      sources = Source.intercom.active
+      sources = Source.intercom
       team_id = @conversation["team_assignee_id"].to_s.presence
 
-      (team_id && sources.find_by(selector: team_id)) ||
+      source = (team_id && sources.find_by(selector: team_id)) ||
         existing_item_source(sources) ||
         sources.find_by(selector: CATCH_ALL_SELECTOR)
+
+      source if source&.active?
     end
 
     def existing_item_source(sources)
