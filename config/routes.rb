@@ -14,6 +14,9 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # Slack connector (U4): Events API request URL, signature-authenticated.
+  post "webhooks/slack/events" => "webhooks/slack#create", as: :webhooks_slack_events
+
   # PWA surface (docs/modules/pwa.md): Rails' built-in controller renders
   # app/views/pwa/*, public and outside the Inertia auth gate. Formats are pinned
   # so a mismatched request 404s at routing instead of raising MissingTemplate
