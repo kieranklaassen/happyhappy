@@ -25,6 +25,25 @@ class AuthenticationGateTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "Sign in with Every returns to the page that sent the visitor to sign in" do
+    configure_every_oauth
+    stub_every_token
+    stub_every_userinfo
+    https!
+
+    with_stand_in_routes do
+      get "/items"
+      assert_redirected_to new_session_url
+
+      get "/auth/every"
+      state = Rack::Utils.parse_query(URI(response.location).query).fetch("state")
+      get "/auth/every/callback", params: { code: "authorization-code", state: state }
+      assert_redirected_to "https://www.example.com/items"
+    end
+  ensure
+    restore_every_oauth
+  end
+
   test "webhook and /mcp paths are not sent to sign-in" do
     with_stand_in_routes do
       post "/webhooks/slack"
@@ -49,6 +68,7 @@ class AuthenticationGateTest < ActionDispatch::IntegrationTest
     with_routing do |set|
       set.draw do
         resource :session, only: %i[new destroy]
+        get "auth/every/callback", to: "sessions/every#create"
         get "items", to: "authentication_gate_test/feed_stand_in#index"
         post "webhooks/slack", to: "authentication_gate_test/webhook_stand_in#create"
         post "mcp", to: "authentication_gate_test/webhook_stand_in#create"

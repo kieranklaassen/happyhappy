@@ -26,17 +26,6 @@ class Sessions::EveryControllerTest < ActionDispatch::IntegrationTest
     assert_empty cookies[OmniAuth::Strategies::Every::STATE_COOKIE].to_s
   end
 
-  test "sign-in returns to the gated page that sent the visitor to sign in" do
-    stub_every_token
-    stub_every_userinfo
-
-    delete session_path
-    assert_redirected_to new_session_url
-    complete_every_sign_in
-
-    assert_redirected_to session_url
-  end
-
   test "AE1: a gmail.com callback renders the refusal page and creates no session" do
     stub_every_token
     stub_every_userinfo(every_payload("userinfo_gmail"))

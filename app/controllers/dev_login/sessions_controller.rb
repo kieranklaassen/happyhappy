@@ -5,10 +5,6 @@ class DevLogin::SessionsController < InertiaController
   allow_unauthenticated_access
   before_action :require_development
 
-  def self.people
-    User.order(:email_address).map { |user| { email: user.email_address, name: user.name } }
-  end
-
   def create
     user = User.find_by(email_address: params[:email_address].to_s.strip.downcase)
     return redirect_to new_session_path, alert: "Pick a seeded person from the list." if user.nil?
