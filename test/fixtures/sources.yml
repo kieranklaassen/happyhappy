@@ -54,3 +54,12 @@ lex_legacy:
   status: active
   last_error: "Slack: channel_not_found"
   last_error_at: <%= 2.days.ago.to_fs(:db) %>
+
+cora_app_webhook:
+  kind: custom
+  name: Cora app feedback webhook
+  selector: cora-app-webhook-token
+  public_token: cora-app-webhook-token
+  signing_secret: hhsec_cora-app-test-secret
+  default_product: cora
+  status: active

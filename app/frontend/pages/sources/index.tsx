@@ -18,6 +18,7 @@ export interface SourceRow {
   last_error_at: string | null
   monthly_limit: number | null
   month_spend: number | null
+  webhook_url: string | null
 }
 
 interface SourcesIndexProps {
@@ -89,7 +90,7 @@ export default function SourcesIndex({ sources }: SourcesIndexProps) {
                       <span className="font-medium text-gray-900">{source.name}</span>
                       <span className={`rounded px-2 py-0.5 text-xs font-medium ${health.className}`}>{health.label}</span>
                     </div>
-                    <p className="break-all font-mono text-xs text-gray-600">{source.selector}</p>
+                    <p className="break-all font-mono text-xs text-gray-600">{source.webhook_url ?? source.selector}</p>
                     <p className="text-xs text-gray-600">
                       Default product: {source.default_product_name ?? 'none'} · Last message:{' '}
                       {formatDateTime(source.last_message_at)}

@@ -45,6 +45,8 @@ export function sourceKindLabel(kind: SourceKind): string {
       return 'Email'
     case 'x':
       return 'X'
+    case 'custom':
+      return 'Custom webhook'
     default: {
       const unhandled: never = kind
       return unhandled

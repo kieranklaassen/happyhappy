@@ -1,4 +1,4 @@
-export type SourceKind = 'slack' | 'discord' | 'intercom' | 'email' | 'x'
+export type SourceKind = 'slack' | 'discord' | 'intercom' | 'email' | 'x' | 'custom'
 
 export interface SelectorField {
   kindLabel: string
@@ -43,6 +43,13 @@ export function selectorField(kind: SourceKind): SelectorField {
         label: 'X search query',
         placeholder: '(@every OR @cora_computer) -is:retweet',
         hint: 'Keywords or mentions, searched every 15 minutes.',
+      }
+    case 'custom':
+      return {
+        kindLabel: 'Custom webhook',
+        label: 'Webhook token',
+        placeholder: '',
+        hint: 'Generated when the source is created.',
       }
     default: {
       const unhandled: never = kind

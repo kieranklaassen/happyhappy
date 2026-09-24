@@ -52,7 +52,7 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
     get new_source_path
 
     assert_inertia_component "sources/form"
-    assert_equal %w[slack discord intercom email x], inertia.props[:kinds]
+    assert_equal %w[slack discord intercom email x custom], inertia.props[:kinds]
     assert_equal %w[Cora Sparkle Spiral], inertia.props[:products].map { |product| product[:name] }
     assert_nil inertia.props[:source][:id]
   end
@@ -151,5 +151,55 @@ class SourcesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to edit_source_path(sources(:x_mentions))
     follow_redirect!
     assert inertia.props[:errors]["monthly_limit"].present?
+  end
+
+  test "a custom webhook source gets its URL and secret and opens on its edit page" do
+    post sources_path, params: { source: { kind: "custom", name: "Spiral app feedback", selector: "",
+      default_product_id: products(:spiral).id } }
+
+    source = Source.find_by!(name: "Spiral app feedback")
+    assert source.custom?
+    assert_redirected_to edit_source_path(source)
+    follow_redirect!
+    assert_equal "http://www.example.com/webhooks/custom/#{source.public_token}", inertia.props[:webhook][:url]
+    assert_equal source.signing_secret, inertia.props[:webhook][:signing_secret]
+  end
+
+  test "a custom webhook source needs a product" do
+    assert_no_difference -> { Source.count } do
+      post sources_path, params: { source: { kind: "custom", name: "Orphan", selector: "" } }
+    end
+
+    follow_redirect!
+    assert inertia.props[:errors]["default_product_id"].present?
+  end
+
+  test "index shows the webhook URL for custom sources only" do
+    get sources_path
+
+    rows = inertia.props[:sources].index_by { |source| source[:id] }
+    assert_equal "http://www.example.com/webhooks/custom/cora-app-webhook-token",
+      rows.fetch(sources(:cora_app_webhook).id)[:webhook_url]
+    assert_nil rows.fetch(sources(:slack_community).id)[:webhook_url]
+    assert_not(rows.values.any? { |row| row.key?(:signing_secret) })
+  end
+
+  test "edit shows no webhook for other kinds" do
+    get edit_source_path(sources(:slack_community))
+
+    assert_nil inertia.props[:webhook]
+  end
+
+  test "rotating a custom source's secret replaces it" do
+    patch rotate_secret_source_path(sources(:cora_app_webhook))
+
+    assert_redirected_to edit_source_path(sources(:cora_app_webhook))
+    assert_not_equal "hhsec_cora-app-test-secret", sources(:cora_app_webhook).reload.signing_secret
+  end
+
+  test "rotating is only for custom sources" do
+    patch rotate_secret_source_path(sources(:slack_community))
+
+    assert_response :not_found
   end
 end
