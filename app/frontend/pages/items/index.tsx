@@ -86,7 +86,7 @@ export function toQuery(state: FormState): Record<string, string> {
   return query
 }
 
-const SELECT = 'rounded border border-gray-300 bg-white px-2 py-1.5 text-sm'
+const SELECT = 'rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm'
 
 export default function ItemsIndex({ items, filters, pagination, options, error }: FeedProps) {
   const [form, setForm] = useState<FormState>(() => initialState(filters))

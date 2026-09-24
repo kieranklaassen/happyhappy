@@ -23,7 +23,7 @@ export default function SentimentChart({ days }: { days: DayCounts[] }) {
 
   return (
     <figure className="flex flex-col gap-3">
-      <div role="list" aria-label="Items per day by sentiment" className="flex h-40 items-end gap-1">
+      <div role="list" aria-label="Items per day by sentiment" className="flex h-40 items-end gap-1 border-b border-gray-300">
         {days.map((day) => (
           <div
             key={day.date}
@@ -49,6 +49,12 @@ export default function SentimentChart({ days }: { days: DayCounts[] }) {
           </div>
         ))}
       </div>
+      {days.length > 0 && (
+        <div aria-hidden="true" className="flex justify-between text-xs text-gray-500">
+          <span>{days[0].date}</span>
+          <span>{days[days.length - 1].date}</span>
+        </div>
+      )}
       <figcaption className="flex flex-wrap gap-3 text-xs text-gray-600">
         {SENTIMENTS.map((sentiment) => (
           <span key={sentiment} className="inline-flex items-center gap-1">

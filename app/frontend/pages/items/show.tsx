@@ -87,7 +87,7 @@ function LabelForm({ itemId, name, title, label, current, display, threshold, ch
           id={inputId}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          className="min-w-0 flex-1 rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm"
         >
           {children}
         </select>
