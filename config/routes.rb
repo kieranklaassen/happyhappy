@@ -31,6 +31,8 @@ Rails.application.routes.draw do
   resources :agents, only: %i[index create] do
     patch :revoke, on: :member
   end
+  # Postmark inbound email webhook (U7)
+  post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
 
   # Defines the root path route ("/")
   root "home#index"

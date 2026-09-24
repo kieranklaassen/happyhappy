@@ -1,0 +1,52 @@
+{
+  "FromName": "Dana Customer",
+  "MessageStream": "inbound",
+  "From": "dana@example.com",
+  "FromFull": {
+    "Email": "dana@example.com",
+    "Name": "Dana Customer",
+    "MailboxHash": ""
+  },
+  "To": "Cora Support <help@cora.computer>",
+  "ToFull": [
+    {
+      "Email": "help@cora.computer",
+      "Name": "Cora Support",
+      "MailboxHash": ""
+    }
+  ],
+  "Cc": "",
+  "CcFull": [],
+  "Bcc": "",
+  "BccFull": [],
+  "OriginalRecipient": "3f9c2e1b7a4d4c0e9b1f@inbound.postmarkapp.com",
+  "Subject": "Cora stopped sorting my inbox",
+  "MessageID": "a8c1f0d2-3b4e-4f5a-9c6d-7e8f9a0b1c2d",
+  "ReplyTo": "",
+  "MailboxHash": "",
+  "Date": "Thu, 24 Sep 2026 09:12:45 -04:00",
+  "TextBody": "Hi,\n\nSince yesterday Cora has stopped sorting anything into my Brief. Everything lands in the inbox again.\n\nDana",
+  "HtmlBody": "<html><body><p>Hi,</p><p>Since yesterday Cora has stopped sorting anything into my Brief. Everything lands in the inbox again.</p><p>Dana</p></body></html>",
+  "StrippedTextReply": "",
+  "Tag": "",
+  "Headers": [
+    { "Name": "Return-Path", "Value": "<dana@example.com>" },
+    { "Name": "Received", "Value": "by p-pm-inboundg02a-aws-useast1a.inbound.postmarkapp.com (Postfix, from userid 996) id 4B2C1A0012; Thu, 24 Sep 2026 13:12:47 +0000 (UTC)" },
+    { "Name": "X-Spam-Checker-Version", "Value": "SpamAssassin 3.4.0 (2014-02-07) on p-pm-inboundg02a-aws-useast1a" },
+    { "Name": "X-Spam-Status", "Value": "No" },
+    { "Name": "X-Spam-Score", "Value": "-0.1" },
+    { "Name": "X-Spam-Tests", "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,SPF_PASS" },
+    { "Name": "X-Forwarded-To", "Value": "3f9c2e1b7a4d4c0e9b1f@inbound.postmarkapp.com" },
+    { "Name": "Message-ID", "Value": "<CAJx7=Qp1first0dana@mail.gmail.com>" },
+    { "Name": "MIME-Version", "Value": "1.0" }
+  ],
+  "Attachments": [
+    {
+      "Name": "screenshot.png",
+      "Content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "ContentType": "image/png",
+      "ContentLength": 70,
+      "ContentID": ""
+    }
+  ]
+}
