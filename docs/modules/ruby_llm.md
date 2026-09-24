@@ -31,7 +31,7 @@ The template still pins `ruby_llm ~> 1.16`. happyhappy moved to 2.x because
 
 ## Files (the module boundary)
 
-- `Gemfile` — `gem "ruby_llm", "~> 2.0"` and `gem "ruby_llm-typesafe"`
+- `Gemfile`: `gem "ruby_llm", "~> 2.0"` and `gem "ruby_llm-typesafe"`
 - `config/initializers/ruby_llm.rb`, `config/initializers/typesafe.rb`
 - `.env.example` — the `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` /
   `RUBY_LLM_MODEL` / `RUBY_LLM_REQUEST_TIMEOUT` / `TYPESAFE_API_KEY` placeholder names.
