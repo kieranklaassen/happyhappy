@@ -50,6 +50,7 @@ function CheckboxGroup<T extends string | number>({
       <legend className="font-medium text-gray-900">{legend}</legend>
       {hint && <p className="text-xs text-gray-500">{hint}</p>}
       <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {options.length === 0 && <p className="text-xs text-gray-500">None set up yet.</p>}
         {options.map((option) => (
           <label key={String(option.value)} className="flex items-center gap-2 text-gray-800">
             <input

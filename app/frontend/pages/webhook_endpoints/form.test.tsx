@@ -93,6 +93,28 @@ describe('Webhook endpoint form', () => {
     ])
   })
 
+  it('says when there are no products or categories to filter by', () => {
+    render(
+      <WebhookEndpointForm
+        endpoint={{
+          id: null,
+          name: null,
+          url: null,
+          active: true,
+          events: ['item.classified'],
+          product_ids: [],
+          category_ids: [],
+          sentiments: [],
+        }}
+        {...options}
+        products={[]}
+        categories={[]}
+      />,
+    )
+
+    expect(screen.getAllByText('None set up yet.')).toHaveLength(2)
+  })
+
   it('updates an existing endpoint and can deactivate it', async () => {
     const user = userEvent.setup()
     render(
