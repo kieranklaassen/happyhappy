@@ -1,7 +1,7 @@
 angry_slack:
   source: slack_community
   source_kind: slack
-  thread_key: "1727190000.000100"
+  thread_key: "C0COMMUNITY:1727190000.000100"
   author_handle: ana_customer
   author_name: Ana Customer
   permalink: https://every-community.slack.com/archives/C0COMMUNITY/p1727190000000100

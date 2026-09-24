@@ -54,6 +54,15 @@ class AuthenticationGateTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the real webhook and /mcp endpoints answer unauthenticated requests themselves instead of redirecting" do
+    host! "localhost"
+    [ webhooks_slack_events_path, "/webhooks/intercom", postmark_webhook_path, mcp_path ].each do |path|
+      post path, params: {}.to_json, headers: { "Content-Type" => "application/json" }
+
+      assert_response :unauthorized, "#{path} should reject the unsigned request itself"
+    end
+  end
+
   test "the Every sign-in paths are public" do
     get new_session_path
     assert_response :success
