@@ -62,6 +62,14 @@ Rails.application.routes.draw do
     patch :revoke, on: :member
   end
 
+  # Outbound webhook endpoints (U17)
+  resources :webhook_endpoints do
+    member do
+      post :test_send
+      patch :rotate_secret
+    end
+  end
+
   # Defines the root path route ("/")
   root "home#index"
 end
