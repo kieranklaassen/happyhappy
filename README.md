@@ -26,7 +26,15 @@ bin/setup            # install deps, prepare the database
 bin/dev              # boot Rails + Vite (open http://localhost:3100)
 bin/rails test       # Ruby suite
 npm run check        # tsc x2 + Vitest
+bin/ci               # every CI gate locally, in CI order
 ```
+
+The end-to-end flows (Slack escalation, an agent working the feed over `/mcp`,
+product setup, corrections, and the custom webhook) live in `test/integration/`.
+They drive the real controllers and jobs with the fake classifier and stubbed
+Slack, Intercom, and outbound endpoints; no test reaches the network. If a
+parallel run fails with `ViteRuby::MissingEntrypointError` right after frontend
+changes, run `bin/vite build --mode test` once first (CI always does).
 
 Sign in with Every is the only production login (set the `EVERY_OAUTH_*` and
 `PUBLIC_BASE_URL` variables from `.env.example`). Locally, `bin/rails db:seed`

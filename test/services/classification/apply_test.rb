@@ -143,6 +143,55 @@ class Classification::ApplyTest < ActiveSupport::TestCase
     assert_in_delta 0.6, item.anger_probability
   end
 
+  test "a claimed item keeps its relevance and labels when an off-topic message arrives after the claim" do
+    item = new_item
+    classify(add_message(item), product: "spiral", category: "bug", sentiment: "complaint", anger: 0.85, relevant: 0.93)
+    assert_equal 1, item.escalations.count
+    travel 1.hour
+    item.update!(status: "claimed", claimed_by_agent: agents(:cursor), claimed_at: Time.current,
+      status_changed_at: Time.current)
+    travel 1.hour
+
+    assert_no_difference -> { Escalation.count } do
+      classify(add_message(item, body: "anyone up for lunch?"), relevant: 0.05, product: "none", category: "other",
+        sentiment: "neutral", anger: 0.9)
+    end
+
+    item.reload
+    assert item.relevant?
+    assert_includes Item.relevant, item
+    assert_equal products(:spiral), item.product
+    assert_equal categories(:bug), item.category
+    assert item.complaint?
+    assert_in_delta 0.85, item.anger_probability
+    assert_in_delta 0.93, item.relevance_probability
+    assert item.events.last.classified?
+  end
+
+  test "an in-progress item takes the labels of a relevant message that arrives after the claim" do
+    item = new_item(status_changed_at: 2.hours.ago)
+    classify(add_message(item, at: 90.minutes.ago), product: "cora", sentiment: "complaint", anger: 0.4)
+    item.update!(status: "in_progress", status_changed_at: 1.hour.ago)
+
+    classify(add_message(item), product: "spiral", sentiment: "question", anger: 0.3)
+
+    item.reload
+    assert_equal products(:spiral), item.product
+    assert item.question?
+    assert_in_delta 0.3, item.anger_probability
+  end
+
+  test "a new item still becomes not relevant when only off-topic messages are open" do
+    item = new_item(status_changed_at: 2.hours.ago)
+    classify(add_message(item, at: 90.minutes.ago), anger: 0.4)
+    item.update!(status: "handled", status_changed_at: 1.hour.ago)
+    item.update!(status: "new", status_changed_at: 30.minutes.ago)
+
+    classify(add_message(item, body: "anyone up for lunch?"), relevant: 0.05, product: "none")
+
+    refute item.reload.relevant?
+  end
+
   private
 
   def new_item(source: sources(:slack_community), status_changed_at: 1.hour.ago, **attributes)
