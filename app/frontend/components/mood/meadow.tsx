@@ -99,9 +99,7 @@ function Person({ character, productName, history, shout }: { character: MoodCha
         )}
         <span key={`${character.key}:${character.mood}`} className={`relative block ${event}`}>
           {changed && <span className="hh-splash" style={{ background: MOOD_COLORS[character.mood] }} aria-hidden="true" />}
-          <span className={`hh-idle hh-idle--${character.mood}`}>
-            <Character seed={character.seed} mood={character.mood} bandage={character.mended} />
-          </span>
+          <Character seed={character.seed} mood={character.mood} bandage={character.mended} idle />
         </span>
         <span className="hh-hand -mt-1 block truncate text-center text-[15px] leading-tight text-[#3E3542]/80" aria-hidden="true">
           {character.name}
