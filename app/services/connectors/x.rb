@@ -69,10 +69,11 @@ module Connectors
     end
 
     # Only the first page carries since_id alone; X names the parameter in its
-    # 400 error when the id falls outside the recent-search window.
+    # 400 error when the id falls outside the recent-search window, sometimes
+    # only inside the per-parameter errors rather than the summary detail.
     def stale_since_id?(response, params)
       response.status == 400 && params["since_id"] && params["next_token"].nil? &&
-        error_detail(response).to_s.include?("since_id")
+        response.body.to_s.include?("since_id")
     end
 
     def ingest(page)
