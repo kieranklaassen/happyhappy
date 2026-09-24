@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react'
+import SunLogo from './sun-logo'
 
 export interface NavEntry {
   label: string
@@ -27,7 +28,8 @@ export default function AppNav() {
   return (
     <nav aria-label="Main" className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-        <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
+        <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-gray-900">
+          <SunLogo className="h-7 w-7" />
           happyhappy
         </Link>
         <ul className="-mr-6 flex min-w-0 items-center gap-1 overflow-x-auto pr-6 text-sm whitespace-nowrap">

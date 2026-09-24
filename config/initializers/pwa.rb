@@ -9,5 +9,5 @@
 Rails.application.config.x.pwa.name = "happyhappy"
 Rails.application.config.x.pwa.short_name = "happyhappy"
 Rails.application.config.x.pwa.description = "A clean feed of sentiment and status from your public channels."
-Rails.application.config.x.pwa.theme_color = "#1f2937"
-Rails.application.config.x.pwa.background_color = "#ffffff"
+Rails.application.config.x.pwa.theme_color = "#FBF7EF"
+Rails.application.config.x.pwa.background_color = "#FBF7EF"

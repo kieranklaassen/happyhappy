@@ -35,6 +35,16 @@ class PwaTest < ActionDispatch::IntegrationTest
     assert_equal "512x512", maskable["sizes"]
   end
 
+  test "the favicon and home-screen icon are the happyhappy sun" do
+    svg = Rails.public_path.join("icon.svg").read
+    png = Rails.public_path.join("icon.png").binread
+
+    assert_includes svg, "#F8D774", "icon.svg draws the sun disc"
+    assert_includes svg, 'viewBox="0 0 64 64"'
+    assert_equal "\x89PNG".b, png.byteslice(0, 4)
+    assert_equal [ 512, 512 ], png.byteslice(16, 8).unpack("NN")
+  end
+
   test "the manifest reads its identity from config.x.pwa" do
     with_pwa_config(name: "Overridden App", theme_color: "#123456") do
       get "/manifest.json"
