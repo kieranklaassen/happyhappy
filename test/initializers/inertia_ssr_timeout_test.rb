@@ -24,10 +24,10 @@ class InertiaSSRDisabledByDefaultTest < ActionDispatch::IntegrationTest
       "SSR must ship disabled by default (enable via INERTIA_SSR_ENABLED)"
   end
 
-  test "GET / still renders the client-side Inertia component with the patch loaded" do
-    get root_path
+  test "a public page still renders the client-side Inertia component with the patch loaded" do
+    get new_session_path
 
     assert_response :success
-    assert_inertia_component "home/index"
+    assert_inertia_component "auth/sign_in"
   end
 end

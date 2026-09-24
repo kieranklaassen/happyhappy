@@ -3,21 +3,22 @@
 require "test_helper"
 
 class HomeControllerTest < ActionDispatch::IntegrationTest
-  test "GET / renders the home/index Inertia component" do
+  test "GET / sends a signed-in person to the feed" do
+    sign_in_as users(:every_ana)
+
     get root_path
 
-    assert_response :success
-    assert_inertia_component "home/index"
+    assert_redirected_to items_path
   end
 
-  test "the home page passes the name prop" do
+  test "GET / asks a signed-out visitor to sign in" do
     get root_path
 
-    assert_inertia_props({ name: "happyhappy" })
+    assert_redirected_to new_session_path
   end
 
   test "InertiaController shares flash and locale with every page" do
-    get root_path
+    get new_session_path
 
     assert inertia.props.key?("flash"), "flash should be shared on every Inertia page"
     assert_inertia_props({ locale: "en" })
