@@ -15,7 +15,7 @@ execution: code
 
 - **Objective:** Build the full happyhappy app: connect Every's customer channels, classify every message for sentiment, product, and category, keep a clean feed of sentiment and status, let any agent work that feed over MCP and report back, and push escalations and daily digests to Slack.
 - **Product authority:** Kieran Klaassen. The Product Contract below wins on behavior. Items marked `decided (brief)` are Kieran's answers. Items marked `assumed default` are recommended defaults taken under his standing preference; he can override any of them.
-- **Execution profile:** One foundation unit (U1) lands first. Then eleven units run in parallel, then two, then a final end-to-end unit. See Sequencing and parallel waves.
+- **Execution profile:** One foundation unit (U1) lands first. Then eleven units run in parallel, then four, then a final end-to-end unit. See Sequencing and parallel waves.
 - **Stop conditions:** Stop and ask if a unit would change product behavior in the Product Contract, add a new external service beyond those named here, or install Action Mailbox.
 - **Tail ownership:** Each unit ships as its own branch and PR against `main`. Never push to `main` (see `AGENTS.md`).
 - **Open blockers:** None.
@@ -55,6 +55,7 @@ Agents can now do much of the handling, but they need a clean, trustworthy input
 - **Push-first ingestion.** Sources that can push (Slack events, Discord gateway, Intercom webhooks, inbound email webhook) push; X is searched on a schedule. Governs R8.
 - **Default thresholds come from Jev probabilities.** Low confidence below 0.6, escalation at 0.8 anger probability, and a four-hour report-back window, all adjustable. `assumed default` (Kieran asked for these to be set here). Governs R16, R27, R28.
 - **Kamal on Hetzner.** Deploy with the stack's env-driven Kamal setup to Hetzner, like Kieran's other apps. `decided (brief)`. Governs R35. (session-settled: user-directed, chosen over Render as used for Every checks: Kamal on Hetzner is easier and matches his other apps.)
+- **Webhooks everywhere.** Wherever happyhappy takes or produces data, a webhook option exists: a custom inbound webhook source per product, including a sync mode that returns labels so a product can use happyhappy as its classifier, and outbound webhook endpoints for events. `decided (brief)`. Governs R36, R37, R38, R39, R40, R41, R42. (session-settled: user-directed, chosen over MCP-only agent access with webhook push deferred: Kieran wants webhook options everywhere, alongside MCP.)
 - **Digest every day.** Each product's digest posts daily and carries both positive and negative highlights. `decided (brief)`. Governs R31. (session-settled: user-directed, chosen over skipping quiet days: a daily rhythm of good and bad is the point.)
 - **Positioning: an internal Every tool, agent-first, with Jev-calibrated classification.** This separates it from Modem, which is a multi-tenant product. `assumed default`.
 
@@ -129,6 +130,16 @@ flowchart TB
 - R30. One customer thread produces at most one escalation until its status changes.
 - R31. Each product gets a Slack digest every day with sentiment mix, top categories, the day's standout praise and complaints, and what agents handled; a quiet day says so.
 - R32. Team members choose each product's Slack channel, escalation threshold, and digest time.
+
+**Custom and outbound webhooks**
+
+- R36. Team members can create a custom webhook source per product, each with its own URL and signing secret.
+- R37. A custom webhook accepts a signed JSON message with text, author, thread key, permalink, and optional metadata, and ingests it like any other source.
+- R38. A custom webhook request in sync mode classifies inline and returns the labels, within a rate limit and bounded size and time.
+- R39. The custom webhook payload, signature, and a curl example are documented in `docs/`.
+- R40. Team members can register outbound webhook endpoints with a URL, a secret, the events to send (item arrived, item classified, status changed, escalated, agent reported), and filters by product, category, and sentiment.
+- R41. Outbound deliveries are signed, retried with backoff, and logged with their last error.
+- R42. The endpoints screen shows recent deliveries and has a test-send button.
 
 **Reliability and hosting**
 
@@ -206,7 +217,6 @@ stateDiagram-v2
 
 **Deferred for later**
 
-- Pushing items to agents by webhook.
 - Categories per product.
 - Roles and permissions beyond every.to access.
 - Replying to customers on source channels from inside happyhappy. Agents reply with their own tools and report back.
@@ -258,7 +268,7 @@ stateDiagram-v2
 ### Key technical decisions
 
 - KTD1. **One foundation unit owns the whole schema and the ingest contract.** U1 creates every table, model, fixture, and gem before parallel work starts. Parallel Rails branches that each add migrations collide on `db/schema.rb`; one schema owner removes that hazard. A later unit that finds a schema gap adds its own migration and regenerates `db/schema.rb` when it rebases on `main`.
-- KTD2. **An item is a customer thread; messages hang off it.** Each connector maps a message to a thread key that is unique per provider (Slack channel plus `thread_ts` or `ts`, Discord channel plus reply chain, Intercom conversation id, the email thread's root `Message-ID` taken from `References`/`In-Reply-To` and from the first mail's own `Message-ID` header, X `conversation_id`). Items are unique on source kind plus thread key, so a thread stays one item even when it moves between sources of the same kind; every key therefore carries whatever scopes it, such as the Slack channel. Classification runs per message. The item is relevant when any of its open messages is relevant; its product, category, and sentiment come from the latest relevant open message, falling back to the latest message while none are relevant; its anger is the highest among its relevant open messages, so an off-topic angry reply cannot raise it or trigger an escalation. Open messages are those received since the item's last status change. A new message reopens a handled or dismissed item to new; a claimed or in-progress item keeps its status and gains the timeline event. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
+- KTD2. **An item is a customer thread; messages hang off it.** Each connector maps a message to a thread key that is unique per provider (Slack channel plus `thread_ts` or `ts`, Discord channel plus reply chain, Intercom conversation id, the email thread's root `Message-ID` taken from `References`/`In-Reply-To` and from the first mail's own `Message-ID` header, X `conversation_id`, a custom source's public token plus the payload's thread key). Items are unique on source kind plus thread key, so a thread stays one item even when it moves between sources of the same kind; every key therefore carries whatever scopes it, such as the Slack channel. Classification runs per message. The item is relevant when any of its open messages is relevant; its product, category, and sentiment come from the latest relevant open message, falling back to the latest message while none are relevant; its anger is the highest among its relevant open messages, so an off-topic angry reply cannot raise it or trigger an escalation. Open messages are those received since the item's last status change. A new message reopens a handled or dismissed item to new; a claimed or in-progress item keeps its status and gains the timeline event. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
 - KTD3. **Connectors are thin adapters over one ingest service.** Each connector verifies its provider, normalizes to one inbound-message shape, and calls `Items::Ingest`. Dedupe is a unique index on source plus external message id. Governs R8, R10, R11.
 - KTD4. **Provider credentials live in ENV, not the database.** One account per provider (see assumed defaults). Sources are rows that select channels, inboxes, addresses, and queries. This matches the deploy module's env-driven secrets and avoids Active Record encryption setup.
 - KTD5. **Webhook endpoints sit outside the session gate.** They inherit from `ActionController::Base` directly, skip CSRF, and authenticate by provider signature or HTTP basic auth. `McpController` follows the same rule and authenticates by bearer token only. Each responds within the provider's ack window and enqueues any slow work.
@@ -273,6 +283,9 @@ stateDiagram-v2
 - KTD14. **The item timeline is an append-only event table.** Ingest, classification, corrections, claims, reports, status changes, and escalations each write one event. The UI and MCP read the same events. Governs R22.
 - KTD15. **Slack posting uses the bot token and `chat.postMessage` with Block Kit.** One Slack client wrapper serves escalations and digests. Governs R28, R29, R31.
 - KTD16. **X spend is estimated before each call.** Each poll computes the worst-case cost of `max_results` posts plus author expansions and skips the call when it would pass the month's limit. Actual cost, computed from the returned post and user counts because X does not report cost, is added to the month's running total. The total resets on the first of the month. Governs R13, AE4.
+- KTD17. **Webhook signing uses one scheme both ways.** Header `X-Happyhappy-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<raw body>">`, with a five-minute window on inbound. Custom source and endpoint secrets are generated per record and stored with Active Record encryption, keyed from ENV; this is the one exception to KTD4. Governs R36, R37, R41.
+- KTD18. **Sync mode is bounded.** `?sync=true` is rate-limited per source with Rails `rate_limit`, rejects bodies over 16 KB, and waits at most 10 seconds for Jev before answering with the item and a pending status. Without sync, the endpoint answers 202 after ingest. Governs R38.
+- KTD19. **Outbound delivery fans out from the item timeline.** Each new timeline event of a subscribed kind matches endpoints by event and filters, creates one delivery row per endpoint, and enqueues a Solid Queue job that retries with exponential backoff up to 8 attempts. Delivery rows older than 30 days are pruned by a recurring task. Governs R40, R41.
 
 ### High-level technical design
 
@@ -381,6 +394,15 @@ flowchart TB
   U8 --> U15
   U12 --> U15
   U14 --> U15
+  U1 --> U16[U16 Custom webhook]
+  U9 --> U16
+  U3 --> U16
+  U1 --> U17[U17 Outbound webhooks]
+  U9 --> U17
+  U10 --> U17
+  U16 --> U17
+  U16 --> U15
+  U17 --> U15
   U9 --> U15
   U10 --> U15
   U13 --> U15
@@ -388,8 +410,9 @@ flowchart TB
 
 - Wave 0: U1.
 - Wave 1, in parallel: U2, U3, U4, U5, U6, U7, U8, U9, U10, U11, U13.
-- Wave 2, in parallel: U12, U14.
-- Wave 3: U15, after every other unit has merged.
+- Wave 2, in parallel: U12, U14, U16.
+- Wave 3: U17, after U16 has merged with `Webhooks::Signature` and the Active Record encryption setup.
+- Wave 4: U15, after every other unit has merged.
 - U18, the mood dashboard, was added after Wave 1 started. It needs only U1 and can merge at any point; U15 should cover it.
 
 Conflict hotspots across parallel branches are `config/routes.rb`, `config/recurring.yml`, `.env.example`, and the app navigation component. Each unit adds its own lines in those files and rebases on `main` before merging; resolve by keeping both sides.
@@ -425,7 +448,9 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U12 | MCP server | `app/controllers/mcp_controller.rb`, `app/services/mcp/` | U10, U11 |
 | U13 | Slack escalations and daily digests | `app/services/slack/`, `app/jobs/digest_dispatch_job.rb` | U1 |
 | U14 | Kamal deploy on Hetzner | `config/deploy.yml`, `.kamal/secrets`, `DEPLOYING.md` | U5 |
-| U15 | End-to-end flows and CI | `test/integration/`, `.github/workflows/ci.yml` | U2 to U14 |
+| U15 | End-to-end flows and CI | `test/integration/`, `.github/workflows/ci.yml` | U2 to U14, U16, U17 |
+| U16 | Custom inbound webhook source | `app/controllers/webhooks/custom_controller.rb`, `docs/custom-webhooks.md` | U1, U3, U9 |
+| U17 | Outbound webhooks | `app/models/webhook_endpoint.rb`, `app/jobs/webhook_delivery_job.rb` | U1, U9, U10, U16 |
 | U18 | Mood dashboard home page | `app/queries/mood_scene.rb`, `app/frontend/pages/home/index.tsx`, `app/frontend/components/mood/` | U1 |
 
 ### U1. Foundation: gems, schema, models, ingest core
@@ -901,7 +926,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 **Requirements:** F1, F2, F3, F4; success criteria.
 
-**Dependencies:** U2, U3, U4, U5, U6, U7, U8, U9, U10, U11, U12, U13, U14.
+**Dependencies:** U2, U3, U4, U5, U6, U7, U8, U9, U10, U11, U12, U13, U14, U16, U17.
 
 **Files:**
 - Create: `test/integration/escalation_flow_test.rb`, `agent_flow_test.rb`, `setup_flow_test.rb`, `correction_flow_test.rb`
@@ -918,6 +943,71 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Covers F4. A correction changes the feed result and the timeline.
 
 **Verification:** All flow tests and CI pass on `main`.
+
+### U16. Custom inbound webhook source
+
+**Goal:** Let any product send messages to happyhappy through a signed webhook, and optionally get labels back inline.
+
+**Requirements:** R36, R37, R38, R39; KTD3, KTD17, KTD18.
+
+**Dependencies:** U1, U3, U9.
+
+**Files:**
+- Create: `db/migrate/*_add_custom_webhook_to_sources.rb`, `app/controllers/webhooks/custom_controller.rb`, `app/services/connectors/custom.rb`, `app/services/webhooks/signature.rb`, `docs/custom-webhooks.md`
+- Modify: `app/models/source.rb` (new `custom` kind, generated encrypted secret), `app/controllers/sources_controller.rb` and `app/frontend/pages/sources/{index,form}.tsx` (show URL and secret, rotate secret), `config/routes.rb`, `config/application.rb` or an initializer for Active Record encryption keys from ENV, `.env.example`
+- Test: `test/controllers/webhooks/custom_controller_test.rb`, `test/services/webhooks/signature_test.rb`, `test/services/connectors/custom_test.rb`
+
+**Approach:**
+1. Each custom source has a public token in its URL (`/webhooks/custom/:token`) and a generated signing secret.
+2. Verify the signature per KTD17, parse the JSON, map to an inbound message (external id from `id` or a body hash, thread key the source's public token plus the payload's `thread_key` or the id, author, permalink, metadata kept in the raw payload), and call `Items::Ingest`. Every custom source shares the `custom` kind, so the token prefix is what keeps two products that send the same local id from merging into one item.
+3. Sync mode runs classification inline per KTD18 and returns item id, status, and the labels with probabilities.
+4. `Webhooks::Signature` is shared with U17.
+5. Document the payload, signature, sync mode, limits, and a curl example in `docs/custom-webhooks.md`.
+
+**Test scenarios:**
+- Happy path: a signed message creates an item on the source's product and answers 202.
+- Happy path: sync mode with the fake classifier answers 200 with labels and probabilities.
+- Error path: a bad or stale signature answers 401 and stores nothing.
+- Error path: an unknown token answers 404.
+- Error path: a body over 16 KB answers 413.
+- Edge case: the same `id` twice stores one message.
+- Edge case: two custom sources sending the same `thread_key` create two items, one per source.
+- Edge case: sync requests over the rate limit answer 429.
+- Error path: a classifier timeout in sync mode answers 200 with a pending status and the item stays queued for classification.
+- Happy path: rotating the secret makes the old secret fail.
+
+**Verification:** The curl example in the docs works against a local server; tests pass.
+
+### U17. Outbound webhooks
+
+**Goal:** Send signed event webhooks to registered endpoints, with retries, a delivery log, and a test send.
+
+**Requirements:** R40, R41, R42; KTD17, KTD19.
+
+**Dependencies:** U1, U9, U10, U16 (for `Webhooks::Signature` and the Active Record encryption setup).
+
+**Files:**
+- Create: `db/migrate/*_create_webhook_endpoints_and_deliveries.rb`, `app/models/webhook_endpoint.rb`, `app/models/webhook_delivery.rb`, `app/services/webhooks/fan_out.rb`, `app/services/webhooks/payload.rb`, `app/jobs/webhook_delivery_job.rb`, `app/jobs/webhook_delivery_prune_job.rb`, `app/controllers/webhook_endpoints_controller.rb`, `app/frontend/pages/webhook_endpoints/{index,form,show}.tsx`
+- Modify: `app/models/item_event.rb` (after-commit fan-out hook), `app/frontend/components/app-nav.tsx`, `config/routes.rb`, `config/recurring.yml`
+- Test: `test/services/webhooks/fan_out_test.rb`, `test/jobs/webhook_delivery_job_test.rb`, `test/controllers/webhook_endpoints_controller_test.rb`, `app/frontend/pages/webhook_endpoints/index.test.tsx`
+
+**Approach:**
+1. Endpoint: name, URL (https only outside development), generated encrypted secret, event kinds, and optional product, category, and sentiment filters, active flag.
+2. Map timeline event kinds to webhook events: `arrived` to item arrived, `classified` to item classified, `status_changed` and claim events to status changed, `escalated` to escalated, `reported` to agent reported.
+3. Fan out per KTD19; the payload carries event, time, and the item with labels and permalink, and marks customer text as untrusted.
+4. The job posts with the KTD17 signature, a 10-second timeout, and records status, response code, attempts, and last error.
+5. The endpoint page lists recent deliveries and has a test-send button that sends a sample event.
+
+**Test scenarios:**
+- Happy path: a classified event for a matching product creates one delivery and a signed POST.
+- Edge case: an endpoint filtered to another product receives nothing.
+- Error path: a 500 response retries with backoff and records the last error; after 8 attempts the delivery is marked failed.
+- Happy path: test send posts a sample event and shows the result.
+- Edge case: an inactive endpoint receives nothing.
+- Integration: the signature verifies with `Webhooks::Signature` using the endpoint secret.
+- Happy path: the prune job deletes deliveries older than 30 days.
+
+**Verification:** Deliveries post, retry, and show in the UI against stubbed endpoints; tests pass.
 
 ### U18. Mood dashboard home page
 
