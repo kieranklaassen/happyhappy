@@ -61,6 +61,9 @@ Rails.application.routes.draw do
   resources :agents, only: %i[index create] do
     patch :revoke, on: :member
   end
+  # Custom inbound webhook sources (U16)
+  post "webhooks/custom/:token" => "webhooks/custom#create", as: :webhooks_custom, format: false
+  patch "sources/:id/rotate_secret" => "sources#rotate_secret", as: :rotate_secret_source
 
   # Defines the root path route ("/")
   root "home#index"

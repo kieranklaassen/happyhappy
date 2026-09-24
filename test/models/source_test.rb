@@ -1,8 +1,50 @@
 require "test_helper"
 
 class SourceTest < ActiveSupport::TestCase
-  test "supports the five source kinds" do
-    assert_equal %w[slack discord intercom email x], Source.kinds.keys
+  test "supports the six source kinds" do
+    assert_equal %w[slack discord intercom email x custom], Source.kinds.keys
+  end
+
+  test "a custom source generates its public token, selector, and encrypted signing secret" do
+    source = Source.create!(kind: "custom", name: "Spiral app", selector: "", default_product: products(:spiral))
+
+    assert_match(/\A[1-9A-HJ-NP-Za-km-z]{24}\z/, source.public_token)
+    assert_equal source.public_token, source.selector
+    assert_match(/\Ahhsec_[1-9A-HJ-NP-Za-km-z]{40}\z/, source.signing_secret)
+    assert source.encrypted_attribute?(:signing_secret)
+    stored = Source.connection.select_value("SELECT signing_secret FROM sources WHERE id = #{source.id}")
+    assert_not_includes stored, source.signing_secret
+  end
+
+  test "a custom source keeps its token when the selector is edited" do
+    source = sources(:cora_app_webhook)
+
+    source.update!(selector: "something-else")
+
+    assert_equal "cora-app-webhook-token", source.reload.selector
+  end
+
+  test "a custom source needs a product" do
+    source = Source.new(kind: "custom", name: "No product", selector: "")
+
+    refute source.valid?
+    assert source.errors.key?(:default_product)
+  end
+
+  test "rotating the signing secret replaces it" do
+    source = sources(:cora_app_webhook)
+
+    source.rotate_signing_secret!
+
+    assert_not_equal "hhsec_cora-app-test-secret", source.reload.signing_secret
+    assert_match(/\Ahhsec_/, source.signing_secret)
+  end
+
+  test "other kinds get no webhook credentials" do
+    source = Source.create!(kind: "slack", name: "Slack #sparkle", selector: "C0SPARKLE")
+
+    assert_nil source.public_token
+    assert_nil source.signing_secret
   end
 
   test "rejects an unknown kind" do
