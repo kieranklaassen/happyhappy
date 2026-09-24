@@ -546,7 +546,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Test: `test/controllers/webhooks/slack_controller_test.rb`, `test/services/connectors/slack_test.rb`
 
 **Approach:**
-1. Verify the v0 signature with `SLACK_SIGNING_SECRET` and reject timestamps older than five minutes.
+1. Verify the v0 signature with `SLACK_SIGNING_SECRET` using `Slack::Events::Request#verify!` from `slack-ruby-client`, which also rejects timestamps older than five minutes.
 2. Answer `url_verification` with the challenge.
 3. For `message.channels` events in a channel that matches a Slack source, map to an inbound message: external id `channel:ts`, thread key `thread_ts` or `ts`, author from the user id with a cached `users.info` lookup, permalink from `chat.getPermalink`, cached per message.
 4. Ignore bot messages, edits, deletes, and messages from happyhappy's own bot user.
@@ -580,7 +580,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Test: `test/services/connectors/discord_test.rb`
 
 **Approach:**
-1. `bin/discord` boots Rails and starts a `discordrb` bot with `DISCORD_BOT_TOKEN` and the message content intent.
+1. `bin/discord` boots Rails and starts a `discordrb` bot with `DISCORD_BOT_TOKEN`. Pass the message content intent as the integer `1 << 15` alongside guild message intents, because `discordrb` 3.8.0 has no named MESSAGE_CONTENT intent and `:all` leaves it out, so message text arrives empty. Enable the intent in the Discord Developer Portal. Run exactly one bot process.
 2. On each message create in a channel matching a Discord source, map to an inbound message: external id the message id, thread key the referenced message's thread or the message id, author username, jump link.
 3. Keep the mapping in `Connectors::Discord` as a plain function of the event data, so tests exercise it without a gateway.
 4. Record connection errors on matching sources; rely on the library's reconnect and resume.
@@ -614,7 +614,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Answer Intercom's HEAD validation request with 200.
 2. Verify `X-Hub-Signature` as an HMAC-SHA1 of the raw body with `INTERCOM_CLIENT_SECRET`.
-3. Handle `conversation.user.created` and `conversation.user.replied`; map the newest customer part to an inbound message with external id the part id, thread key the conversation id, and author from the contact's email or name.
+3. Handle `conversation.user.created` and `conversation.user.replied`. For created, the message is `data.item.source` with the author email at `source.author.email`; for replied, it is the last entry of `conversation_parts`. External id is the part id (the source id for the first message), thread key is the conversation id. Intercom resends when it gets no 200 within 5 seconds, so answer fast; message-level dedupe covers the resend. Send `Intercom-Version: 2.16` on any conversation fetch.
 4. Match the conversation to an Intercom source by team assignee or inbox id; fall back to a catch-all Intercom source when one exists. A conversation already on an item stays on that item even after reassignment (KTD2).
 5. Strip HTML from part bodies to plain text.
 
@@ -675,16 +675,18 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Test: `test/jobs/x_poll_job_test.rb`, `test/services/connectors/x_budget_test.rb`
 
 **Approach:**
-1. Every 15 minutes, for each active X source, call recent search with `X_BEARER_TOKEN`, the source query, `since_id`, and author expansions.
+1. Every 15 minutes, for each active X source, call `GET /2/tweets/search/recent` with `X_BEARER_TOKEN`, the source query, `since_id`, `max_results` up to 100, and author expansions. Page with `next_token`, then store the response's `newest_id` as the next `since_id`. Recent search only covers 7 days, so a source paused longer loses the gap.
 2. Map each post to an inbound message: external id the post id, thread key `conversation_id`, author username, post URL.
 3. Before calling, skip and mark the source paused for budget when the worst-case cost would pass the limit; after calling, add actual cost and advance `since_id`.
 4. Reset month spend and unpause when the month key changes.
+5. Count author expansions as user reads in the estimate until billing is confirmed; `DEPLOYING.md` tells operators to also set a spending limit in the X developer console as a backstop.
 
 **Patterns to follow:** KTD13, KTD16; `test/jobs/recurring_schedule_test.rb` for recurring entries.
 
 **Test scenarios:**
 - Happy path: a stubbed search response creates items and advances `since_id`.
 - Covers AE4. When the limit is reached, the next run makes no HTTP call and the source shows paused for budget.
+- Happy path: a response with `next_token` fetches the next page, and `since_id` advances to `newest_id`.
 - Edge case: a new month resets spend and resumes polling.
 - Error path: a 429 response records the error and keeps `since_id` unchanged.
 - Edge case: replies in one conversation join one item.
@@ -809,7 +811,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Test: `test/controllers/mcp_controller_test.rb`, `test/services/mcp/tools/*_test.rb`
 
 **Approach:**
-1. Serve the official `mcp` gem's server over Streamable HTTP at `/mcp`, stateless, from a controller that inherits from `ActionController::Base` (KTD5).
+1. Serve the official `mcp` gem's server over Streamable HTTP at `/mcp`, stateless, from a controller that inherits from `ActionController::Base` (KTD5). Build the server per request with the authenticated agent in `server_context`, and add the app host to the transport's allowed hosts so requests through kamal-proxy are not refused.
 2. Authenticate each request with `Agents::Authenticate`; reject missing or revoked tokens with 401.
 3. Tools map one-to-one to U11 services and `ItemsQuery`; item payloads include messages, labels, probabilities, status, and permalink.
 4. Mark customer message bodies as untrusted content in tool payloads, and say so in the README agent setup note.
