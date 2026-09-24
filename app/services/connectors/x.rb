@@ -53,7 +53,13 @@ module Connectors
       params = SEARCH_FIELDS.merge("query" => @source.selector, "max_results" => max_results,
         "since_id" => @source.since_id, "next_token" => next_token).compact
       response = connection.get(SEARCH_PATH, params)
-      raise Error, "X search failed with HTTP #{response.status}: #{error_detail(response)}" unless response.success?
+      unless response.success?
+        # Recent search rejects a since_id older than its 7-day window, so a
+        # longer gap would repeat the same doomed call forever. Drop the cursor
+        # and lose the gap instead.
+        @source.update!(since_id: nil) if response.status == 400 && params["since_id"]
+        raise Error, "X search failed with HTTP #{response.status}: #{error_detail(response)}"
+      end
 
       page = JSON.parse(response.body)
       @budget.record_spend!(posts: Array(page["data"]).size, users: Array(page.dig("includes", "users")).size)

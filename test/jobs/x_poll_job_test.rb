@@ -140,6 +140,18 @@ class XPollJobTest < ActiveJob::TestCase
     assert @source.active?
   end
 
+  test "a 400 for a since_id outside the 7-day window clears it so the next poll resumes" do
+    stub_request(:get, SEARCH_URL).with(query: hash_including("since_id" => "1830000000000000000"))
+      .to_return(status: 400, body: { detail: "since_id must be a Tweet id created in the last 7 days" }.to_json,
+        headers: json_headers)
+
+    XPollJob.perform_now
+
+    @source.reload
+    assert_nil @source.since_id
+    assert_match "HTTP 400", @source.last_error
+  end
+
   test "a failed later page keeps since_id unchanged" do
     stub_search("search_recent_page_1.json")
     stub_request(:get, SEARCH_URL).with(query: hash_including("next_token" => "b26v89c19zqg8o3fosbpbf1u8r5i5ytzcd0dfyckbeb9"))
