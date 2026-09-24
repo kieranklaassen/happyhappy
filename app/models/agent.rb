@@ -14,7 +14,18 @@ class Agent < ApplicationRecord
     OpenSSL::Digest::SHA256.hexdigest(token.to_s)
   end
 
+  # Builds an unsaved agent and returns it with its plaintext token, which is
+  # never stored and cannot be recovered after this call.
+  def self.issue(name:)
+    token = "hh_#{SecureRandom.base58(40)}"
+    [ new(name: name, token_digest: digest(token)), token ]
+  end
+
   def revoked?
     revoked_at.present?
+  end
+
+  def revoke!
+    update!(revoked_at: Time.current) unless revoked?
   end
 end
