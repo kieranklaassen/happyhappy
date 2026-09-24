@@ -42,6 +42,11 @@ Rails.application.routes.draw do
   end
   resources :sources, only: %i[index new create edit update]
   resource :settings, only: %i[show update]
+  # Intercom webhooks (U6)
+  namespace :webhooks do
+    match "intercom", to: "intercom#validate", via: :head
+    post "intercom", to: "intercom#create"
+  end
 
   # Defines the root path route ("/")
   root "home#index"
