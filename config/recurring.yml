@@ -33,6 +33,10 @@ production: &recurring
   webhook_delivery_prune:
     class: "WebhookDeliveryPruneJob"
     schedule: every day at 4:20am
+  # Overdue agent claims (U11)
+  overdue_sweep:
+    class: "OverdueSweepJob"
+    schedule: every 5 minutes
 
 development:
   <<: *recurring

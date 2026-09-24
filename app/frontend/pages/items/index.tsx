@@ -61,9 +61,12 @@ const RANGE_LABELS: Record<string, string> = {
   '90d': 'Last 90 days',
 }
 
-function initialState(filters: FeedFilters): FormState {
+function initialState(filters: FeedFilters, products: ProductOption[]): FormState {
+  const product = filters.product?.[0] ?? ''
+  const bySlug = products.find((candidate) => candidate.slug === product)
+
   return {
-    product: filters.product?.[0] ?? '',
+    product: bySlug ? String(bySlug.id) : product,
     sentiment: filters.sentiment?.[0] ?? '',
     category: filters.category?.[0] ?? '',
     status: filters.status?.[0] ?? '',
@@ -89,8 +92,8 @@ export function toQuery(state: FormState): Record<string, string> {
 const SELECT = 'rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm'
 
 export default function ItemsIndex({ items, filters, pagination, options, error }: FeedProps) {
-  const [form, setForm] = useState<FormState>(() => initialState(filters))
-  const query = toQuery(initialState(filters))
+  const [form, setForm] = useState<FormState>(() => initialState(filters, options.products))
+  const query = toQuery(initialState(filters, options.products))
   const selectedProduct = options.products.find((product) => String(product.id) === form.product)
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {

@@ -134,6 +134,15 @@ class Connectors::IntercomTest < ActiveSupport::TestCase
     assert_nil Connectors::Intercom.call(intercom_created)
   end
 
+  test "a paused source does not fall through to the catch-all source" do
+    @source.update!(status: "paused")
+    Source.create!(kind: "intercom", name: "Everything else", selector: "*")
+
+    assert_no_difference -> { Message.count } do
+      assert_nil Connectors::Intercom.call(intercom_created)
+    end
+  end
+
   test "a reassigned conversation stays on its item and source" do
     first = Connectors::Intercom.call(intercom_created)
     reassigned = intercom_replied
