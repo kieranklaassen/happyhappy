@@ -16,6 +16,11 @@ production: &recurring
     class: "GenevaDrive::HousekeepingJob"
     schedule: "*/30 * * * *"
 
+  # X recent search polling (U8). Each poll stops before the source's monthly spend limit.
+  x_poll:
+    class: "XPollJob"
+    schedule: "*/15 * * * *"
+
 development:
   <<: *recurring
 
