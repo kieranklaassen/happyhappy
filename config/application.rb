@@ -33,6 +33,7 @@ module Happyhappy
     # in config/environments, which are processed later.
     #
     # config.time_zone = "Central Time (US & Canada)"
+    config.time_zone = ENV.fetch("APP_TIME_ZONE", "UTC")
     # config.eager_load_paths << Rails.root.join("extras")
   end
 end
