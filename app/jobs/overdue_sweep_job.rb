@@ -12,7 +12,7 @@ class OverdueSweepJob < ApplicationJob
   private
 
   def quiet_since(cutoff)
-    Item.where(status: %w[claimed in_progress], overdue: false)
+    Item.where(status: Item::HELD_STATUSES, overdue: false)
       .where.not(claimed_by_agent_id: nil)
       .where(claimed_at: ...cutoff)
       .where("items.last_reported_at IS NULL OR items.last_reported_at < ?", cutoff)

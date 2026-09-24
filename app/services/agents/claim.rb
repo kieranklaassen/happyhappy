@@ -31,8 +31,9 @@ module Agents
 
       if won || @item.claimed_by_agent_id == @agent.id
         Result.success(@item)
-      elsif @item.claimed_by_agent_id
-        Result.failure(:taken, "Item #{@item.id} is already claimed by #{@item.claimed_by_agent.name}.")
+      elsif @item.claimed_by_agent_id || @item.status_new?
+        holder = @item.claimed_by_agent&.name || "another agent"
+        Result.failure(:taken, "Item #{@item.id} is already claimed by #{holder}.")
       else
         Result.failure(:not_claimable,
           "Item #{@item.id} is #{@item.status.humanize(capitalize: false)}; only new items can be claimed.")

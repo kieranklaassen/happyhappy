@@ -22,6 +22,7 @@ class AgentsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
+    assert_equal "no-store", response.headers["Cache-Control"]
     token = inertia.props[:new_token][:token]
     agent = Agent.find_by!(name: "Codex")
     assert_equal agent.id, inertia.props[:new_token][:agent_id]

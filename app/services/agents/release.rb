@@ -5,8 +5,6 @@ module Agents
   #   Agents::Release.call(item: item, actor: agent) # => Result with #item, or :revoked, :not_holder
   #   Agents::Release.call(item: item, actor: user)  # => Result with #item, or :not_holder
   class Release
-    HOLDING_STATUSES = %w[claimed in_progress].freeze
-
     def self.call(...)
       new(...).call
     end
@@ -24,7 +22,7 @@ module Agents
       @item.reload
       holder_id = @item.claimed_by_agent_id
       from = @item.status
-      return not_holder unless holder_id && HOLDING_STATUSES.include?(from) && (!agent? || holder_id == @actor.id)
+      return not_holder unless holder_id && Item::HELD_STATUSES.include?(from) && (!agent? || holder_id == @actor.id)
 
       released = Item.transaction do
         now = Time.current

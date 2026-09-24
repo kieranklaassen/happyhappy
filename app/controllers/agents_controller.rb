@@ -9,6 +9,7 @@ class AgentsController < InertiaController
     agent, token = Agent.issue(name: params.expect(agent: [ :name ])[:name].to_s)
 
     if agent.save
+      response.headers["Cache-Control"] = "no-store"
       render inertia: "agents/index", props: {
         agents: agent_props, new_token: { agent_id: agent.id, name: agent.name, token: token }
       }

@@ -7,7 +7,6 @@ module Agents
   #   # => Result with #item, or :revoked, :not_holder, :invalid
   class Report
     STATUSES = %w[in_progress handled].freeze
-    HOLDING_STATUSES = %w[claimed in_progress].freeze
     SUMMARY_MAX = 5_000
     LINK_MAX = 2_000
 
@@ -31,7 +30,7 @@ module Agents
 
       @item.reload
       from = @item.status
-      return not_holder unless @item.claimed_by_agent_id == @agent.id && HOLDING_STATUSES.include?(from)
+      return not_holder unless @item.claimed_by_agent_id == @agent.id && Item::HELD_STATUSES.include?(from)
 
       reported = Item.transaction do
         updated = Item.where(id: @item.id, claimed_by_agent_id: @agent.id, status: from).update_all(changes(from))
