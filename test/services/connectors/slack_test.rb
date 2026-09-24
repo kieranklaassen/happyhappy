@@ -53,6 +53,12 @@ class Connectors::SlackTest < ActiveSupport::TestCase
     assert_equal parent, result.item
   end
 
+  test "a message with a file attached is ingested" do
+    result = @connector.ingest(slack_payload("message_event", event: { subtype: "file_share", text: "" }))
+
+    assert_equal "", result.message.body
+  end
+
   test "the same ts in two configured channels creates two items" do
     first = @connector.ingest(slack_payload("message_event"))
     second = @connector.ingest(slack_payload("message_event", event: { channel: "C0LEXLEGACY" }))
