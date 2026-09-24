@@ -65,6 +65,14 @@ Rails.application.routes.draw do
   # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
   match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
 
+  # Outbound webhook endpoints (U17)
+  resources :webhook_endpoints do
+    member do
+      post :test_send
+      patch :rotate_secret
+    end
+  end
+
   # Defines the root path route ("/")
   root "home#index"
 end
