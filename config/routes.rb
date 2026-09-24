@@ -55,28 +55,12 @@ Rails.application.routes.draw do
   end
   resources :sources, only: %i[index new create edit update]
   resource :settings, only: %i[show update]
-  # Intercom webhooks (U6)
-  namespace :webhooks do
-    match "intercom", to: "intercom#validate", via: :head
-    post "intercom", to: "intercom#create"
   # Agents and their tokens (U11)
   resources :agents, only: %i[index create] do
     patch :revoke, on: :member
   end
   # Postmark inbound email webhook (U7)
   post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
-  # U10: feed, item timeline, corrections, product overview
-  resources :items, only: %i[index show] do
-    resource :labels, only: :update, controller: "item_labels"
-    resource :status, only: :update, controller: "item_statuses"
-  end
-  resources :products, only: [] do
-    resource :overview, only: :show, controller: "product_overviews"
-  end
-  # Agents and their tokens (U11)
-  resources :agents, only: %i[index create] do
-    patch :revoke, on: :member
-  end
 
   # Outbound webhook endpoints (U17)
   resources :webhook_endpoints do

@@ -20,23 +20,19 @@ production: &recurring
   x_poll:
     class: "XPollJob"
     schedule: "*/15 * * * *"
-  # Overdue agent claims (U11)
-  overdue_sweep:
-    class: "OverdueSweepJob"
-    schedule: every 5 minutes
   # Slack daily digests (U13): posts each product's digest once its digest hour arrives.
   digest_dispatch:
     class: "DigestDispatchJob"
     schedule: "0 * * * *"
+  # Overdue agent claims (U11)
+  overdue_sweep:
+    class: "OverdueSweepJob"
+    schedule: every 5 minutes
 
   # Outbound webhooks (U17): delivery log rows older than 30 days are deleted.
   webhook_delivery_prune:
     class: "WebhookDeliveryPruneJob"
     schedule: every day at 4:20am
-  # Overdue agent claims (U11)
-  overdue_sweep:
-    class: "OverdueSweepJob"
-    schedule: every 5 minutes
 
 development:
   <<: *recurring
