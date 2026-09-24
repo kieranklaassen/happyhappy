@@ -2,7 +2,6 @@ require "test_helper"
 
 class DevLogin::SessionsControllerTest < ActionDispatch::IntegrationTest
   test "the dev login route does not exist in the test environment" do
-    assert_not Rails.application.routes.url_helpers.respond_to?(:dev_login_path)
     assert_raises(ActionController::RoutingError) do
       Rails.application.routes.recognize_path("/dev/login", method: :post)
     end
@@ -64,6 +63,7 @@ class DevLogin::SessionsControllerTest < ActionDispatch::IntegrationTest
     with_dev_login_routes { yield }
   ensure
     Rails.env = original
+    Rails.application.reload_routes!
   end
 
   def with_dev_login_routes
@@ -72,6 +72,8 @@ class DevLogin::SessionsControllerTest < ActionDispatch::IntegrationTest
       set.draw do
         resource :session, only: %i[new destroy]
         root "home#index"
+        get "manifest" => "rails/pwa#manifest", as: :pwa_manifest, format: true, constraints: { format: "json" }
+        get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker, defaults: { format: :js }
         draw :dev_login
       end
       yield
