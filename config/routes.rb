@@ -24,6 +24,22 @@ Rails.application.routes.draw do
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker,
     defaults: { format: :js }, constraints: { format: "js" }
 
+  # Products, categories, sources, and settings (U3)
+  resources :products, only: %i[index new create edit update] do
+    member do
+      patch :retire
+      patch :restore
+    end
+  end
+  resources :categories, only: %i[index create update] do
+    member do
+      patch :retire
+      patch :restore
+    end
+  end
+  resources :sources, only: %i[index new create edit update]
+  resource :settings, only: %i[show update]
+
   # Defines the root path route ("/")
   root "home#index"
 end
