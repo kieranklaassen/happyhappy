@@ -38,6 +38,14 @@ describe('AppNav', () => {
     ])
   })
 
+  it('puts the sun mark next to the wordmark', () => {
+    render(<AppNav />)
+
+    const brand = screen.getByRole('link', { name: 'happyhappy' })
+    expect(brand).toHaveAttribute('href', '/')
+    expect(brand.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+
   it('marks the current section', () => {
     page.url = '/products/3/overview?range=30'
     render(<AppNav />)

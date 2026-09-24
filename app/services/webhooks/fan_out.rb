@@ -39,7 +39,9 @@ module Webhooks
       endpoints = WebhookEndpoint.active.to_a
       return [] if endpoints.empty?
 
-      item = @item_event.item
+      # Claims, releases, and reports write the item with update_all, so the event's
+      # cached parent still holds the pre-event status and holder.
+      item = @item_event.reload_item
       events.flat_map do |event|
         matching = endpoints.select { |endpoint| endpoint.subscribed?(event) && endpoint.matches?(item) }
         next [] if matching.empty?

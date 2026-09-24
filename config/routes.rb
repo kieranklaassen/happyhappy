@@ -62,13 +62,6 @@ Rails.application.routes.draw do
   # Postmark inbound email webhook (U7)
   post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
 
-  # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
-  match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
-
-  # Custom inbound webhook sources (U16)
-  post "webhooks/custom/:token" => "webhooks/custom#create", as: :webhooks_custom, format: false
-  patch "sources/:id/rotate_secret" => "sources#rotate_secret", as: :rotate_secret_source
-
   # Outbound webhook endpoints (U17)
   resources :webhook_endpoints do
     member do
@@ -76,6 +69,13 @@ Rails.application.routes.draw do
       patch :rotate_secret
     end
   end
+
+  # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
+  match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
+
+  # Custom inbound webhook sources (U16)
+  post "webhooks/custom/:token" => "webhooks/custom#create", as: :webhooks_custom, format: false
+  patch "sources/:id/rotate_secret" => "sources#rotate_secret", as: :rotate_secret_source
 
   # Defines the root path route ("/")
   root "home#index"
