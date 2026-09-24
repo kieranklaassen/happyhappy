@@ -91,6 +91,21 @@ class Connectors::DiscordTest < ActiveSupport::TestCase
     assert_equal "1100000000000000001:1287000000000000001", result.item.thread_key
   end
 
+  test "a message inside a thread started from a message joins the starter message's item" do
+    starter = Connectors::Discord.ingest(payload("message_create"))
+
+    result = Connectors::Discord.ingest(payload("message_create_in_thread"), parent_channel_id: "1100000000000000001")
+
+    assert_equal starter.item, result.item
+    assert_equal "https://discord.com/channels/1000000000000000007/1287654321098765313/1287657000098765313",
+      Connectors::Discord.inbound_message(payload("message_create_in_thread"), parent_channel_id: "1").permalink
+  end
+
+  test "a thread message is ignored when its parent channel is not configured" do
+    assert_nil Connectors::Discord.ingest(payload("message_create_in_thread"))
+    assert_nil Connectors::Discord.ingest(payload("message_create_in_thread"), parent_channel_id: "1199999999999999999")
+  end
+
   test "bot authors and unconfigured channels are ignored" do
     assert_no_difference -> { Message.count } do
       assert_nil Connectors::Discord.ingest(payload("message_create_bot"))

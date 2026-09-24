@@ -4,6 +4,9 @@ module Connectors
   #
   #   Connectors::Discord.inbound_message(payload) # => Items::InboundMessage or nil
   #   Connectors::Discord.ingest(payload)          # => Items::Ingest::Result or nil
+  #
+  # Pass parent_channel_id for a message posted inside a thread: the gateway
+  # names only the thread, and sources select the thread's parent channel.
   module Discord
     # Default and reply; joins, pins, boosts, and other system messages are skipped.
     MESSAGE_TYPES = [ 0, 19 ].freeze
@@ -11,19 +14,17 @@ module Connectors
 
     module_function
 
-    def inbound_message(payload)
+    def inbound_message(payload, parent_channel_id: nil)
       return unless customer_message?(payload)
 
       body = message_body(payload)
       return if body.blank?
 
-      channel_id = payload["channel_id"]
-      message_id = payload["id"]
       author = payload["author"]
 
       Items::InboundMessage.new(
-        external_id: message_id,
-        thread_key: "#{channel_id}:#{replied_to_id(payload) || message_id}",
+        external_id: payload["id"],
+        thread_key: thread_key(payload, parent_channel_id),
         body: body,
         occurred_at: payload["timestamp"],
         author_handle: author["username"],
@@ -33,11 +34,11 @@ module Connectors
       )
     end
 
-    def ingest(payload)
-      source = Source.active.for(:discord, payload["channel_id"]) if payload["channel_id"]
+    def ingest(payload, parent_channel_id: nil)
+      source = Source.active.for(:discord, parent_channel_id || payload["channel_id"])
       return unless source
 
-      inbound = inbound_message(payload)
+      inbound = inbound_message(payload, parent_channel_id: parent_channel_id)
       return unless inbound
 
       inbound.thread_key = reply_chain_thread_key(payload) || inbound.thread_key
@@ -65,6 +66,16 @@ module Connectors
     def message_body(payload)
       attachments = Array(payload["attachments"]).filter_map { |attachment| attachment["url"] }
       [ payload["content"].to_s.strip, *attachments ].compact_blank.join("\n")
+    end
+
+    # A thread started from a message shares that message's id, so the thread
+    # lands on the starter message's item.
+    def thread_key(payload, parent_channel_id)
+      if parent_channel_id
+        "#{parent_channel_id}:#{payload["channel_id"]}"
+      else
+        "#{payload["channel_id"]}:#{replied_to_id(payload) || payload["id"]}"
+      end
     end
 
     def replied_to_id(payload)

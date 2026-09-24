@@ -23,6 +23,18 @@ class Connectors::DiscordBotTest < ActiveSupport::TestCase
     end
   end
 
+  test "a message in a thread under a configured channel is ingested through the thread's parent" do
+    stub_request(:get, "https://discord.com/api/v9/channels/1287654321098765313")
+      .to_return(status: 200, body: file_fixture("discord/thread_channel.json").read)
+
+    assert_difference -> { Message.count } => 1 do
+      @bot.handle_message(JSON.parse(file_fixture("discord/message_create_in_thread.json").read))
+    end
+
+    assert_equal "1100000000000000001:1287654321098765313", Message.last.item.thread_key
+    assert_equal sources(:discord_spiral), Message.last.source
+  end
+
   test "a failed ingest records the error on the channel's source" do
     payload = JSON.parse(file_fixture("discord/message_create.json").read).merge("timestamp" => nil, "id" => nil)
 

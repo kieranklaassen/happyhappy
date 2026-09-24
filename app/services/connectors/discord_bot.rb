@@ -26,10 +26,13 @@ module Connectors
     end
 
     def handle_message(payload)
-      within_app { Connectors::Discord.ingest(payload) }
-    rescue StandardError => error
-      log_failure("message #{payload["id"]}", error)
-      within_app { Source.for(:discord, payload["channel_id"])&.record_error!(error) }
+      within_app do
+        parent_channel_id = thread_parent_id(payload["channel_id"])
+        Connectors::Discord.ingest(payload, parent_channel_id: parent_channel_id)
+      rescue StandardError => error
+        log_failure("message #{payload["id"]}", error)
+        Source.for(:discord, parent_channel_id || payload["channel_id"])&.record_error!(error)
+      end
     end
 
     def handle_connected
@@ -41,6 +44,15 @@ module Connectors
     end
 
     private
+
+    # Channels and active threads arrive in the gateway's guild payloads, so this
+    # is a cache hit except for a thread the bot has not seen yet.
+    def thread_parent_id(channel_id)
+      return if channel_id.blank? || Source.discord.exists?(selector: channel_id)
+
+      channel = @bot.channel(channel_id.to_i)
+      channel.parent_id.to_s if channel&.thread? && channel.parent_id
+    end
 
     # Handlers run on discordrb's event threads, which log anything that escapes.
     def within_app(&block)
