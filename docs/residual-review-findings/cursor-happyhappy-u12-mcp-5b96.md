@@ -13,7 +13,8 @@ was used; this file is the durable record.
 - Schema-invalid arguments (a missing `item_id`, a bad enum) come back as tool errors from the
   gem's argument validation; unknown filter keys reach `ItemsQuery.new` and come back as
   `ItemsQuery::InvalidFilter` tool errors.
-- GET and DELETE on `/mcp` answer 405 and 400 from the stateless transport; no session id is issued.
+- GET on `/mcp` answers 405 and DELETE is a no-op 200 from the stateless transport; no session id
+  is issued.
 
 ## Residual Review Findings
 
