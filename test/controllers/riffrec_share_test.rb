@@ -13,7 +13,7 @@ class RiffrecShareTest < ActionDispatch::IntegrationTest
     with_env("RIFFREC_PUBLIC_KEY" => nil, "RIFFREC_ENDPOINT" => nil) do
       ENV.delete("RIFFREC_PUBLIC_KEY")
       ENV.delete("RIFFREC_ENDPOINT")
-      get root_path
+      get new_session_path
 
       assert_inertia_props({ feedback_capture_enabled: false })
       assert_nil inertia.props["riffrec"]
@@ -22,7 +22,7 @@ class RiffrecShareTest < ActionDispatch::IntegrationTest
 
   test "configured: shares the gate and a browser-safe config with no secret field" do
     with_env("RIFFREC_PUBLIC_KEY" => "pk_placeholder", "RIFFREC_ENDPOINT" => "https://riffrec.example.test") do
-      get root_path
+      get new_session_path
 
       assert_inertia_props({ feedback_capture_enabled: true })
 

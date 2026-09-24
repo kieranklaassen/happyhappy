@@ -49,6 +49,14 @@ Rails.application.routes.draw do
   end
   # Postmark inbound email webhook (U7)
   post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
+  # U10: feed, item timeline, corrections, product overview
+  resources :items, only: %i[index show] do
+    resource :labels, only: :update, controller: "item_labels"
+    resource :status, only: :update, controller: "item_statuses"
+  end
+  resources :products, only: [] do
+    resource :overview, only: :show, controller: "product_overviews"
+  end
 
   # Defines the root path route ("/")
   root "home#index"
