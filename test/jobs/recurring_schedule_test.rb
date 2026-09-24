@@ -45,6 +45,8 @@ class RecurringScheduleTest < ActiveSupport::TestCase
     end
 
     assert_operator XPollJob, :<, ActiveJob::Base
+  end
+
   test "each environment sweeps overdue agent claims every 5 minutes" do
     %w[production development test].each do |env|
       sweep = RECURRING.fetch(env).fetch("overdue_sweep")

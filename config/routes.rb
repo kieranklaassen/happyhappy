@@ -56,6 +56,7 @@ Rails.application.routes.draw do
   end
   resources :products, only: [] do
     resource :overview, only: :show, controller: "product_overviews"
+  end
   # Agents and their tokens (U11)
   resources :agents, only: %i[index create] do
     patch :revoke, on: :member
