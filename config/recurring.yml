@@ -20,10 +20,6 @@ production: &recurring
   x_poll:
     class: "XPollJob"
     schedule: "*/15 * * * *"
-  # Overdue agent claims (U11)
-  overdue_sweep:
-    class: "OverdueSweepJob"
-    schedule: every 5 minutes
   # Slack daily digests (U13): posts each product's digest once its digest hour arrives.
   digest_dispatch:
     class: "DigestDispatchJob"
