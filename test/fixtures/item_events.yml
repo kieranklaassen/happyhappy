@@ -1,0 +1,30 @@
+angry_slack_arrived:
+  item: angry_slack
+  kind: arrived
+  data: <%= { "source_id" => ActiveRecord::FixtureSet.identify(:slack_community) }.to_json %>
+  created_at: <%= 2.hours.ago.to_fs(:db) %>
+
+angry_slack_classified:
+  item: angry_slack
+  kind: classified
+  created_at: <%= 119.minutes.ago.to_fs(:db) %>
+
+claimed_intercom_claimed:
+  item: claimed_intercom
+  kind: claimed
+  actor: cursor (Agent)
+  created_at: <%= 5.hours.ago.to_fs(:db) %>
+
+handled_email_reported:
+  item: handled_email
+  kind: reported
+  actor: baby_agent (Agent)
+  data: <%= { "summary" => "Sent the multi-account setup guide.", "status" => "handled" }.to_json %>
+  created_at: <%= 3.days.ago.to_fs(:db) %>
+
+needs_review_x_corrected:
+  item: needs_review_x
+  kind: corrected
+  actor: one (User)
+  data: <%= { "label" => "category", "from" => "bug", "to" => "other" }.to_json %>
+  created_at: <%= 20.minutes.ago.to_fs(:db) %>

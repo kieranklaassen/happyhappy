@@ -7,6 +7,8 @@ require "webmock/minitest"
 
 WebMock.disable_net_connect!(allow_localhost: true)
 
+Dir[File.expand_path("support/**/*.rb", __dir__)].sort.each { |file| require file }
+
 module ActiveSupport
   class TestCase
     # Run tests in parallel with specified workers

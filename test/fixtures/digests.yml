@@ -1,0 +1,8 @@
+_fixture:
+  model_class: DailyDigest
+
+cora_yesterday:
+  product: cora
+  date: <%= Date.yesterday.to_fs(:db) %>
+  slack_message_ts: "1727100000.000500"
+  posted_at: <%= 1.day.ago.to_fs(:db) %>

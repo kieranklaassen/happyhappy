@@ -4,12 +4,17 @@ class User < ApplicationRecord
   MAXIMUM_PASSWORD_BYTES = 72
   MINIMUM_PASSWORD_LENGTH = 12
 
-  has_secure_password
+  # Every SSO users have no password, so presence is not required.
+  has_secure_password validations: false
   has_many :sessions, dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
+  normalizes :every_user_id, with: ->(id) { id.strip.presence }
 
+  validates :email_address, presence: true, uniqueness: true
+  validates :every_user_id, uniqueness: true, allow_nil: true
   validates :password, length: { minimum: MINIMUM_PASSWORD_LENGTH }, allow_nil: true
+  validates :password, confirmation: true, allow_nil: true
   validate :password_within_bcrypt_limit
 
   private

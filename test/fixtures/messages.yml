@@ -1,0 +1,79 @@
+angry_slack_first:
+  item: angry_slack
+  source: slack_community
+  external_id: "C0COMMUNITY:1727190000.000100"
+  body: Cora deleted half my inbox this morning and support has not answered in two days. I am furious.
+  occurred_at: <%= 2.hours.ago.to_fs(:db) %>
+  raw_payload: <%= { "type" => "message", "channel" => "C0COMMUNITY", "ts" => "1727190000.000100" }.to_json %>
+  classification_answers: <%= FakeClassifier.answers(product: "cora", category: "bug", anger: 0.86).to_json %>
+  anger_probability: 0.86
+  classified_at: <%= 2.hours.ago.to_fs(:db) %>
+  created_at: <%= 2.hours.ago.to_fs(:db) %>
+
+praise_discord_first:
+  item: praise_discord
+  source: discord_spiral
+  external_id: "1200000000000000001"
+  body: Spiral turned my messy notes into a newsletter draft in five minutes. Love it.
+  occurred_at: <%= 1.day.ago.to_fs(:db) %>
+  anger_probability: 0.02
+  classified_at: <%= 1.day.ago.to_fs(:db) %>
+  created_at: <%= 1.day.ago.to_fs(:db) %>
+
+claimed_intercom_first:
+  item: claimed_intercom
+  source: intercom_inbox
+  external_id: "215470000000001"
+  body: I was charged twice for Cora this month. Please refund one of the charges.
+  occurred_at: <%= 5.hours.ago.to_fs(:db) %>
+  anger_probability: 0.4
+  classified_at: <%= 5.hours.ago.to_fs(:db) %>
+  created_at: <%= 5.hours.ago.to_fs(:db) %>
+
+handled_email_first:
+  item: handled_email
+  source: support_email
+  external_id: "<CA+thread-1@mail.example.com>"
+  body: How do I connect a second Gmail account to Cora?
+  occurred_at: <%= 4.days.ago.to_fs(:db) %>
+  anger_probability: 0.05
+  classified_at: <%= 4.days.ago.to_fs(:db) %>
+  created_at: <%= 4.days.ago.to_fs(:db) %>
+
+needs_review_x_first:
+  item: needs_review_x
+  source: x_mentions
+  external_id: "1830000000000000042"
+  body: Trying out that new file organizer from Every. Not sure yet.
+  occurred_at: <%= 30.minutes.ago.to_fs(:db) %>
+  anger_probability: 0.1
+  classified_at: <%= 30.minutes.ago.to_fs(:db) %>
+  created_at: <%= 30.minutes.ago.to_fs(:db) %>
+
+not_relevant_slack_first:
+  item: not_relevant_slack
+  source: slack_community
+  external_id: "C0COMMUNITY:1727190500.000200"
+  body: anyone up for lunch?
+  occurred_at: <%= 3.hours.ago.to_fs(:db) %>
+  anger_probability: 0.0
+  classified_at: <%= 3.hours.ago.to_fs(:db) %>
+  created_at: <%= 3.hours.ago.to_fs(:db) %>
+
+unclassified_slack_reply:
+  item: angry_slack
+  source: slack_community
+  external_id: "C0COMMUNITY:1727190100.000150"
+  body: Still nothing. Anyone from Every here?
+  occurred_at: <%= 90.minutes.ago.to_fs(:db) %>
+  created_at: <%= 90.minutes.ago.to_fs(:db) %>
+
+retired_product_slack_first:
+  item: retired_product_slack
+  source: lex_legacy
+  external_id: "C0LEXLEGACY:1720000000.000300"
+  body: Lex pricing is too high for what it does.
+  occurred_at: <%= 40.days.ago.to_fs(:db) %>
+  anger_probability: 0.3
+  classified_at: <%= 40.days.ago.to_fs(:db) %>
+  created_at: <%= 40.days.ago.to_fs(:db) %>

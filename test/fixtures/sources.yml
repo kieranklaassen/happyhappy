@@ -1,0 +1,56 @@
+slack_community:
+  kind: slack
+  name: Every community Slack #cora
+  selector: C0COMMUNITY
+  default_product: cora
+  status: active
+  last_message_at: <%= 1.hour.ago.to_fs(:db) %>
+
+discord_spiral:
+  kind: discord
+  name: Spiral Discord #feedback
+  selector: "1100000000000000001"
+  default_product: spiral
+  status: active
+
+intercom_inbox:
+  kind: intercom
+  name: Intercom support inbox
+  selector: "7000001"
+  status: active
+
+support_email:
+  kind: email
+  name: Cora support email
+  selector: help@cora.computer
+  default_product: cora
+  status: active
+
+x_mentions:
+  kind: x
+  name: X mentions of Every products
+  selector: "(@every OR @cora_computer) -is:retweet"
+  status: active
+  monthly_limit: 50.0
+  month_spend: 12.5
+  month_key: <%= Time.current.strftime("%Y-%m") %>
+  since_id: "1830000000000000000"
+
+x_budget_paused:
+  kind: x
+  name: X search for Spiral
+  selector: spiral app -is:retweet
+  default_product: spiral
+  status: paused_for_budget
+  monthly_limit: 10.0
+  month_spend: 10.0
+  month_key: <%= Time.current.strftime("%Y-%m") %>
+
+lex_legacy:
+  kind: slack
+  name: Old Lex channel
+  selector: C0LEXLEGACY
+  default_product: lex
+  status: active
+  last_error: "Slack: channel_not_found"
+  last_error_at: <%= 2.days.ago.to_fs(:db) %>
