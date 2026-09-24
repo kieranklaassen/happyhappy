@@ -187,7 +187,7 @@ function Hill({ wash, seed, rowBottom }: { wash: string; seed: string; rowBottom
   )
 }
 
-export default function Meadow({ group, history }: { group: MoodGroup; history: MoodHistory }) {
+export default function Meadow({ group, history, productHref }: { group: MoodGroup; history: MoodHistory; productHref: string }) {
   const name = group.product?.name ?? ''
   const title = group.product ? group.product.name : 'Not sure which product'
   const wash = GROUND_WASHES[hashSeed(group.product?.slug ?? 'none') % GROUND_WASHES.length]
@@ -217,7 +217,7 @@ export default function Meadow({ group, history }: { group: MoodGroup; history: 
           {group.counts.pending > 0 ? ` · ${group.counts.pending} still reading` : ''}
         </p>
         {group.product && (
-          <Link href={`/?product=${group.product.slug}`} className="ml-auto text-sm text-[#3E3542]/70 underline decoration-dotted underline-offset-4 hover:text-[#3E3542]">
+          <Link href={productHref} className="ml-auto text-sm text-[#3E3542]/70 underline decoration-dotted underline-offset-4 hover:text-[#3E3542]">
             Just {group.product.name}
           </Link>
         )}

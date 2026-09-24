@@ -59,6 +59,7 @@ describe('Meadow', () => {
           person({ key: 'b', item_id: 8, name: 'Bo', mood: 'beaming', source_kind: 'x' }),
         ])}
         history={null}
+        productHref="/?range=7d&product=cora"
       />,
     )
 
@@ -69,6 +70,7 @@ describe('Meadow', () => {
       expect.arrayContaining(['/items/7', '/items/8']),
     )
     expect(within(meadow).getByText(/1 smiling · 0 meh · 1 grumpy/)).toBeInTheDocument()
+    expect(within(meadow).getByRole('link', { name: 'Just Cora' })).toHaveAttribute('href', '/?range=7d&product=cora')
   })
 
   it('animates a customer whose mood changed and pops in a newcomer', () => {
@@ -76,6 +78,7 @@ describe('Meadow', () => {
       <Meadow
         group={group([person({ key: 'a', mood: 'furious' }), person({ key: 'b', seed: 'zzz', mood: 'content' })])}
         history={new Map([['a', 'content']])}
+        productHref="/?product=cora"
       />,
     )
 
@@ -85,7 +88,7 @@ describe('Meadow', () => {
   })
 
   it('does not animate anyone on first paint', () => {
-    const { container } = render(<Meadow group={group([person({ key: 'a' })])} history={null} />)
+    const { container } = render(<Meadow group={group([person({ key: 'a' })])} history={null} productHref="/?product=cora" />)
 
     expect(container.querySelector('.hh-changed, .hh-arrive')).toBeNull()
   })

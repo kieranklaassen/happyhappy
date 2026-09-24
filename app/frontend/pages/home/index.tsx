@@ -154,7 +154,7 @@ export default function Home({ scene, today, filters, options }: MoodDashboardPr
           ) : (
             <div className="mt-6 flex flex-wrap gap-6">
               {scene.map((group) => (
-                <Meadow key={group.product?.slug ?? 'none'} group={group} history={previous} />
+                <Meadow key={group.product?.slug ?? 'none'} group={group} history={previous} productHref={query(filters.range, group.product?.slug ?? null)} />
               ))}
             </div>
           )}
