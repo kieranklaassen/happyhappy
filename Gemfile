@@ -33,7 +33,7 @@ gem "kamal", require: false
 gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.1"
 
 # Inertia.js adapter for Rails — server-driven SPA without a parallel JSON API
 gem "inertia_rails"
