@@ -15,7 +15,7 @@ execution: code
 
 - **Objective:** Build the full happyhappy app: connect Every's customer channels, classify every message for sentiment, product, and category, keep a clean feed of sentiment and status, let any agent work that feed over MCP and report back, and push escalations and daily digests to Slack.
 - **Product authority:** Kieran Klaassen. The Product Contract below wins on behavior. Items marked `decided (brief)` are Kieran's answers. Items marked `assumed default` are recommended defaults taken under his standing preference; he can override any of them.
-- **Execution profile:** One foundation unit (U1) lands first. Then twelve units run in parallel, then two, then a final end-to-end unit. See Sequencing and parallel waves.
+- **Execution profile:** One foundation unit (U1) lands first. Then eleven units run in parallel, then two, then a final end-to-end unit. See Sequencing and parallel waves.
 - **Stop conditions:** Stop and ask if a unit would change product behavior in the Product Contract, add a new external service beyond those named here, or install Action Mailbox.
 - **Tail ownership:** Each unit ships as its own branch and PR against `main`. Never push to `main` (see `AGENTS.md`).
 - **Open blockers:** None.
@@ -133,7 +133,7 @@ flowchart TB
 **Reliability and hosting**
 
 - R33. A failed classification or post retries and never drops the item.
-- R34. Customer message content stays inside happyhappy, its configured model provider, and the agents the team has issued tokens to.
+- R34. Customer message content stays inside happyhappy, its configured model provider, Every's Slack workspace, and the agents the team has issued tokens to.
 - R35. The app deploys with Kamal to Hetzner from the existing deploy setup.
 
 ### Item status lifecycle
@@ -141,12 +141,14 @@ flowchart TB
 ```mermaid
 stateDiagram-v2
   [*] --> New
-  New --> Claimed: agent or person claims
+  New --> Claimed: agent claims
   New --> Dismissed
   Claimed --> InProgress: agent reports progress
   Claimed --> Handled: agent reports done
   Claimed --> New: released or reassigned
   InProgress --> Handled
+  InProgress --> New: released or reassigned
+  Dismissed --> New: customer writes again
   Handled --> New: customer writes again
   Dismissed --> [*]
   Handled --> [*]
@@ -195,7 +197,7 @@ stateDiagram-v2
 
 ### Success criteria
 
-- An angry message on any connected source reaches the product's Slack support channel within five minutes.
+- An angry message on any pushed source reaches the product's Slack support channel within five minutes; on X, within the poll interval plus five minutes.
 - The team can answer "how do people feel about this product this week, and what has been handled" from one screen.
 - Every agent claim ends in a report, a release, or an overdue flag; none disappear silently.
 - Team corrections to labels become rarer over the first month as hint words and thresholds are tuned.
@@ -223,6 +225,7 @@ stateDiagram-v2
 
 - Mounting the stack's riffrec and Flipper surfaces for happyhappy-specific flags.
 - A JSON read API for non-MCP consumers.
+- A retention rule for stored raw provider payloads.
 
 ### Dependencies and assumptions
 
@@ -254,11 +257,11 @@ stateDiagram-v2
 
 ### Key technical decisions
 
-- KTD1. **One foundation unit owns the whole schema and the ingest contract.** U1 creates every table, model, fixture, and gem before parallel work starts. Parallel Rails branches that each add migrations collide on `db/schema.rb`; one schema owner removes that hazard.
-- KTD2. **An item is a customer thread; messages hang off it.** Each source maps a message to a stable thread key (Slack `thread_ts`, Discord channel plus reply chain, Intercom conversation id, email `In-Reply-To`/`References` or normalized subject, X `conversation_id`). Classification runs per message and the item carries the latest labels and the highest anger of its open messages. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
+- KTD1. **One foundation unit owns the whole schema and the ingest contract.** U1 creates every table, model, fixture, and gem before parallel work starts. Parallel Rails branches that each add migrations collide on `db/schema.rb`; one schema owner removes that hazard. A later unit that finds a schema gap adds its own migration and regenerates `db/schema.rb` when it rebases on `main`.
+- KTD2. **An item is a customer thread; messages hang off it.** Each connector maps a message to a thread key that is unique per provider (Slack channel plus `thread_ts`, Discord channel plus reply chain, Intercom conversation id, email `In-Reply-To`/`References` or normalized subject plus sender, X `conversation_id`). Items are unique on source kind plus thread key, so a thread stays one item even when it moves between sources of the same kind. Classification runs per message. The item carries the latest labels and the highest anger among its open messages, meaning messages received since the item's last status change. A new message reopens a handled or dismissed item to new; a claimed or in-progress item keeps its status and gains the timeline event. This is what makes AE5 and the handled-to-new reopen work. Governs R10, R18, R30.
 - KTD3. **Connectors are thin adapters over one ingest service.** Each connector verifies its provider, normalizes to one inbound-message shape, and calls `Items::Ingest`. Dedupe is a unique index on source plus external message id. Governs R8, R10, R11.
 - KTD4. **Provider credentials live in ENV, not the database.** One account per provider (see assumed defaults). Sources are rows that select channels, inboxes, addresses, and queries. This matches the deploy module's env-driven secrets and avoids Active Record encryption setup.
-- KTD5. **Webhook endpoints sit outside the session gate.** They inherit from `ActionController::Base` directly, skip CSRF, and authenticate by provider signature or HTTP basic auth. Each responds within the provider's ack window and enqueues any slow work.
+- KTD5. **Webhook endpoints sit outside the session gate.** They inherit from `ActionController::Base` directly, skip CSRF, and authenticate by provider signature or HTTP basic auth. `McpController` follows the same rule and authenticates by bearer token only. Each responds within the provider's ack window and enqueues any slow work.
 - KTD6. **Discord runs as a separate long-lived process.** A `bin/discord` entry point runs a `discordrb` gateway bot inside the Rails environment, deployed as a second Kamal role on the same host. The web role never holds a gateway connection.
 - KTD7. **Classification is one Jev request per message.** One TypeSafe schema batches: a Noul for relevance, a Choice for product with a none option, a Choice for category with an other option, a Choice for sentiment, and a Noul for anger. Products and categories feed the Choice criteria with their descriptions and hint words. Thresholds and routing stay in app code. Governs R14, R15, R16.
 - KTD8. **`ruby_llm` moves to 2.x.** `ruby_llm-typesafe` requires `ruby_llm >= 2.0.0.rc3, < 3`. U1 bumps the gem and adapts `config/initializers/ruby_llm.rb` so the stack's own initializer test still passes. This diverges from the template's `ruby_llm` module until the template catches up.
@@ -269,7 +272,7 @@ stateDiagram-v2
 - KTD13. **Scheduled work uses Solid Queue recurring tasks.** X polling every 15 minutes, overdue detection every 5 minutes, and the digest dispatcher hourly, each added to every environment key in `config/recurring.yml` (see the jobs module gotcha).
 - KTD14. **The item timeline is an append-only event table.** Ingest, classification, corrections, claims, reports, status changes, and escalations each write one event. The UI and MCP read the same events. Governs R22.
 - KTD15. **Slack posting uses the bot token and `chat.postMessage` with Block Kit.** One Slack client wrapper serves escalations and digests. Governs R28, R29, R31.
-- KTD16. **X spend is estimated before each call.** Each poll computes the worst-case cost of `max_results` posts plus author expansions and skips the call when it would pass the month's limit. Actual cost from each response is added to the month's running total. The total resets on the first of the month. Governs R13, AE4.
+- KTD16. **X spend is estimated before each call.** Each poll computes the worst-case cost of `max_results` posts plus author expansions and skips the call when it would pass the month's limit. Actual cost, computed from the returned post and user counts because X does not report cost, is added to the month's running total. The total resets on the first of the month. Governs R13, AE4.
 
 ### High-level technical design
 
@@ -293,8 +296,8 @@ erDiagram
 - `products`: name, slug, description, hint words, Slack channel id, escalation threshold override, digest hour, retired at.
 - `categories`: name, description, position, retired at.
 - `sources`: kind (slack, discord, intercom, email, x), name, default product, selector (channel id, inbox id, inbound address, or search query), status, last message at, last error, and for X: monthly limit, month spend, month key, since id.
-- `items`: source, thread key, author handle, name, and email, permalink, status, product, category, sentiment, their probabilities, anger probability, relevant, needs review, human-set labels, claimed-by agent, claimed at, overdue, last message at.
-- `messages`: item, external id, body, occurred at, raw payload, classification answers, classified at.
+- `items`: source, thread key, author handle, name, and email, permalink, status, product, category, sentiment, their probabilities, anger probability, relevant, needs review, human-set labels, claimed-by agent, claimed at, last reported at, status changed at, overdue, last message at.
+- `messages`: item, source, external id, body, occurred at, raw payload, classification answers, classified at.
 - `item_events`: item, kind, actor (user, agent, or system), data, created at.
 - `agents`: name, token digest, last used at, revoked at.
 - `escalations`: item, product, Slack channel, Slack message ts, posted at.
@@ -333,16 +336,19 @@ app/
     mcp_controller.rb
     products_controller.rb, categories_controller.rb, sources_controller.rb
     settings_controller.rb, agents_controller.rb
-    items_controller.rb, item_labels_controller.rb, item_statuses_controller.rb
+    items_controller.rb, item_labels_controller.rb, item_statuses_controller.rb, product_overviews_controller.rb
     sessions/every_controller.rb, dev_login/sessions_controller.rb
   frontend/pages/ (items, products, categories, sources, agents, settings, auth)
-  jobs/ (classify_message_job, x_poll_job, overdue_sweep_job, digest_dispatch_job, post_escalation_job)
+  frontend/components/ (app-nav, item-row, timeline, sentiment-chart)
+  jobs/ (classify_message_job, x_poll_job, overdue_sweep_job, digest_dispatch_job, post_digest_job, post_escalation_job)
   models/ (setting, product, category, source, item, message, item_event, agent, escalation, digest)
+  queries/items_query.rb
   services/
-    items/ingest.rb
+    items/ (ingest, inbound_message)
     classification/ (schema_builder, classifier, apply)
-    connectors/ (slack, discord, intercom, postmark, x)
-    agents/ (claim, report, release)
+    connectors/ (slack, discord, discord_bot, intercom, postmark, x, x_budget)
+    agents/ (claim, report, release, authenticate)
+    escalations/check.rb
     slack/ (client, escalation_message, digest_message)
     mcp/ (server, tools/)
 bin/discord
@@ -365,8 +371,14 @@ flowchart TB
   U1 --> U11[U11 Claims]
   U1 --> U13[U13 Slack alerts]
   U11 --> U12[U12 MCP]
+  U10 --> U12
   U5 --> U14[U14 Deploy]
   U2 --> U15[U15 End to end]
+  U3 --> U15
+  U4 --> U15
+  U6 --> U15
+  U7 --> U15
+  U8 --> U15
   U12 --> U15
   U14 --> U15
   U9 --> U15
@@ -389,6 +401,8 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - `assumed default`: an escalation's "customer handle" is the source's author handle or email.
 - `assumed default`: Slack source messages are ignored when they come from bots or from happyhappy itself.
 - `assumed default`: messages older than 7 days at first sight never trigger escalations.
+- `assumed default`: one app time zone comes from `APP_TIME_ZONE`; digest hours use it, and each digest covers the previous calendar day.
+- `assumed default`: notable or standout items are the top 3 complaints by anger and the top 3 praise items by praise probability in the window.
 
 ---
 
@@ -407,7 +421,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U9 | Jev classification | `app/services/classification/`, `app/jobs/classify_message_job.rb` | U1 |
 | U10 | Feed, item timeline, corrections, product overview | `app/controllers/items_controller.rb`, `app/frontend/pages/items/` | U1 |
 | U11 | Agent tokens, claims, reports, overdue detection | `app/services/agents/`, `app/jobs/overdue_sweep_job.rb` | U1 |
-| U12 | MCP server | `app/controllers/mcp_controller.rb`, `app/services/mcp/` | U11 |
+| U12 | MCP server | `app/controllers/mcp_controller.rb`, `app/services/mcp/` | U10, U11 |
 | U13 | Slack escalations and daily digests | `app/services/slack/`, `app/jobs/digest_dispatch_job.rb` | U1 |
 | U14 | Kamal deploy on Hetzner | `config/deploy.yml`, `.kamal/secrets`, `DEPLOYING.md` | U5 |
 | U15 | End-to-end flows and CI | `test/integration/`, `.github/workflows/ci.yml` | U2 to U14 |
@@ -425,12 +439,12 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Create: `db/migrate/*` for `settings`, `products`, `categories`, `sources`, `items`, `messages`, `item_events`, `agents`, `escalations`, `digests`, and user columns `every_user_id`, `name`, `avatar_url`
 - Create: `app/models/setting.rb`, `product.rb`, `category.rb`, `source.rb`, `item.rb`, `message.rb`, `item_event.rb`, `agent.rb`, `escalation.rb`, `digest.rb`
 - Create: `app/services/items/ingest.rb`, `app/services/items/inbound_message.rb`
-- Create: `config/initializers/typesafe.rb`, `test/support/fake_classifier.rb`
+- Create: `config/initializers/typesafe.rb`, `test/support/fake_classifier.rb`, `app/frontend/components/app-nav.tsx` with an entry for every section the later units add
 - Test: `test/models/*_test.rb` for each model, `test/services/items/ingest_test.rb`, `test/fixtures/*.yml`
 
 **Approach:**
 1. Add `ruby_llm ~> 2.0`, `ruby_llm-typesafe`, `mcp`, `discordrb`, `omniauth`, `omniauth-oauth2`, `slack-ruby-client`, and `faraday` to the Gemfile; add `webmock` to the test group. Adapt the `ruby_llm` initializer to 2.x per KTD8.
-2. Write migrations and models with enums for source kind, item status, sentiment, and event kind. Unique index on messages by source and external id. Unique index on items by source and thread key.
+2. Write migrations and models with enums for source kind, item status, sentiment, and event kind. Unique index on messages by source and external id. Unique index on items by source kind and thread key (KTD2). Make `users.password_digest` nullable and add a unique index on `users.every_user_id`.
 3. `Items::Ingest` takes a source and an inbound message, upserts the item by thread key, inserts the message unless it is a duplicate, reopens a handled item when a new message arrives, updates source health, writes `arrived` events, and enqueues classification by class name so U9 can supply the job.
 4. Seed the default category list (bug, billing, feature request, onboarding, praise, other) and the settings row in `db/seeds.rb`.
 
@@ -440,7 +454,10 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Happy path: ingesting a new message creates one item, one message, and one `arrived` event, and enqueues classification.
 - Edge case: ingesting the same external id twice keeps one message and one event. Covers R10.
 - Edge case: a second message on the same thread key attaches to the existing item.
-- Happy path: a new message on a handled item sets it back to new and writes a status event.
+- Happy path: a new message on a handled or dismissed item sets it back to new and writes a status event.
+- Edge case: a new message on a claimed or in-progress item keeps its status and adds an `arrived` event.
+- Edge case: the same thread key arriving through a second source of the same kind attaches to the existing item.
+- Happy path: a user with no password saves, and two users cannot share an `every_user_id`.
 - Edge case: a message for a retired product's source still ingests and the item keeps the retired product readable. Covers R7.
 - Happy path: ingest updates the source's last message time and clears its last error.
 - Error path: an inbound message missing an external id raises a validation error and stores nothing.
@@ -465,7 +482,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Port Baby Agent's `every` strategy in its legacy authorization-code mode with UserInfo identity; drop the workspace-deletion step-up and reauth context.
 2. On callback, refuse unless the UserInfo email ends in `@every.to` and is verified; upsert the user by `every_user_id` as Baby Agent's `from_every_auth!` does.
-3. Remove password sign-in from production; the dev login exists only when `Rails.env.development?` and routes are drawn only there.
+3. Remove password sign-in and `has_secure_password` from `User`; the dev login exists only when `Rails.env.development?` and routes are drawn only there.
 4. Read `EVERY_OAUTH_CLIENT_ID`, `EVERY_OAUTH_CLIENT_SECRET`, `EVERY_OAUTH_BASE_URL`, and `PUBLIC_BASE_URL` from ENV.
 
 **Patterns to follow:** `EveryInc/baby-agent` files `lib/omniauth/strategies/every.rb`, `app/controllers/sessions/every_controller.rb`, `app/models/user/every_identity.rb`, `config/initializers/omniauth.rb`; the template's `Authentication` concern.
@@ -492,7 +509,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 **Files:**
 - Create: `app/controllers/products_controller.rb`, `categories_controller.rb`, `sources_controller.rb`, `settings_controller.rb`
-- Create: `app/frontend/pages/products/{index,form}.tsx`, `categories/index.tsx`, `sources/{index,form}.tsx`, `settings/edit.tsx`, `app/frontend/components/app-nav.tsx`
+- Create: `app/frontend/pages/products/{index,form}.tsx`, `categories/index.tsx`, `sources/{index,form}.tsx`, `settings/edit.tsx`
 - Modify: `config/routes.rb`, `app/controllers/inertia_controller.rb` shared props for navigation
 - Test: `test/controllers/{products,categories,sources,settings}_controller_test.rb`, `app/frontend/pages/sources/index.test.tsx`
 
@@ -531,7 +548,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Verify the v0 signature with `SLACK_SIGNING_SECRET` and reject timestamps older than five minutes.
 2. Answer `url_verification` with the challenge.
-3. For `message.channels` events in a channel that matches a Slack source, map to an inbound message: external id `channel:ts`, thread key `thread_ts` or `ts`, author from the user id with a cached `users.info` lookup, permalink from team and channel.
+3. For `message.channels` events in a channel that matches a Slack source, map to an inbound message: external id `channel:ts`, thread key `thread_ts` or `ts`, author from the user id with a cached `users.info` lookup, permalink from `chat.getPermalink`, cached per message.
 4. Ignore bot messages, edits, deletes, and messages from happyhappy's own bot user.
 5. Return 200 fast; Slack retries carry the same event and dedupe by external id.
 
@@ -598,7 +615,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 1. Answer Intercom's HEAD validation request with 200.
 2. Verify `X-Hub-Signature` as an HMAC-SHA1 of the raw body with `INTERCOM_CLIENT_SECRET`.
 3. Handle `conversation.user.created` and `conversation.user.replied`; map the newest customer part to an inbound message with external id the part id, thread key the conversation id, and author from the contact's email or name.
-4. Match the conversation to an Intercom source by team assignee or inbox id; fall back to a catch-all Intercom source when one exists.
+4. Match the conversation to an Intercom source by team assignee or inbox id; fall back to a catch-all Intercom source when one exists. A conversation already on an item stays on that item even after reassignment (KTD2).
 5. Strip HTML from part bodies to plain text.
 
 **Patterns to follow:** KTD3, KTD5.
@@ -623,14 +640,14 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 **Files:**
 - Create: `app/controllers/webhooks/postmark_controller.rb`, `app/services/connectors/postmark.rb`
-- Modify: `config/routes.rb`, `.env.example`
+- Modify: `config/routes.rb`, `.env.example`, `config/application.rb`
 - Test: `test/controllers/webhooks/postmark_controller_test.rb`, `test/services/connectors/postmark_test.rb`
 
 **Approach:**
 1. Authenticate with HTTP basic auth using `POSTMARK_INBOUND_USER` and `POSTMARK_INBOUND_PASSWORD`, set in the Postmark inbound webhook URL.
 2. Route by the recipient address to an email source whose selector is that address.
 3. Map to an inbound message: external id the `MessageID`, thread key from `In-Reply-To` or the first `References` id, else the normalized subject plus sender; body from `StrippedTextReply` when present, else `TextBody`.
-4. Do not install or configure Action Mailbox.
+4. Replace `require "rails/all"` in `config/application.rb` with explicit framework requires that leave out `action_mailbox/engine`. The scaffold draws 14 `/rails/action_mailbox` routes today; after this unit it draws none. Do not install or configure Action Mailbox.
 
 **Patterns to follow:** KTD3, KTD5.
 
@@ -640,7 +657,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Error path: missing or wrong basic auth returns 401.
 - Edge case: an unknown recipient returns 200 and stores nothing.
 - Edge case: the same `MessageID` twice stores one message.
-- Integration: `config/application.rb` and the Gemfile do not enable Action Mailbox routes or tables.
+- Integration: the route set contains no `/rails/action_mailbox` routes and `db/schema.rb` has no `action_mailbox` tables.
 
 **Verification:** Postmark payloads produce items; no Action Mailbox tables or routes exist; tests pass.
 
@@ -727,6 +744,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 2. The item page shows messages, labels with probabilities, human-set markers, and the event timeline.
 3. Label corrections and status changes write events and mark labels human-set.
 4. The product overview shows 30 days of counts by sentiment and recent notable complaints and praise.
+5. Every page has an empty state and an error state, and uses semantic headings and labeled controls.
 
 **Patterns to follow:** hand-written props per `docs/modules/serialization.md`; KTD14.
 
@@ -757,9 +775,9 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:**
 1. Creating an agent shows its token once and stores only a digest; revoking sets `revoked_at`.
 2. `Agents::Claim` uses one conditional update per KTD11 and writes a `claimed` event.
-3. `Agents::Report` records summary, optional link, and new status, clears overdue, and releases the claim when the status is handled.
+3. `Agents::Report` records summary, optional link, and new status, sets last reported at, clears overdue, and releases the claim when the status is handled. Report and release refuse unless the calling agent holds the claim.
 4. `Agents::Release` and a person's reassign both return the item to new.
-5. The overdue sweep flags claimed items past the report-back window every 5 minutes.
+5. Every 5 minutes, the overdue sweep flags claimed or in-progress items whose later of claimed at and last reported at is older than the report-back window.
 
 **Patterns to follow:** KTD11, KTD13, KTD14.
 
@@ -771,6 +789,8 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Covers AE6. An item claimed five hours ago with a four-hour window is flagged overdue by the sweep.
 - Edge case: a report clears the overdue flag.
 - Error path: a revoked token fails authentication.
+- Error path: agent B cannot report on or release agent A's claim.
+- Edge case: an item that got a progress report two hours ago is not flagged overdue under a four-hour window, even if it was claimed six hours ago.
 - Happy path: the agents screen shows the token once after creation.
 
 **Verification:** Claim, report, release, and overdue services behave per the ACs; tests pass.
@@ -781,7 +801,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 **Requirements:** R21, R24, R34; F2; KTD10.
 
-**Dependencies:** U11. Uses `ItemsQuery` from U10 when merged; until then it reads items with its own minimal filters and switches to `ItemsQuery` at rebase.
+**Dependencies:** U10, U11.
 
 **Files:**
 - Create: `app/controllers/mcp_controller.rb`, `app/services/mcp/server.rb`, `app/services/mcp/tools/{list_items,get_item,claim_item,release_item,report_item}.rb`
@@ -789,10 +809,11 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Test: `test/controllers/mcp_controller_test.rb`, `test/services/mcp/tools/*_test.rb`
 
 **Approach:**
-1. Serve the official `mcp` gem's server over Streamable HTTP at `/mcp`, stateless.
+1. Serve the official `mcp` gem's server over Streamable HTTP at `/mcp`, stateless, from a controller that inherits from `ActionController::Base` (KTD5).
 2. Authenticate each request with `Agents::Authenticate`; reject missing or revoked tokens with 401.
-3. Tools map one-to-one to U11 services and the feed query; item payloads include messages, labels, probabilities, status, and permalink.
-4. Record the agent's last-used time.
+3. Tools map one-to-one to U11 services and `ItemsQuery`; item payloads include messages, labels, probabilities, status, and permalink.
+4. Mark customer message bodies as untrusted content in tool payloads, and say so in the README agent setup note.
+5. Record the agent's last-used time.
 
 **Patterns to follow:** KTD10; the `mcp` gem's Streamable HTTP transport docs.
 
@@ -803,6 +824,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Covers AE7. `claim_item` on a taken item returns a tool error naming the conflict.
 - Error path: no token or a revoked token returns 401.
 - Edge case: `get_item` for an unknown id returns a tool error.
+- Happy path: item payloads mark customer message bodies as untrusted content.
 
 **Verification:** An MCP client, such as Cursor, connects with a token and completes list, claim, and report; tests pass.
 
@@ -912,7 +934,7 @@ No test may call TypeSafe, Slack, Discord, Intercom, Postmark, or X over the net
 - Every unit's test scenarios exist and pass, and every gate above is green on `main`.
 - Each unit merged through its own PR; nothing was pushed straight to `main`.
 - AE1 to AE8 each have at least one passing test that names them.
-- A team member can sign in with an every.to account, set up a product and sources, see classified items in the feed, and receive an escalation in Slack in a staging deploy.
+- A team member can sign in with an every.to account, set up a product and sources, see classified items in the feed, and receive an escalation in Slack on the U14 Hetzner deploy.
 - An MCP client can list, claim, and report on an item with a token.
 - No Action Mailbox tables, routes, or configuration exist.
 - No abandoned-attempt code, dead files, or commented-out experiments remain in the diff.
