@@ -17,11 +17,6 @@ RubyLLM.configure do |config|
 
   config.default_model = ENV.fetch("RUBY_LLM_MODEL", "gemini-2.5-flash")
   config.request_timeout = ENV.fetch("RUBY_LLM_REQUEST_TIMEOUT", "60").to_i
-
-  # Persist chats/messages through the app's own Model registry with the current
-  # acts_as API (opt in per-model with `acts_as_chat` etc.).
-  config.model_registry_class = "Model"
-  config.use_new_acts_as = true
 end
 
 # Structured logging for every LLM chat completion, emitted through the app's
