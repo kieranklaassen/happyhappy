@@ -1,68 +1,81 @@
 # Module: auth
 
 Database-backed session authentication built on the Rails 8 `authentication`
-generator, hardened to the house standard. No open registration: users are
-created only by `bin/rails users:create`.
+generator, with Sign in with Every as the only production login. No passwords
+and no open registration: a user row is created by the first Every sign-in of a
+verified every.to address, or ahead of it by `bin/rails users:create`.
 
 ## What this module is
 
-- `has_secure_password` + a DB-backed `Session` model; the signed, permanent
-  `session_id` cookie (`httponly`, `same_site: :lax`) is the only credential a
-  browser carries.
+- A DB-backed `Session` model; the signed, permanent `session_id` cookie
+  (`httponly`, `same_site: :lax`) is the only credential a browser carries.
 - The gate lives on `InertiaController` (default-on), so **every Inertia page is
   authenticated unless it opts out** with `allow_unauthenticated_access`.
-  Framework endpoints (e.g. `/up`) inherit from `ApplicationController` and stay
-  public.
-- Operational hardening: a 72-byte password guard (bcrypt truncates silently past
-  that), a 12-byte minimum, a byte-identical `"Invalid email or password."` for
-  both unknown-email and wrong-password (no enumeration oracle), and sign-in
-  rate limiting against an **explicitly-owned** `MemoryStore` (not `Rails.cache`,
-  which can be a silent null store under class-body eval timing).
+  Framework endpoints (e.g. `/up`), provider webhooks, and `/mcp` inherit from
+  `ActionController::Base` and authenticate on their own terms.
+- One session writer, `Authentication#start_new_session_for`, used by the Every
+  callback and the dev login alike; it replaces any session the browser already
+  had.
+- **Sign in with Every** (`lib/omniauth/strategies/every.rb`), ported from Baby
+  Agent's legacy mode: authorization code with scope `basic_profile`, identity
+  from `GET /oauth/userinfo`. The state lives in the encrypted session and in a
+  `__Host-every_state` nonce cookie the callback must echo; a transaction older
+  than ten minutes fails closed. `GET /auth/every` starts it (a top-level link,
+  so GET is allowed).
+- **The every.to gate** (`Sessions::EveryController#create`): only an address
+  whose normalized domain is exactly `every.to` signs in (`User.every_email?`);
+  anyone else gets the `auth/refused` page (403) and no user or session. Every's
+  UserInfo carries no `email_verified` claim, so the address Every returns is
+  trusted; an explicit `email_verified: false` is refused. Users are upserted by
+  `every_user_id` (`User.from_every_auth!`), and name, email, and avatar follow
+  Every on each sign-in.
+- **Dev login** (development only): the sign-in page lists every user and one
+  click posts to `/dev/login`. The route is drawn only when
+  `Rails.env.development?` (`config/routes/dev_login.rb`) and the action answers
+  404 elsewhere. `bin/rails db:seed` adds `dev@every.to` and `support@every.to`
+  in development.
 
 ## Files (the module boundary)
 
-- `app/models/user.rb` — `has_secure_password`, email normalization, password guards.
+- `app/models/user.rb`, `app/models/user/every_identity.rb` — email normalization, the Every identity, the every.to rule.
 - `app/models/session.rb`, `app/models/current.rb`
 - `app/controllers/concerns/authentication.rb` — the gate + session lifecycle.
 - `app/controllers/inertia_controller.rb` — `include Authentication` (gate default-on).
-- `app/controllers/sessions_controller.rb` — sign in/out, generic failure, rate limit.
-- `app/frontend/pages/auth/sign_in.tsx` — the sign-in page.
+- `app/controllers/sessions_controller.rb` — the sign-in page and sign-out.
+- `app/controllers/sessions/every_controller.rb`, `lib/omniauth/strategies/every.rb`, `config/initializers/omniauth.rb` — Sign in with Every.
+- `app/controllers/dev_login/sessions_controller.rb`, `config/routes/dev_login.rb` — the dev login.
+- `app/frontend/pages/auth/sign_in.tsx`, `app/frontend/pages/auth/refused.tsx`
 - `app/channels/application_cable/connection.rb` — cable identity from the session cookie.
-- `config/routes.rb` — `resource :session`.
-- `db/migrate/*_create_users.rb`, `db/migrate/*_create_sessions.rb`
-- `lib/tasks/users.rake` — `users:create` (the sole user writer).
-- `test/fixtures/users.yml`, `test/models/user_test.rb`,
-  `test/controllers/sessions_controller_test.rb`, `test/tasks/users_rake_test.rb`,
-  `test/test_helpers/session_test_helper.rb`
+- `config/routes.rb` — `resource :session, only: %i[new destroy]`, the Every callback, the dev login draw.
+- `lib/tasks/users.rake` — `users:create` (pre-provisions an every.to person).
+- `test/fixtures/users.yml`, `test/fixtures/files/every_oauth/*.json`, `test/support/every_oauth_helper.rb`,
+  `test/models/user_test.rb`, `test/controllers/sessions_controller_test.rb`, `test/controllers/sessions/*`,
+  `test/controllers/dev_login/*`, `test/lib/omniauth/strategies/every_test.rb`, `test/integration/authentication_gate_test.rb`,
+  `test/tasks/users_rake_test.rb`, `test/test_helpers/session_test_helper.rb`
 
-## Adopt into an existing app
+## Configuration
 
-1. Run `bin/rails generate authentication`, then apply the house adaptations:
-   move `include Authentication` from `ApplicationController` to the base
-   `InertiaController`; make public actions call `allow_unauthenticated_access`.
-2. Copy `app/models/user.rb`'s password guards (`MAXIMUM_PASSWORD_BYTES = 72`,
-   `MINIMUM_PASSWORD_LENGTH`).
-3. Replace the generated ERB session view with `app/frontend/pages/auth/sign_in.tsx`
-   and set `SessionsController#new` to `render inertia: "auth/sign_in"`.
-4. Harden `SessionsController#create`: generic failure message + an owned
-   `RATE_LIMIT_STORE = ActiveSupport::Cache::MemoryStore.new` passed to
-   `rate_limit(..., store:)`.
-5. Delete any registration route; add `lib/tasks/users.rake`.
-6. `bin/rails db:migrate`.
+| Variable | Purpose |
+|---|---|
+| `EVERY_OAUTH_CLIENT_ID` | The OAuth client id Every provisions for happyhappy. |
+| `EVERY_OAUTH_CLIENT_SECRET` | Its secret. |
+| `EVERY_OAUTH_BASE_URL` | Every's OAuth origin, for example `https://every.to`. |
+| `PUBLIC_BASE_URL` | happyhappy's public origin; the redirect URI is `<PUBLIC_BASE_URL>/auth/every/callback`. |
+
+With any of the first three unset the app still boots, and the sign-in page
+says Sign in with Every is not configured.
 
 ## Verify adoption
 
-- `bin/rails test test/models/user_test.rb test/controllers/sessions_controller_test.rb test/tasks/users_rake_test.rb`
-- `EMAIL=you@example.com PASSWORD='a-long-password' bin/rails users:create` creates a user.
+- `bin/rails test test/models/user_test.rb test/controllers/sessions_controller_test.rb test/controllers/sessions test/controllers/dev_login test/lib test/integration/authentication_gate_test.rb`
 - An unauthenticated request to a gated Inertia page redirects to sign-in.
+- In development, `bin/rails db:seed` then `/session/new` offers the dev login.
 
 ## Decisions & opt-ins
 
-- **Password reset is not shipped.** The generator's `PasswordsController`/mailer
-  reset flow was trimmed — it needs mail delivery configured and Inertia pages.
-  Re-add it as an opt-in when an app configures a mailer.
-- **OmniAuth is an opt-in account-linking path, not primary login.** Add the
-  provider gems and link providers to an existing `User`; do not open
-  self-registration.
-- **No open registration** is a deliberate default. `users:create` is the sole
-  writer; adding a registration flow is an explicit product decision.
+- **Only the legacy authorization-code mode is ported.** Baby Agent's OIDC and
+  silent `prompt=none` modes, the workspace-deletion step-up, and its reauth
+  context are not needed here.
+- **Every every.to person has full access.** There are no roles in v1.
+- **No open registration** is a deliberate default. The Every callback and
+  `users:create` are the only writers.
