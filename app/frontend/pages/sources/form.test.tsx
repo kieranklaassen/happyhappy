@@ -6,8 +6,13 @@ import SourceForm from './form'
 
 const submissions: { method: string; url: string; payload: unknown }[] = []
 
+const routerCalls: { url: string; options: unknown }[] = []
+
 vi.mock('@inertiajs/react', () => ({
   Head: () => null,
+  router: {
+    patch: (url: string, _data: unknown, options: unknown) => routerCalls.push({ url, options }),
+  },
   usePage: () => ({ url: '/sources/new', props: { flash: {} } }),
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>
@@ -31,7 +36,7 @@ vi.mock('@inertiajs/react', () => ({
   },
 }))
 
-const kinds = ['slack', 'discord', 'intercom', 'email', 'x'] as const
+const kinds = ['slack', 'discord', 'intercom', 'email', 'x', 'custom'] as const
 const products = [
   { id: 1, name: 'Cora' },
   { id: 2, name: 'Spiral' },
@@ -41,6 +46,7 @@ const blank = { id: null, kind: null, name: null, selector: null, default_produc
 describe('Source form', () => {
   beforeEach(() => {
     submissions.length = 0
+    routerCalls.length = 0
   })
 
   it('labels the selector for the chosen kind and shows the monthly limit only for X', async () => {
@@ -104,5 +110,49 @@ describe('Source form', () => {
         payload: { source: { name: 'Spiral Discord', selector: '110', default_product_id: '2', monthly_limit: '' } },
       },
     ])
+  })
+
+  it('hides the selector for a custom webhook and requires a product', async () => {
+    const user = userEvent.setup()
+    render(<SourceForm source={blank} kinds={[...kinds]} products={products} />)
+
+    await user.selectOptions(screen.getByLabelText('Kind'), 'custom')
+    expect(screen.queryByLabelText('Webhook token')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Default product')).toBeRequired()
+    expect(screen.queryByRole('region', { name: 'Webhook' })).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Name'), 'Cora app')
+    await user.selectOptions(screen.getByLabelText('Default product'), '1')
+    await user.click(screen.getByRole('button', { name: 'Create source' }))
+
+    expect(submissions[0].payload).toEqual({
+      source: { kind: 'custom', name: 'Cora app', selector: '', default_product_id: '1', monthly_limit: '' },
+    })
+  })
+
+  it('shows the webhook URL, reveals the secret, and rotates it after confirmation', async () => {
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    render(
+      <SourceForm
+        source={{ id: 9, kind: 'custom', name: 'Cora app', selector: 'tok', default_product_id: 1, monthly_limit: null }}
+        kinds={[...kinds]}
+        products={products}
+        webhook={{ url: 'https://happyhappy.test/webhooks/custom/tok', signing_secret: 'hhsec_abc' }}
+      />,
+    )
+
+    expect(screen.getByLabelText('Webhook URL')).toHaveValue('https://happyhappy.test/webhooks/custom/tok')
+    const secret = screen.getByLabelText('Signing secret')
+    expect(secret).toHaveAttribute('type', 'password')
+    await user.click(screen.getByRole('button', { name: 'Show' }))
+    expect(secret).toHaveAttribute('type', 'text')
+    expect(secret).toHaveValue('hhsec_abc')
+
+    await user.click(screen.getByRole('button', { name: 'Rotate secret' }))
+    expect(routerCalls).toEqual([])
+    await user.click(screen.getByRole('button', { name: 'Rotate secret' }))
+    expect(routerCalls.map((call) => call.url)).toEqual(['/sources/9/rotate_secret'])
+    confirm.mockRestore()
   })
 })

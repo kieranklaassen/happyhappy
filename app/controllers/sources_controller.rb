@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class SourcesController < InertiaController
-  before_action :set_source, only: %i[edit update]
+  before_action :set_source, only: %i[edit update rotate_secret]
 
   def index
     sources = Source.includes(:default_product).ordered
@@ -16,7 +16,7 @@ class SourcesController < InertiaController
     source = Source.new(params.expect(source: %i[kind name selector default_product_id monthly_limit]))
     source.monthly_limit = nil unless source.x?
     if source.save
-      redirect_to sources_path, notice: "#{source.name} connected."
+      redirect_to source.custom? ? edit_source_path(source) : sources_path, notice: "#{source.name} connected."
     else
       redirect_to new_source_path, inertia: { errors: source.errors }
     end
@@ -37,6 +37,13 @@ class SourcesController < InertiaController
     end
   end
 
+  def rotate_secret
+    return head :not_found unless @source.custom?
+
+    @source.rotate_signing_secret!
+    redirect_to edit_source_path(@source), notice: "New signing secret for #{@source.name}. The old one no longer works."
+  end
+
   private
 
   def set_source
@@ -49,7 +56,8 @@ class SourcesController < InertiaController
       source: source.slice(:id, :kind, :name, :selector, :default_product_id)
         .merge(monthly_limit: source.monthly_limit&.to_f),
       kinds: Source.kinds.keys,
-      products: products.map { |product| product.slice(:id, :name) }
+      products: products.map { |product| product.slice(:id, :name) },
+      webhook: (webhook_props(source) if source.custom? && source.persisted?)
     }
   end
 
@@ -59,8 +67,13 @@ class SourcesController < InertiaController
       last_message_at: source.last_message_at&.iso8601,
       last_error_at: source.last_error_at&.iso8601,
       monthly_limit: source.monthly_limit&.to_f,
-      month_spend: current_month_spend(source)
+      month_spend: current_month_spend(source),
+      webhook_url: (webhooks_custom_url(source.public_token) if source.custom?)
     )
+  end
+
+  def webhook_props(source)
+    { url: webhooks_custom_url(source.public_token), signing_secret: source.signing_secret }
   end
 
   def limit_raised_above_spend?(source)

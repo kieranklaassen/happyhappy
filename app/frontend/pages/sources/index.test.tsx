@@ -26,6 +26,7 @@ function row(overrides: Partial<SourceRow>): SourceRow {
     last_error_at: null,
     monthly_limit: null,
     month_spend: null,
+    webhook_url: null,
     ...overrides,
   }
 }
@@ -82,6 +83,20 @@ describe('Sources index', () => {
     render(<SourcesIndex sources={[row({ id: 5 })]} />)
 
     expect(screen.queryByText(/this month/)).not.toBeInTheDocument()
+  })
+
+  it('shows the webhook URL in place of the token for custom webhook sources', () => {
+    const url = 'https://happyhappy.test/webhooks/custom/tok123'
+    render(
+      <SourcesIndex
+        sources={[row({ id: 6, kind: 'custom', name: 'Cora app feedback', selector: 'tok123', webhook_url: url })]}
+      />,
+    )
+
+    const custom = within(screen.getByRole('listitem', { name: 'Cora app feedback' }))
+    expect(custom.getByText('Custom webhook')).toBeInTheDocument()
+    expect(custom.getByText(url)).toBeInTheDocument()
+    expect(custom.queryByText('tok123')).not.toBeInTheDocument()
   })
 
   it('invites adding a source when there are none', () => {
