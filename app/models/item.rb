@@ -11,9 +11,9 @@ class Item < ApplicationRecord
   belongs_to :product, optional: true
   belongs_to :category, optional: true
   belongs_to :claimed_by_agent, class_name: "Agent", optional: true, inverse_of: :claimed_items
-  has_many :messages, -> { order(:occurred_at, :id) }, dependent: :destroy, inverse_of: :item
-  has_many :events, -> { order(:created_at, :id) }, class_name: "ItemEvent", dependent: :destroy, inverse_of: :item
   has_many :escalations, dependent: :destroy
+  has_many :messages, -> { order(:occurred_at, :id) }, dependent: :destroy, inverse_of: :item
+  has_many :events, -> { order(:created_at, :id) }, class_name: "ItemEvent", dependent: :delete_all, inverse_of: :item
 
   before_validation :copy_source_kind, if: -> { source && source_kind.blank? }
   before_validation -> { self.status_changed_at ||= Time.current }

@@ -5,7 +5,13 @@ angry_slack_first:
   body: Cora deleted half my inbox this morning and support has not answered in two days. I am furious.
   occurred_at: <%= 2.hours.ago.to_fs(:db) %>
   raw_payload: <%= { "type" => "message", "channel" => "C0COMMUNITY", "ts" => "1727190000.000100" }.to_json %>
-  classification_answers: <%= FakeClassifier.answers(product: "cora", category: "bug", anger: 0.86).to_json %>
+  classification_answers: <%= {
+    "relevant" => { "type" => "noul", "noul" => 0.97 },
+    "product" => { "type" => "choice", "choice" => "cora", "probabilities" => { "cora" => 0.92, "none" => 0.08 }, "confidence" => 0.92 },
+    "category" => { "type" => "choice", "choice" => "bug", "probabilities" => { "bug" => 0.81, "other" => 0.19 }, "confidence" => 0.81 },
+    "sentiment" => { "type" => "choice", "choice" => "complaint", "probabilities" => { "complaint" => 0.88, "praise" => 0.0, "question" => 0.06, "neutral" => 0.06 }, "confidence" => 0.88 },
+    "anger" => { "type" => "noul", "noul" => 0.86 }
+  }.to_json %>
   anger_probability: 0.86
   classified_at: <%= 2.hours.ago.to_fs(:db) %>
   created_at: <%= 2.hours.ago.to_fs(:db) %>

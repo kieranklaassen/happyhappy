@@ -1,5 +1,5 @@
 class Message < ApplicationRecord
-  belongs_to :item, touch: true
+  belongs_to :item
   belongs_to :source
 
   validates :external_id, presence: true, uniqueness: { scope: :source_id }

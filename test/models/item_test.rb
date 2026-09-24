@@ -86,6 +86,14 @@ class ItemTest < ActiveSupport::TestCase
     assert_equal [ { item_id: item.id, message_id: messages(:angry_slack_first).id } ], payloads
   end
 
+  test "destroying an item removes its escalations, messages, and append-only events" do
+    item = items(:angry_slack)
+
+    assert_difference -> { Message.count } => -2, -> { ItemEvent.count } => -2, -> { Escalation.count } => -1 do
+      item.destroy!
+    end
+  end
+
   test "claimed by an agent" do
     assert_equal agents(:cursor), items(:claimed_intercom).claimed_by_agent
     assert_includes agents(:cursor).claimed_items, items(:claimed_intercom)
