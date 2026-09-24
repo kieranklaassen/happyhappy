@@ -70,6 +70,9 @@ Rails.application.routes.draw do
     end
   end
 
+  # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
+  match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
+
   # Defines the root path route ("/")
   root "home#index"
 end
