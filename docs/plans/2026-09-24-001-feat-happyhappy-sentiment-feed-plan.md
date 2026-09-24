@@ -413,6 +413,7 @@ flowchart TB
 - Wave 2, in parallel: U12, U14, U16.
 - Wave 3: U17, after U16 has merged with `Webhooks::Signature` and the Active Record encryption setup.
 - Wave 4: U15, after every other unit has merged.
+- U18, the mood dashboard, was added after Wave 1 started. It needs only U1 and can merge at any point; U15 should cover it.
 
 Conflict hotspots across parallel branches are `config/routes.rb`, `config/recurring.yml`, `.env.example`, and the app navigation component. Each unit adds its own lines in those files and rebases on `main` before merging; resolve by keeping both sides.
 
@@ -450,6 +451,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U15 | End-to-end flows and CI | `test/integration/`, `.github/workflows/ci.yml` | U2 to U14, U16, U17 |
 | U16 | Custom inbound webhook source | `app/controllers/webhooks/custom_controller.rb`, `docs/custom-webhooks.md` | U1, U3, U9 |
 | U17 | Outbound webhooks | `app/models/webhook_endpoint.rb`, `app/jobs/webhook_delivery_job.rb` | U1, U9, U10, U16 |
+| U18 | Mood dashboard home page | `app/queries/mood_scene.rb`, `app/frontend/pages/home/index.tsx`, `app/frontend/components/mood/` | U1 |
 
 ### U1. Foundation: gems, schema, models, ingest core
 
@@ -1006,6 +1008,45 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Happy path: the prune job deletes deliveries older than 30 days.
 
 **Verification:** Deliveries post, retry, and show in the UI against stubbed endpoints; tests pass.
+
+### U18. Mood dashboard home page
+
+**Goal:** Make the home page a fun, drawn picture of today's customers: one watercolor character per customer, grouped by product, whose face and pose follow how they feel, updating live.
+
+**Requirements:** R20 (a glanceable product overview), R22 display; Kieran's brief for a designed, funny, dynamic dashboard.
+
+**Dependencies:** U1. Links into U10's item page and replaces U10's redirect from the root to the feed; live pings come from any unit that saves items (U4 to U9).
+
+**Files:**
+- Create: `app/models/mood.rb`, `app/queries/mood_scene.rb`, `app/channels/mood_channel.rb`, `app/channels/application_cable/channel.rb`, `lib/tasks/mood_demo.rake`
+- Create: `app/frontend/components/mood/` (character, traits, seed, watercolor filters, sky, meadow, flora, live stream hook, styles), `app/frontend/types/mood.ts`
+- Modify: `app/controllers/home_controller.rb`, `app/frontend/pages/home/index.tsx`, `app/frontend/components/app-nav.tsx`, `app/models/item.rb`, `config/cable.yml`, `config/database.yml`, `package.json`
+- Test: `test/models/mood_test.rb`, `test/queries/mood_scene_test.rb`, `test/controllers/home_controller_test.rb`, `test/channels/mood_channel_test.rb`, `app/frontend/components/mood/*.test.tsx`, `app/frontend/pages/home/index.test.tsx`
+
+**Approach:**
+1. Moods come from the item's classification in one Ruby module. Furious means anger at or above the product's escalation threshold, so the storm cloud and the Slack escalation always agree. A complaint or anger of 0.45 or more is grumpy, praise at 0.75 or more is beaming, softer praise is content, questions and neutral remarks are meh, and an unclassified item is still being read.
+2. `MoodScene` takes relevant items from the last 24 hours (or 7 days), keeps one character per customer per product from their latest thread, and returns the scene, a summary with counts by mood, and the filters. Customers are keyed by email, else handle within the source kind; the key is hashed into the drawing seed so no address reaches the markup. Each product shows at most 48 people and counts the rest.
+3. Characters are procedural SVG with watercolor done in SVG filters: turbulence displacement for wobbly edges, an eroded rim multiplied back for pooled pigment, soft blooms, and an offset pencil line. The seed picks body colour, shape, headwear, accessory, lean, and idle tempo, so no two customers look alike. Faces, arms, and extras (hearts and confetti, a sparkle, a buzzing fly, a grumble scribble, a storm cloud with steam) change with mood.
+4. Live updates: every committed item change broadcasts a data-free ping on `MoodChannel`, and the page answers with an Inertia partial reload of `scene` and `today`, so there is still no JSON API. Pings in one burst coalesce into one reload, and a 30 second poll covers a dropped socket. Development uses Solid Cable like production, so pings from `bin/discord`, jobs, or a console reach the browser.
+5. When a customer's mood changes they squash, jump, and splash colour; newcomers pop in. Positions are ordered by seed, so nobody moves when a mood changes. `prefers-reduced-motion` turns every animation off.
+6. Hover or focus shows a card with the message, source, time, status, and a link to `/items/:id`. Each character is a button with a full text description, each product is a labelled region, and the whole crowd is also available as a table.
+7. `bin/rails mood:demo` fills today with customers in every mood and `bin/rails mood:drift` keeps them arriving and changing, in development only.
+
+**Art route:** Procedural SVG was chosen over layered generated illustrations after prototyping both. Generated sheets looked lovely but could not change a face live, gave every customer the same body, and hue-shifting them for variety also turned the blush and the furious red face green. The generated sheet stayed as the art reference.
+
+**Test scenarios:**
+- Happy path: the scene groups relevant customers from the last 24 hours by product and leaves out not relevant and older items.
+- Happy path: a character carries its mood, latest message excerpt, source, and item id.
+- Edge case: one customer with two threads on a product is one character drawn from the newer thread.
+- Edge case: furious follows the product's own escalation threshold.
+- Edge case: an unclassified item is pending, and a handled complaint is drawn with a bandage.
+- Edge case: a crowded product shows the 48 most recent people and counts the rest.
+- Happy path: the product and range filters narrow the scene and the summary.
+- Integration: an item change broadcasts one ping with no customer data, and the page subscribes, coalesces pings, and falls back to polling.
+- Integration: the dashboard requires a signed-in person.
+- Happy path: a mood change animates that one character and a newcomer pops in; first paint animates nobody.
+
+**Verification:** The home page shows every mood with fixture data, updates within a second of a change in another process, passes `bin/rails test` and `npm run check`, and is usable by keyboard with reduced motion.
 
 ---
 

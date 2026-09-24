@@ -27,6 +27,7 @@ describe('AppNav', () => {
       expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', href)
     }
     expect(NAV_ENTRIES.map((entry) => entry.label)).toEqual([
+      'Mood',
       'Feed',
       'Products',
       'Categories',
@@ -52,5 +53,11 @@ describe('isActive', () => {
     expect(isActive('/items/42', '/items')).toBe(true)
     expect(isActive('/itemsx', '/items')).toBe(false)
     expect(isActive('/settings', '/items')).toBe(false)
+  })
+
+  it('treats the mood dashboard at / as active only on the home page', () => {
+    expect(isActive('/', '/')).toBe(true)
+    expect(isActive('/?product=cora', '/')).toBe(true)
+    expect(isActive('/items', '/')).toBe(false)
   })
 })
