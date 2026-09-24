@@ -81,6 +81,16 @@ class Webhooks::FanOutTest < ActiveSupport::TestCase
     assert_equal %w[agent.reported item.status_changed agent.reported].sort, endpoint.deliveries.pluck(:event).sort
   end
 
+  test "the payload carries the item as the event left it, not as it was before" do
+    endpoint = create_webhook_endpoint(events: %w[item.status_changed])
+
+    Agents::Claim.call(agent: agents(:cursor), item: @item)
+
+    payload = endpoint.deliveries.first.payload
+    assert_equal "claimed", payload.dig("item", "status")
+    assert_equal agents(:cursor).name, payload.dig("item", "claimed_by")
+  end
+
   test "timeline kinds without a webhook event send nothing" do
     create_webhook_endpoint
 
