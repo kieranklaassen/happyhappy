@@ -234,6 +234,7 @@ stateDiagram-v2
 **Deferred to follow-up work**
 
 - Mounting the stack's riffrec and Flipper surfaces for happyhappy-specific flags.
+- A JSON read API for non-MCP consumers.
 - A retention rule for stored raw provider payloads.
 
 ### Dependencies and assumptions
