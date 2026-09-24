@@ -1,0 +1,65 @@
+{
+  "type": "notification_event",
+  "app_id": "abc123",
+  "data": {
+    "type": "notification_event_data",
+    "item": {
+      "type": "conversation",
+      "id": "215470000000777",
+      "created_at": 1790276400,
+      "updated_at": 1790276400,
+      "waiting_since": 1790276400,
+      "snoozed_until": null,
+      "source": {
+        "type": "conversation",
+        "id": "2254000000777",
+        "delivered_as": "customer_initiated",
+        "subject": "",
+        "body": "<p>Cora stopped sorting my inbox this morning.</p><p>Nothing has moved to <b>Brief</b> since 9am &amp; I have 200 unread emails.</p>",
+        "author": {
+          "type": "user",
+          "id": "66f0c0ffee0000000000abcd",
+          "name": "Casey Customer",
+          "email": "casey@example.com"
+        },
+        "attachments": [],
+        "url": null,
+        "redacted": false
+      },
+      "contacts": {
+        "type": "contact.list",
+        "contacts": [
+          { "type": "contact", "id": "66f0c0ffee0000000000abcd", "external_id": "user_4411" }
+        ]
+      },
+      "teammates": { "type": "admin.list", "admins": [] },
+      "title": null,
+      "admin_assignee_id": null,
+      "team_assignee_id": "7000001",
+      "custom_attributes": {},
+      "open": true,
+      "state": "open",
+      "read": false,
+      "tags": { "type": "tag.list", "tags": [] },
+      "priority": "not_priority",
+      "sla_applied": null,
+      "statistics": null,
+      "conversation_rating": null,
+      "teammate": null,
+      "conversation_parts": {
+        "type": "conversation_part.list",
+        "conversation_parts": [],
+        "total_count": 0
+      }
+    }
+  },
+  "links": {},
+  "id": "notif_6f1b2c3d-0000-4000-8000-000000000777",
+  "topic": "conversation.user.created",
+  "delivery_status": "pending",
+  "delivery_attempts": 1,
+  "delivered_at": 0,
+  "first_sent_at": 1790276401,
+  "created_at": 1790276401,
+  "self": null
+}

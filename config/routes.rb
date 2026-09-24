@@ -27,6 +27,11 @@ Rails.application.routes.draw do
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker,
     defaults: { format: :js }, constraints: { format: "js" }
 
+  # Intercom webhooks (U6)
+  namespace :webhooks do
+    match "intercom", to: "intercom#validate", via: :head
+    post "intercom", to: "intercom#create"
+  end
   # U10: feed, item timeline, corrections, product overview
   resources :items, only: %i[index show] do
     resource :labels, only: :update, controller: "item_labels"
