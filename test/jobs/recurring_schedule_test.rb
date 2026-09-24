@@ -36,6 +36,17 @@ class RecurringScheduleTest < ActiveSupport::TestCase
     assert_operator GenevaDrive::HousekeepingJob, :<, ActiveJob::Base
   end
 
+  test "each environment sweeps overdue agent claims every 5 minutes" do
+    %w[production development test].each do |env|
+      sweep = RECURRING.fetch(env).fetch("overdue_sweep")
+
+      assert_equal "OverdueSweepJob", sweep.fetch("class")
+      assert_equal "every 5 minutes", sweep.fetch("schedule")
+    end
+
+    assert_operator OverdueSweepJob, :<, ActiveJob::Base
+  end
+
   test "JOB_CONCURRENCY defaults processes to 1 when unset" do
     worker = QUEUE.fetch("production").fetch("workers").first
     assert_equal 1, worker.fetch("processes")

@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+if ENV["DISCORD_BOT_TOKEN"].to_s.strip.empty?
+  warn "bin/discord: DISCORD_BOT_TOKEN is not set, so the Discord gateway bot is not starting. " \
+    "Set it to the bot token from the Discord Developer Portal to ingest Discord messages."
+  exit 0
+end
+
+require_relative "../config/environment"
+
+bot = Connectors::DiscordBot.new(token: ENV.fetch("DISCORD_BOT_TOKEN").strip)
+
+%w[INT TERM].each do |signal|
+  # Trap context cannot take the locks the gateway needs to close.
+  trap(signal) { Thread.new { bot.stop } }
+end
+
+Rails.logger.info("[discord] starting gateway bot")
+bot.run

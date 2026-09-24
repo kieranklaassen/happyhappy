@@ -20,6 +20,10 @@ production: &recurring
   digest_dispatch:
     class: "DigestDispatchJob"
     schedule: "0 * * * *"
+  # Overdue agent claims (U11)
+  overdue_sweep:
+    class: "OverdueSweepJob"
+    schedule: every 5 minutes
 
 development:
   <<: *recurring
