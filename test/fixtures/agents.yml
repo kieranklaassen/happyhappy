@@ -1,0 +1,14 @@
+# Plaintext tokens: "cursor-test-token", "baby-agent-test-token", "revoked-test-token".
+cursor:
+  name: Cursor
+  token_digest: <%= OpenSSL::Digest::SHA256.hexdigest("cursor-test-token") %>
+  last_used_at: <%= 10.minutes.ago.to_fs(:db) %>
+
+baby_agent:
+  name: Baby Agent
+  token_digest: <%= OpenSSL::Digest::SHA256.hexdigest("baby-agent-test-token") %>
+
+revoked:
+  name: Retired bot
+  token_digest: <%= OpenSSL::Digest::SHA256.hexdigest("revoked-test-token") %>
+  revoked_at: <%= 1.day.ago.to_fs(:db) %>

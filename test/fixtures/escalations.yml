@@ -1,0 +1,7 @@
+angry_slack_posted:
+  item: angry_slack
+  product: cora
+  message: angry_slack_first
+  slack_channel_id: C0CORASUPPORT
+  slack_message_ts: "1727190300.000900"
+  posted_at: <%= 115.minutes.ago.to_fs(:db) %>

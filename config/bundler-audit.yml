@@ -1,15 +1,4 @@
 # Audit all gems listed in the Gemfile for known security problems by running bin/bundler-audit.
 # CVEs that are not relevant to the application can be enumerated on the ignore list below.
 
-ignore:
-  # CVE-2026-67991 / GHSA-42r3-x6vx-x49x (ruby_llm) — polynomial-time ReDoS in
-  # RubyLLM::Utils.underscore. The advisory scopes the condition to Ruby 3.1.x;
-  # this template pins 3.4.2 (.ruby-version + Dockerfile), where the linear-time
-  # regexp engine and the global Regexp timeout apply. The trigger is a very long
-  # crafted class, agent, or tool name — developer-authored constants here, never
-  # user input. No stable fix exists: 1.16.0 is the newest release and the
-  # advisory's solution (>= 2.0.0.rc1) is a prerelease.
-  #
-  # REMOVE this entry once the template adopts ruby_llm >= 2.0.0 stable.
-  # Reviewed 2026-09-17.
-  - CVE-2026-67991
+ignore: []

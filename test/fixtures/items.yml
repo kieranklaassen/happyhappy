@@ -1,0 +1,124 @@
+angry_slack:
+  source: slack_community
+  source_kind: slack
+  thread_key: "1727190000.000100"
+  author_handle: ana_customer
+  author_name: Ana Customer
+  permalink: https://every-community.slack.com/archives/C0COMMUNITY/p1727190000000100
+  status: new
+  status_changed_at: <%= 2.hours.ago.to_fs(:db) %>
+  product: cora
+  category: bug
+  sentiment: complaint
+  product_probability: 0.92
+  category_probability: 0.81
+  sentiment_probability: 0.88
+  relevance_probability: 0.97
+  anger_probability: 0.86
+  last_message_at: <%= 2.hours.ago.to_fs(:db) %>
+
+praise_discord:
+  source: discord_spiral
+  source_kind: discord
+  thread_key: "1200000000000000001"
+  author_handle: writerbee
+  permalink: https://discord.com/channels/1000000000000000001/1100000000000000001/1200000000000000001
+  status: new
+  status_changed_at: <%= 1.day.ago.to_fs(:db) %>
+  product: spiral
+  category: praise
+  sentiment: praise
+  product_probability: 0.95
+  category_probability: 0.9
+  sentiment_probability: 0.93
+  relevance_probability: 0.98
+  anger_probability: 0.02
+  last_message_at: <%= 1.day.ago.to_fs(:db) %>
+
+claimed_intercom:
+  source: intercom_inbox
+  source_kind: intercom
+  thread_key: "215470000000001"
+  author_name: Bo Billing
+  author_email: bo@example.com
+  permalink: https://app.intercom.com/a/inbox/abc123/inbox/conversation/215470000000001
+  status: claimed
+  status_changed_at: <%= 5.hours.ago.to_fs(:db) %>
+  product: cora
+  category: billing
+  sentiment: complaint
+  product_probability: 0.7
+  category_probability: 0.9
+  sentiment_probability: 0.75
+  relevance_probability: 0.95
+  anger_probability: 0.4
+  claimed_by_agent: cursor
+  claimed_at: <%= 5.hours.ago.to_fs(:db) %>
+  last_message_at: <%= 5.hours.ago.to_fs(:db) %>
+
+handled_email:
+  source: support_email
+  source_kind: email
+  thread_key: "<CA+thread-1@mail.example.com>"
+  author_name: Cy Question
+  author_email: cy@example.com
+  status: handled
+  status_changed_at: <%= 3.days.ago.to_fs(:db) %>
+  product: cora
+  category: onboarding
+  sentiment: question
+  product_probability: 0.88
+  category_probability: 0.8
+  sentiment_probability: 0.9
+  relevance_probability: 0.96
+  anger_probability: 0.05
+  last_reported_at: <%= 3.days.ago.to_fs(:db) %>
+  last_message_at: <%= 4.days.ago.to_fs(:db) %>
+
+needs_review_x:
+  source: x_mentions
+  source_kind: x
+  thread_key: "1830000000000000042"
+  author_handle: dee_posts
+  permalink: https://x.com/dee_posts/status/1830000000000000042
+  status: new
+  status_changed_at: <%= 30.minutes.ago.to_fs(:db) %>
+  product: sparkle
+  category: other
+  sentiment: neutral
+  product_probability: 0.45
+  category_probability: 0.5
+  sentiment_probability: 0.7
+  relevance_probability: 0.8
+  anger_probability: 0.1
+  needs_review: true
+  last_message_at: <%= 30.minutes.ago.to_fs(:db) %>
+
+not_relevant_slack:
+  source: slack_community
+  source_kind: slack
+  thread_key: "1727190500.000200"
+  author_handle: lunch_fan
+  status: new
+  status_changed_at: <%= 3.hours.ago.to_fs(:db) %>
+  sentiment: neutral
+  relevance_probability: 0.08
+  anger_probability: 0.0
+  relevant: false
+  last_message_at: <%= 3.hours.ago.to_fs(:db) %>
+
+retired_product_slack:
+  source: lex_legacy
+  source_kind: slack
+  thread_key: "1720000000.000300"
+  author_handle: old_timer
+  status: dismissed
+  status_changed_at: <%= 40.days.ago.to_fs(:db) %>
+  product: lex
+  category: pricing
+  sentiment: complaint
+  product_probability: 0.9
+  category_probability: 0.8
+  sentiment_probability: 0.8
+  anger_probability: 0.3
+  last_message_at: <%= 40.days.ago.to_fs(:db) %>

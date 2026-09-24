@@ -1,0 +1,31 @@
+cora:
+  name: Cora
+  slug: cora
+  description: AI email assistant that screens and summarizes your inbox.
+  hint_words: <%= %w[cora brief inbox screener].to_json %>
+  slack_channel_id: C0CORASUPPORT
+  digest_hour: 9
+
+spiral:
+  name: Spiral
+  slug: spiral
+  description: Writing tool that turns rough notes into drafts in your voice.
+  hint_words: <%= %w[spiral draft writing].to_json %>
+  slack_channel_id: C0SPIRALSUPPORT
+  escalation_threshold: 0.7
+  digest_hour: 17
+
+sparkle:
+  name: Sparkle
+  slug: sparkle
+  description: Mac app that organizes your files automatically.
+  hint_words: <%= %w[sparkle files folders].to_json %>
+  digest_hour: 9
+
+lex:
+  name: Lex
+  slug: lex
+  description: Retired AI writing editor.
+  hint_words: <%= %w[lex].to_json %>
+  digest_hour: 9
+  retired_at: <%= 30.days.ago.to_fs(:db) %>

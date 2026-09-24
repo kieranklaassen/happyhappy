@@ -18,6 +18,16 @@ class RubyLlmInitializerTest < ActiveSupport::TestCase
     assert_equal 60, RubyLLM.config.request_timeout
   end
 
+  test "runs on ruby_llm 2.x with the TypeSafe provider registered and no key" do
+    assert_operator Gem::Version.new(RubyLLM::VERSION), :>=, Gem::Version.new("2.0.0")
+    assert_equal RubyLLM::Providers::TypeSafe, RubyLLM::Provider.providers[:typesafe]
+    assert_nil RubyLLM.config.typesafe_api_key
+  end
+
+  test "chat events reach ActiveSupport::Notifications" do
+    assert_equal ActiveSupport::Notifications, RubyLLM.config.instrumenter
+  end
+
   test "the chat.ruby_llm notification subscriber logs without raising" do
     io = StringIO.new
     original = Rails.logger

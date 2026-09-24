@@ -8,3 +8,9 @@ one:
 two:
   email_address: two@example.com
   password_digest: <%= password_digest %>
+
+every_ana:
+  email_address: ana@every.to
+  every_user_id: every-user-ana
+  name: Ana Every
+  avatar_url: https://every.to/avatars/ana.png

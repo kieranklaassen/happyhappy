@@ -1,0 +1,4 @@
+current:
+  low_confidence_threshold: 0.6
+  escalation_threshold: 0.8
+  report_back_window_minutes: 240

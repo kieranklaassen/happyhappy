@@ -21,6 +21,26 @@ class UserTest < ActiveSupport::TestCase
     assert_includes user.errors[:password].join, "too short"
   end
 
+  test "a user with no password saves" do
+    user = User.create!(email_address: "sso@every.to", every_user_id: "every-user-sso", name: "SSO Person")
+
+    assert_nil user.password_digest
+    refute user.authenticate("anything")
+  end
+
+  test "two users cannot share an every_user_id" do
+    duplicate = User.new(email_address: "other@every.to", every_user_id: users(:every_ana).every_user_id)
+
+    refute duplicate.valid?
+    assert duplicate.errors.key?(:every_user_id)
+    assert_raises(ActiveRecord::RecordNotUnique) { duplicate.save!(validate: false) }
+  end
+
+  test "users without an every_user_id do not collide" do
+    assert User.create!(email_address: "a@example.com").persisted?
+    assert User.create!(email_address: "b@example.com").persisted?
+  end
+
   test "rejects a password over MAXIMUM_PASSWORD_BYTES to guard bcrypt truncation" do
     too_long = "a" * (User::MAXIMUM_PASSWORD_BYTES + 1)
     user = User.new(email_address: "long@example.com", password: too_long)
