@@ -18,7 +18,10 @@ class ItemEvent < ApplicationRecord
 
   validates :actor_type, inclusion: { in: %w[User Agent] }, allow_nil: true
 
-  after_create_commit -> { Webhooks::FanOut.call(self) }
+  # The event is already committed; a webhook problem must not fail ingest, classification, or claims.
+  after_create_commit do
+    Rails.error.handle(context: { item_event_id: id }) { Webhooks::FanOut.call(self) }
+  end
 
   def readonly?
     persisted? || super

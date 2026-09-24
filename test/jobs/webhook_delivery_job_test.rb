@@ -90,6 +90,17 @@ class WebhookDeliveryJobTest < ActiveJob::TestCase
     assert_match(/Timeout|timed out|execution expired/i, @delivery.last_error)
   end
 
+  test "any failure to get a response counts as an attempt and retries" do
+    stub_request(:post, WEBHOOK_TEST_URL).to_raise(Net::HTTPBadResponse.new("wrong status line"))
+
+    assert_enqueued_jobs(1, only: WebhookDeliveryJob) { WebhookDeliveryJob.perform_now(@delivery) }
+
+    @delivery.reload
+    assert @delivery.pending?
+    assert_equal 1, @delivery.attempts
+    assert_equal "Net::HTTPBadResponse: wrong status line", @delivery.last_error
+  end
+
   test "a deactivated endpoint fails the delivery without posting" do
     @endpoint.update!(active: false)
 

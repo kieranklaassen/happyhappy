@@ -5,31 +5,24 @@ class WebhookDelivery < ApplicationRecord
   TIMEOUT = 10.seconds
   RETENTION = 30.days
   ERROR_BODY_LIMIT = 500
-  NETWORK_ERRORS = [ Timeout::Error, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH,
-    Errno::ENETUNREACH, SocketError, OpenSSL::SSL::SSLError, EOFError, IOError ].freeze
 
   enum :status, { pending: "pending", succeeded: "succeeded", failed: "failed" }, validate: true
 
   belongs_to :webhook_endpoint
   belongs_to :item_event, optional: true
 
-  validates :event, inclusion: { in: WebhookEndpoint::EVENTS + [ "webhook.test" ] }
+  validates :event, inclusion: { in: WebhookEndpoint::EVENTS + [ Webhooks::Payload::TEST_EVENT ] }
 
   scope :expired, -> { where(created_at: ...RETENTION.ago) }
 
   # One signed POST. Records the outcome and returns true on a 2xx response.
+  # Any failure to get a response (DNS, TLS, timeout, malformed reply) counts
+  # as a failed attempt so the delivery keeps retrying instead of sticking.
   def attempt!(now: Time.current)
-    body = payload.to_json
-    response = post(body, now)
-    code = response.code.to_i
-    success = code.between?(200, 299)
-    update!(attempts: attempts + 1, last_attempted_at: now, response_code: code,
-      status: success ? :succeeded : status, last_error: success ? nil : "HTTP #{code}: #{error_body(response)}")
-    success
-  rescue *NETWORK_ERRORS, URI::InvalidURIError => error
-    update!(attempts: attempts + 1, last_attempted_at: now, response_code: nil,
-      last_error: "#{error.class}: #{error.message}".truncate(ERROR_BODY_LIMIT))
-    false
+    response_code, error = send_signed(now)
+    update!(attempts: attempts + 1, last_attempted_at: now, response_code: response_code,
+      status: error ? status : :succeeded, last_error: error&.truncate(ERROR_BODY_LIMIT))
+    error.nil?
   end
 
   def exhausted?
@@ -37,6 +30,15 @@ class WebhookDelivery < ApplicationRecord
   end
 
   private
+
+  # Returns [response code, error message or nil].
+  def send_signed(now)
+    response = post(payload.to_json, now)
+    code = response.code.to_i
+    [ code, ("HTTP #{code}: #{error_body(response)}" unless code.between?(200, 299)) ]
+  rescue StandardError => error
+    [ nil, "#{error.class}: #{error.message}" ]
+  end
 
   def post(body, now)
     uri = URI.parse(webhook_endpoint.url)

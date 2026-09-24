@@ -87,6 +87,23 @@ class Webhooks::FanOutTest < ActiveSupport::TestCase
     assert_no_difference(-> { WebhookDelivery.count }) { @item.record_event!(:overdue, agent_id: 1) }
   end
 
+  test "a fan-out failure is reported and never fails the timeline event" do
+    create_webhook_endpoint
+    reported = []
+    subscriber = Class.new { define_method(:report) { |error, **| reported << error } }.new
+    Rails.error.subscribe(subscriber)
+    original = Webhooks::FanOut.method(:call)
+    Webhooks::FanOut.define_singleton_method(:call) { |_| raise "boom" }
+
+    event = @item.record_event!(:arrived)
+
+    assert event.persisted?
+    assert_equal [ "boom" ], reported.map(&:message)
+  ensure
+    Webhooks::FanOut.define_singleton_method(:call, original) if original
+    Rails.error.unsubscribe(subscriber) if subscriber
+  end
+
   test "the payload carries the item with labels and permalink and marks customer text untrusted" do
     endpoint = create_webhook_endpoint(events: %w[item.classified])
     message = messages(:angry_slack_first)
