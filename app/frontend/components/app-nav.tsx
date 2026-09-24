@@ -6,6 +6,7 @@ export interface NavEntry {
 }
 
 export const NAV_ENTRIES: readonly NavEntry[] = [
+  { label: 'Mood', href: '/' },
   { label: 'Feed', href: '/items' },
   { label: 'Products', href: '/products' },
   { label: 'Categories', href: '/categories' },
@@ -16,6 +17,7 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
 
 export function isActive(currentPath: string, href: string): boolean {
   const path = currentPath.split(/[?#]/)[0]
+  if (href === '/') return path === '/'
   return path === href || path.startsWith(`${href}/`)
 }
 
@@ -25,10 +27,10 @@ export default function AppNav() {
   return (
     <nav aria-label="Main" className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-        <Link href="/items" className="text-lg font-bold tracking-tight text-gray-900">
+        <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
           happyhappy
         </Link>
-        <ul className="flex flex-wrap items-center gap-1 text-sm">
+        <ul className="-mr-6 flex min-w-0 items-center gap-1 overflow-x-auto pr-6 text-sm whitespace-nowrap">
           {NAV_ENTRIES.map((entry) => {
             const active = isActive(url, entry.href)
             return (

@@ -16,12 +16,6 @@ class ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "the root redirects to the feed" do
-    get root_path
-
-    assert_redirected_to items_path
-  end
-
   test "the feed lists relevant items most recent first with row fields" do
     get items_path
 
