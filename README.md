@@ -37,6 +37,15 @@ pre-provision an every.to person:
 EMAIL=ana@every.to NAME='Ana' bin/rails users:create
 ```
 
+The home page is the mood dashboard: one watercolor character per customer,
+grouped by product, updating live. To see it with made-up customers in every
+mood, and to watch them change:
+
+```sh
+bin/rails mood:demo    # fill today with demo customers (development only)
+bin/rails mood:drift   # keep them arriving and changing mood
+```
+
 ## Modules
 
 Every stack area is an independently adoptable module with a boundary doc in
