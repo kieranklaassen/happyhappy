@@ -1,0 +1,36 @@
+{
+  "type": 0,
+  "tts": false,
+  "timestamp": "2026-09-23T14:12:30.500000+00:00",
+  "position": 1,
+  "pinned": false,
+  "nonce": "1287657000098765312",
+  "mentions": [],
+  "mention_roles": [],
+  "mention_everyone": false,
+  "member": {
+    "roles": [],
+    "nick": null,
+    "mute": false,
+    "joined_at": "2025-06-30T12:00:00.000000+00:00",
+    "flags": 0,
+    "deaf": false
+  },
+  "id": "1287657000098765313",
+  "flags": 0,
+  "embeds": [],
+  "edited_timestamp": null,
+  "content": "Can you try clearing the offline cache? We shipped a fix in 2.4.1.",
+  "components": [],
+  "channel_id": "1287654321098765313",
+  "author": {
+    "username": "priya_support",
+    "public_flags": 0,
+    "id": "900000000000000099",
+    "global_name": "Priya",
+    "discriminator": "0",
+    "avatar": null
+  },
+  "attachments": [],
+  "guild_id": "1000000000000000007"
+}
