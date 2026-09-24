@@ -21,6 +21,11 @@ Rails.application.routes.draw do
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker,
     defaults: { format: :js }, constraints: { format: "js" }
 
+  # Agents and their tokens (U11)
+  resources :agents, only: %i[index create] do
+    patch :revoke, on: :member
+  end
+
   # Defines the root path route ("/")
   root "home#index"
 end
