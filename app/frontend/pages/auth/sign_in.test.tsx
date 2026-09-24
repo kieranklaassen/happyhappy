@@ -25,6 +25,17 @@ describe('SignIn page', () => {
     expect(screen.queryByRole('heading', { name: /dev login/i })).not.toBeInTheDocument()
   })
 
+  it('shows the sun logo with the wordmark and a decorative crowd below the sign-in button', () => {
+    const { container } = render(<SignIn />)
+
+    expect(screen.getByText('happyhappy')).toBeInTheDocument()
+    const crowd = screen.getByTestId('login-crowd')
+    expect(crowd).toHaveAttribute('aria-hidden', 'true')
+    const link = screen.getByRole('link', { name: /sign in with every/i })
+    expect(link.compareDocumentPosition(crowd) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelector('main')).not.toContainElement(crowd)
+  })
+
   it('surfaces a sign-in failure from flash', () => {
     flash = { alert: 'Sign in with Every did not complete. Try again.' }
     render(<SignIn />)
