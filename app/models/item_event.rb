@@ -18,10 +18,15 @@ class ItemEvent < ApplicationRecord
 
   validates :actor_type, inclusion: { in: %w[User Agent] }, allow_nil: true
 
+  # Agent claims, reports, releases, and the overdue sweep move items with
+  # update_all, which skips Item's after_commit ping to open mood dashboards.
+  UPDATE_ALL_KINDS = %w[claimed released reassigned reported overdue].freeze
+
   # The event is already committed; a webhook problem must not fail ingest, classification, or claims.
   after_create_commit do
     Rails.error.handle(context: { item_event_id: id }) { Webhooks::FanOut.call(self) }
   end
+  after_create_commit -> { MoodChannel.refresh }, if: -> { kind.in?(UPDATE_ALL_KINDS) }
 
   def readonly?
     persisted? || super
