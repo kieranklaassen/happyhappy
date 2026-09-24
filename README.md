@@ -1,12 +1,12 @@
-# compound-stack-rails
+# happyhappy
 
-The canonical Rails starter the fleet converges on: **Rails 8.1 + Inertia/React +
-Kamal + the house libraries**, structured as independently adoptable modules, with
-an **agent-executable changelog** as the upgrade delivery mechanism.
+Connect public channels (Discord, email, Intercom, Slack, X) and get a clean feed
+of sentiment and status that an agent can read, act on, and report back to.
 
-- **New apps** clone this repo and are born with a complete manifest.
-- **Existing apps** adopt modules à la carte and receive upgrades as reviewable
-  PRs driven by agents reading this repo's changelog against their manifest.
+This app was cloned from
+[compound-stack-rails](https://github.com/kieranklaassen/compound-stack-rails)
+0.6.0 and is born complete: `.template-manifest.yml` lists every module. Template
+upgrades arrive as reviewable PRs driven by that repo's changelog.
 
 ## Stack
 

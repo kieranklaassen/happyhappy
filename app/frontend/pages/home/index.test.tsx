@@ -9,10 +9,10 @@ vi.mock('@inertiajs/react', () => ({
 
 describe('Home page', () => {
   it('renders the heading with the name prop', () => {
-    render(<Home name="Compound Stack" />)
+    render(<Home name="happyhappy" />)
 
     expect(
-      screen.getByRole('heading', { name: /hello, compound stack/i }),
+      screen.getByRole('heading', { name: /hello, happyhappy/i }),
     ).toBeInTheDocument()
   })
 })

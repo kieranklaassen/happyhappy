@@ -13,7 +13,7 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
   test "the home page passes the name prop" do
     get root_path
 
-    assert_inertia_props({ name: "Compound Stack" })
+    assert_inertia_props({ name: "happyhappy" })
   end
 
   test "InertiaController shares flash and locale with every page" do

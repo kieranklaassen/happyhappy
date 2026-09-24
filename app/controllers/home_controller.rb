@@ -7,6 +7,6 @@ class HomeController < InertiaController
   allow_unauthenticated_access only: :index
 
   def index
-    render inertia: "home/index", props: { name: "Compound Stack" }
+    render inertia: "home/index", props: { name: "happyhappy" }
   end
 end
