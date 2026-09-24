@@ -19,7 +19,7 @@ class Webhooks::CustomControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :accepted
-    item = Item.find_by!(source_kind: "custom", thread_key: "ticket-9")
+    item = Item.find_by!(source_kind: "custom", thread_key: "source-#{@source.id}:ticket-9")
     assert_equal products(:cora), item.product
     assert_equal @source, item.source
     assert_equal "dana@example.com", item.author_email
@@ -202,7 +202,7 @@ class Webhooks::CustomControllerTest < ActionDispatch::IntegrationTest
 
     message = Message.find(response.parsed_body["message_id"])
     assert_equal "42", message.external_id
-    assert_equal "42", message.item.thread_key
+    assert_equal "source-#{@source.id}:42", message.item.thread_key
     assert_equal "dana", message.item.author_name
     assert_equal Time.utc(2026, 9, 1, 10), message.occurred_at
   end

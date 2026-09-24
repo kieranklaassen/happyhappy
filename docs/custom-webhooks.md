@@ -32,7 +32,7 @@ The server needs Active Record encryption keys to store secrets: set `ACTIVE_REC
 |---|---|---|
 | `text` | yes | The customer's message, a non-empty string. |
 | `id` | no | Your id for this message, a string or integer. The same `id` twice stores one message. Without it, happyhappy uses a SHA-256 hash of the raw body, so an identical resend is still a duplicate. |
-| `thread_key` | no | Groups messages into one item, such as a ticket or conversation id. Defaults to the message id, so each message is its own item. |
+| `thread_key` | no | Groups messages into one item, such as a ticket or conversation id. Keys are scoped to the source, so two sources can both use `ticket-42`. Defaults to the message id, so each message is its own item. |
 | `author` | no | A string (taken as the name) or an object with any of `name`, `handle`, `email`. |
 | `permalink` | no | A link back to the message in your product. |
 | `occurred_at` | no | ISO 8601 time the customer wrote it. Defaults to the time of the request. |

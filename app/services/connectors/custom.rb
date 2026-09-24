@@ -101,9 +101,11 @@ module Connectors
       external_id = string(payload["id"]) || "sha256:#{Digest::SHA256.hexdigest(@raw_body)}"
       author = author(payload["author"])
 
+      # Items are unique per source kind, so the key carries the source (KTD2);
+      # two products may both send thread "1".
       Items::InboundMessage.new(
         external_id: external_id,
-        thread_key: string(payload["thread_key"]) || external_id,
+        thread_key: "source-#{@source.id}:#{string(payload["thread_key"]) || external_id}",
         body: text,
         occurred_at: occurred_at(payload["occurred_at"]),
         author_name: author["name"],

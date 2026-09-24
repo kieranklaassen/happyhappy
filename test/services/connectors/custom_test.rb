@@ -15,7 +15,7 @@ class Connectors::CustomTest < ActiveSupport::TestCase
     assert_equal "Great update", message.body
     assert_equal payload, message.raw_payload
     item = result.item
-    assert_equal [ "custom", "t-1" ], [ item.source_kind, item.thread_key ]
+    assert_equal [ "custom", "source-#{@source.id}:t-1" ], [ item.source_kind, item.thread_key ]
     assert_equal [ "Dana", "@dana", "dana@example.com" ], [ item.author_name, item.author_handle, item.author_email ]
     assert_equal "https://x.test/1", item.permalink
   end
@@ -26,7 +26,7 @@ class Connectors::CustomTest < ActiveSupport::TestCase
     result = Connectors::Custom.call(source: @source, raw_body: body)
 
     assert_equal "sha256:#{Digest::SHA256.hexdigest(body)}", result.message.external_id
-    assert_equal result.message.external_id, result.item.thread_key
+    assert_equal "source-#{@source.id}:#{result.message.external_id}", result.item.thread_key
   end
 
   test "messages sharing a thread key land on one item" do
@@ -35,6 +35,17 @@ class Connectors::CustomTest < ActiveSupport::TestCase
 
     assert_equal first.item, second.item
     assert_equal 2, first.item.messages.count
+  end
+
+  test "the same thread key from two custom sources makes two items on their own products" do
+    spiral = Source.create!(kind: "custom", name: "Spiral app", selector: "", default_product: products(:spiral))
+
+    cora_result = Connectors::Custom.call(source: @source, raw_body: { id: 1, thread_key: "t", text: "one" }.to_json)
+    spiral_result = Connectors::Custom.call(source: spiral, raw_body: { id: 1, thread_key: "t", text: "two" }.to_json)
+
+    assert_not_equal cora_result.item, spiral_result.item
+    assert_equal products(:spiral), spiral_result.item.product
+    assert_equal "source-#{spiral.id}:t", spiral_result.item.thread_key
   end
 
   test "a sync duplicate returns the stored labels without classifying again" do
