@@ -1,5 +1,6 @@
 class Item < ApplicationRecord
   CLASSIFIED_EVENT = "item.classified"
+  HELD_STATUSES = %w[claimed in_progress].freeze
 
   enum :status, {
     new: "new", claimed: "claimed", in_progress: "in_progress", handled: "handled", dismissed: "dismissed"
