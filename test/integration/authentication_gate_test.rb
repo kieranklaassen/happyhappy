@@ -61,6 +61,9 @@ class AuthenticationGateTest < ActionDispatch::IntegrationTest
 
       assert_response :unauthorized, "#{path} should reject the unsigned request itself"
     end
+
+    post webhooks_custom_path("not-a-token"), params: {}.to_json, headers: { "Content-Type" => "application/json" }
+    assert_response :not_found
   end
 
   test "the Every sign-in paths are public" do
