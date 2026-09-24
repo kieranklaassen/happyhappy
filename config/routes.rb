@@ -55,25 +55,16 @@ Rails.application.routes.draw do
   end
   resources :sources, only: %i[index new create edit update]
   resource :settings, only: %i[show update]
-  # Intercom webhooks (U6)
-  namespace :webhooks do
-    match "intercom", to: "intercom#validate", via: :head
-    post "intercom", to: "intercom#create"
-  end
-  # Postmark inbound email webhook (U7)
-  post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
-  # U10: feed, item timeline, corrections, product overview
-  resources :items, only: %i[index show] do
-    resource :labels, only: :update, controller: "item_labels"
-    resource :status, only: :update, controller: "item_statuses"
-  end
-  resources :products, only: [] do
-    resource :overview, only: :show, controller: "product_overviews"
-  end
   # Agents and their tokens (U11)
   resources :agents, only: %i[index create] do
     patch :revoke, on: :member
   end
+  # Postmark inbound email webhook (U7)
+  post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
+
+  # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
+  match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
+
   # Custom inbound webhook sources (U16)
   post "webhooks/custom/:token" => "webhooks/custom#create", as: :webhooks_custom, format: false
   patch "sources/:id/rotate_secret" => "sources#rotate_secret", as: :rotate_secret_source
