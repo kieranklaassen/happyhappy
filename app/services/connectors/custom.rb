@@ -150,6 +150,8 @@ module Connectors
       Classification::Apply.call(message: message, answers: answers)
     rescue StandardError => error
       Rails.error.report(error, context: { message_id: message.id })
+      # A rolled back apply leaves its answers on the record, so read back what was stored.
+      message.reload
       nil
     end
   end

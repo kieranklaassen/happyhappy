@@ -93,6 +93,16 @@ class Webhooks::CustomControllerTest < ActionDispatch::IntegrationTest
     assert_equal "pending", response.parsed_body["classification"]
   end
 
+  test "answers a rolled back apply cannot store in sync mode answer 200 with a pending status" do
+    use_fake_classifier(anger: 2)
+
+    deliver({ text: "Hello" }.to_json, sync: true)
+
+    assert_response :ok
+    assert_equal "pending", response.parsed_body["classification"]
+    assert_not Message.find(response.parsed_body["message_id"]).classified?
+  end
+
   test "a bad signature answers 401 and stores nothing" do
     body = { text: "hi" }.to_json
 
