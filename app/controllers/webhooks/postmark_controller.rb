@@ -4,6 +4,7 @@ module Webhooks
   # unknown recipient still answers 200.
   class PostmarkController < ActionController::Base
     skip_forgery_protection
+    wrap_parameters false
     before_action :authenticate
 
     def create
