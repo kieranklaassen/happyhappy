@@ -54,7 +54,7 @@ export default function ProductsIndex({
                     <p className="text-xs text-gray-500">Hint words: {product.hint_words.join(', ')}</p>
                   )}
                   <p className="text-xs text-gray-500">
-                    Slack {product.slack_channel_id ?? 'not set'} · Escalates at{' '}
+                    Slack {product.slack_channel_id || 'not set'} · Escalates at{' '}
                     {product.escalation_threshold ?? `${default_escalation_threshold} (default)`} · Digest at{' '}
                     {formatHour(product.digest_hour)}
                   </p>

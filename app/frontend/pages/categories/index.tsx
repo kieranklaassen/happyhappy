@@ -28,7 +28,7 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
   function submit(event: FormEvent) {
     event.preventDefault()
     form.transform((data) => ({ category: data }))
-    form.patch(`/categories/${category.id}`, { preserveScroll: true, onSuccess: () => form.setDefaults() })
+    form.patch(`/categories/${category.id}`, { preserveScroll: true, errorBag: prefix, onSuccess: () => form.setDefaults() })
   }
 
   return (
@@ -82,7 +82,7 @@ function NewCategoryForm() {
   function submit(event: FormEvent) {
     event.preventDefault()
     form.transform((data) => ({ category: data }))
-    form.post('/categories', { preserveScroll: true, onSuccess: () => form.reset() })
+    form.post('/categories', { preserveScroll: true, errorBag: 'new_category', onSuccess: () => form.reset() })
   }
 
   return (

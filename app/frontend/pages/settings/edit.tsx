@@ -21,7 +21,7 @@ export default function SettingsEdit({ setting }: SettingsEditProps) {
   function submit(event: FormEvent) {
     event.preventDefault()
     form.transform((data) => ({ setting: data }))
-    form.patch('/settings')
+    form.patch('/settings', { onSuccess: () => form.setDefaults() })
   }
 
   return (
