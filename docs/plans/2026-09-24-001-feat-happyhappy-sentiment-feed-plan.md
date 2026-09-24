@@ -925,7 +925,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 **Requirements:** R20 (a glanceable product overview), R22 display; Kieran's brief for a designed, funny, dynamic dashboard.
 
-**Dependencies:** U1. Links into U10's item page; live pings come from any unit that saves items (U4 to U9).
+**Dependencies:** U1. Links into U10's item page and replaces U10's redirect from the root to the feed; live pings come from any unit that saves items (U4 to U9).
 
 **Files:**
 - Create: `app/models/mood.rb`, `app/queries/mood_scene.rb`, `app/channels/mood_channel.rb`, `app/channels/application_cable/channel.rb`, `lib/tasks/mood_demo.rake`

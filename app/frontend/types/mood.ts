@@ -1,8 +1,7 @@
 import type { Mood } from '../components/mood/moods'
+import type { ItemStatus, Sentiment, SourceKind } from './items'
 
 export type SettledMood = Exclude<Mood, 'pending'>
-export type SourceKind = 'slack' | 'discord' | 'intercom' | 'email' | 'x'
-export type ItemStatus = 'new' | 'claimed' | 'in_progress' | 'handled' | 'dismissed'
 export type MoodCounts = Record<Mood, number>
 
 export interface MoodCharacter {
@@ -12,7 +11,7 @@ export interface MoodCharacter {
   name: string
   handle: string | null
   mood: Mood
-  sentiment: string | null
+  sentiment: Sentiment | null
   anger: number | null
   source_kind: SourceKind
   status: ItemStatus

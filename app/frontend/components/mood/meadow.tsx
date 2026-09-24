@@ -2,7 +2,8 @@ import { Link } from '@inertiajs/react'
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Character from './character'
 import Flora from './flora'
-import { MOOD_COLORS, plural, sourceLabel, timeAgo } from './format'
+import { MOOD_COLORS, plural, timeAgo } from './format'
+import { sourceKindLabel } from '../../lib/feed-format'
 import { moodBlurb, moodLabel, type Mood } from './moods'
 import { hashSeed } from './seed'
 import Sky from './sky'
@@ -15,7 +16,7 @@ export type MoodHistory = ReadonlyMap<string, Mood> | null
 function describe(character: MoodCharacter, productName: string): string {
   const about = productName ? ` about ${productName}` : ''
   const said = character.excerpt ? `: “${character.excerpt}”` : ''
-  return `${character.name} is ${moodLabel(character.mood).toLowerCase()}${about} on ${sourceLabel(character.source_kind)}, ${timeAgo(character.last_message_at)}${said}`
+  return `${character.name} is ${moodLabel(character.mood).toLowerCase()}${about} on ${sourceKindLabel(character.source_kind)}, ${timeAgo(character.last_message_at)}${said}`
 }
 
 function statusNote(character: MoodCharacter): string | null {
@@ -113,7 +114,7 @@ function Person({ character, productName, history, shout }: { character: MoodCha
         </p>
         <p className="mt-1 text-xs text-[#3E3542]/60">
           {character.handle ? `${character.handle} · ` : ''}
-          {sourceLabel(character.source_kind)} · {timeAgo(character.last_message_at)}
+          {sourceKindLabel(character.source_kind)} · {timeAgo(character.last_message_at)}
           {character.threads > 1 ? ` · ${plural(character.threads, 'thread')}` : ''}
         </p>
         {character.excerpt && <blockquote className="mt-2 text-sm leading-snug text-[#3E3542]">“{character.excerpt}”</blockquote>}

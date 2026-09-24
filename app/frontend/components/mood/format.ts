@@ -1,5 +1,4 @@
 import type { Mood } from './moods'
-import type { SourceKind } from '../../types/mood'
 
 export const MOOD_COLORS: Record<Mood, string> = {
   beaming: '#F5C862',
@@ -8,25 +7,6 @@ export const MOOD_COLORS: Record<Mood, string> = {
   grumpy: '#F2A98A',
   furious: '#E86A6A',
   pending: '#E8E2D6',
-}
-
-export function sourceLabel(kind: SourceKind): string {
-  switch (kind) {
-    case 'slack':
-      return 'Slack'
-    case 'discord':
-      return 'Discord'
-    case 'intercom':
-      return 'Intercom'
-    case 'email':
-      return 'email'
-    case 'x':
-      return 'X'
-    default: {
-      const unhandled: never = kind
-      return unhandled
-    }
-  }
 }
 
 export function timeAgo(iso: string, now: Date = new Date()): string {

@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import '@fontsource/caveat/600.css'
 import '../../components/mood/mood.css'
 import AppNav from '../../components/app-nav'
-import { MOOD_COLORS, plural, sourceLabel, timeAgo } from '../../components/mood/format'
+import { MOOD_COLORS, plural, timeAgo } from '../../components/mood/format'
+import { sourceKindLabel } from '../../lib/feed-format'
 import Meadow, { type MoodHistory } from '../../components/mood/meadow'
 import { moodLabel, type Mood } from '../../components/mood/moods'
 import Sky from '../../components/mood/sky'
@@ -182,7 +183,7 @@ export default function Home({ scene, today, filters, options }: MoodDashboardPr
                       <td className="py-2 pr-3">{product}</td>
                       <td className="py-2 pr-3">{moodLabel(character.mood)}</td>
                       <td className="py-2 pr-3">
-                        {sourceLabel(character.source_kind)}, {timeAgo(character.last_message_at)}
+                        {sourceKindLabel(character.source_kind)}, {timeAgo(character.last_message_at)}
                       </td>
                       <td className="py-2 text-[#3E3542]/80">{character.excerpt}</td>
                     </tr>
