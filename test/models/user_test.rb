@@ -1,31 +1,16 @@
 require "test_helper"
 
 class UserTest < ActiveSupport::TestCase
-  PASSWORD = "Secret-Passw0rd" # 15 bytes, >= MINIMUM_PASSWORD_LENGTH
-
   test "downcases and strips email_address" do
-    user = User.new(email_address: " DOWNCASED@EXAMPLE.COM ")
-    assert_equal("downcased@example.com", user.email_address)
+    user = User.new(email_address: " DOWNCASED@EVERY.TO ")
+    assert_equal("downcased@every.to", user.email_address)
   end
 
-  test "creates a valid user with a sufficiently long password" do
-    user = User.new(email_address: "new@example.com", password: PASSWORD)
-    assert user.valid?, user.errors.full_messages.to_sentence
-  end
-
-  test "rejects a password shorter than MINIMUM_PASSWORD_LENGTH" do
-    short = "a" * (User::MINIMUM_PASSWORD_LENGTH - 1)
-    user = User.new(email_address: "short@example.com", password: short)
-
-    refute user.valid?
-    assert_includes user.errors[:password].join, "too short"
-  end
-
-  test "a user with no password saves" do
+  test "a user has no password" do
     user = User.create!(email_address: "sso@every.to", every_user_id: "every-user-sso", name: "SSO Person")
 
-    assert_nil user.password_digest
-    refute user.authenticate("anything")
+    assert user.persisted?
+    assert_not user.respond_to?(:password=)
   end
 
   test "two users cannot share an every_user_id" do
@@ -37,15 +22,27 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "users without an every_user_id do not collide" do
-    assert User.create!(email_address: "a@example.com").persisted?
-    assert User.create!(email_address: "b@example.com").persisted?
+    assert User.create!(email_address: "a@every.to").persisted?
+    assert User.create!(email_address: "b@every.to").persisted?
   end
 
-  test "rejects a password over MAXIMUM_PASSWORD_BYTES to guard bcrypt truncation" do
-    too_long = "a" * (User::MAXIMUM_PASSWORD_BYTES + 1)
-    user = User.new(email_address: "long@example.com", password: too_long)
+  test "every_email? is an exact, case-insensitive match on the normalized domain" do
+    %w[ana@every.to ANA@EVERY.TO].push(" ana@every.to ").each do |email|
+      assert User.every_email?(email), "#{email.inspect} should be an every.to address"
+    end
 
-    refute user.valid?
-    assert_includes user.errors[:password].join, "#{User::MAXIMUM_PASSWORD_BYTES} bytes"
+    [ "ana@every.to.evil.com", "ana@sub.every.to", "ana@notevery.to", "@every.to", "every.to",
+      "a@b@every.to", "someone@gmail.com", "", nil ].each do |email|
+      refute User.every_email?(email), "#{email.inspect} should not be an every.to address"
+    end
+  end
+
+  test "from_every_auth! creates, then updates by every_user_id" do
+    user = User.from_every_auth!(uid: "every-1", email: "New@Every.to", name: "New", image: "")
+    assert_equal [ "new@every.to", "New", nil ], [ user.email_address, user.name, user.avatar_url ]
+
+    same = User.from_every_auth!(uid: "every-1", email: "new@every.to", name: "Renamed", image: "https://every.to/a.png")
+    assert_equal user, same
+    assert_equal [ "Renamed", "https://every.to/a.png" ], [ same.name, same.avatar_url ]
   end
 end
