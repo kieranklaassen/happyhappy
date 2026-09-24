@@ -2,8 +2,8 @@ import { Head, Link } from '@inertiajs/react'
 import AppNav from '../../components/app-nav'
 import ItemRow from '../../components/item-row'
 import SentimentChart, { type DayCounts } from '../../components/sentiment-chart'
-import { SENTIMENT_COLORS, sentimentLabel } from '../../lib/feed-format'
-import type { ItemRowData, ProductOption, Sentiment } from '../../types/items'
+import { SENTIMENTS, SENTIMENT_COLORS, sentimentLabel } from '../../lib/feed-format'
+import type { ItemRowData, ProductOption } from '../../types/items'
 
 export interface ProductOverviewProps {
   product: ProductOption
@@ -13,8 +13,6 @@ export interface ProductOverviewProps {
   notable_praise: ItemRowData[]
   products: ProductOption[]
 }
-
-const SENTIMENTS: Sentiment[] = ['complaint', 'praise', 'question', 'neutral']
 
 function Notable({ id, title, items, empty }: { id: string; title: string; items: ItemRowData[]; empty: string }) {
   return (

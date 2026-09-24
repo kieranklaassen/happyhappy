@@ -29,7 +29,7 @@ module Items
       from = current_value
       to = new_value
       @item.transaction do
-        @item.update!(attribute => to, "#{@label}_human_set" => true, needs_review: false)
+        @item.update!(@label => to, "#{@label}_human_set" => true, needs_review: false)
         @item.record_event!(:corrected, actor: @actor, label: @label, **change_data(from, to)) unless from == to
       end
       true
@@ -37,12 +37,8 @@ module Items
 
     private
 
-    def attribute
-      { "product" => :product, "category" => :category }.fetch(@label, @label.to_sym)
-    end
-
     def current_value
-      @item.public_send(attribute)
+      @item.public_send(@label)
     end
 
     def new_value

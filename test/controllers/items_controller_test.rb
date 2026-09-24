@@ -103,6 +103,11 @@ class ItemsControllerTest < ActionDispatch::IntegrationTest
     get items_path, params: { page: 2 }
     assert_equal ItemsQuery.new.call.offset(ItemsController::PER_PAGE).ids, item_ids
     assert_equal({ page: 2, prev_page: 1, next_page: nil }, inertia.props[:pagination].symbolize_keys)
+
+    get items_path, params: { page: "99999999999999999999" }
+    assert_response :success
+    assert_equal ItemsController::MAX_PAGE, inertia.props[:pagination][:page]
+    assert_equal [], item_ids
   end
 
   test "the item page shows labels, messages, and the timeline in time order with actor names" do

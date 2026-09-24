@@ -2,10 +2,11 @@ class ItemsController < InertiaController
   include ItemProps
 
   PER_PAGE = 50
+  MAX_PAGE = 10_000
   HUMAN_STATUSES = Items::ChangeStatus::STATUSES
 
   def index
-    page = [ params[:page].to_i, 1 ].max
+    page = params[:page].to_i.clamp(1, MAX_PAGE)
     query = ItemsQuery.from_params(params)
     rows = item_rows(query.call.offset((page - 1) * PER_PAGE).limit(PER_PAGE + 1))
 

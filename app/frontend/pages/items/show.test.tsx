@@ -87,6 +87,14 @@ describe('Item page', () => {
     expect(corrected).toBeGreaterThan(arrived)
   })
 
+  it('does not link a permalink that is not http', () => {
+    const unsafe = props()
+    unsafe.item.permalink = 'javascript:alert(1)'
+    render(<ItemShow {...unsafe} />)
+
+    expect(screen.queryByRole('link', { name: 'Open original' })).not.toBeInTheDocument()
+  })
+
   it('flags low-confidence labels and marks human-set ones', () => {
     render(<ItemShow {...props()} />)
 

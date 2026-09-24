@@ -1,4 +1,4 @@
-import { formatTime } from '../lib/feed-format'
+import { formatTime, safeLink } from '../lib/feed-format'
 import type { TimelineEvent } from '../types/items'
 
 function text(value: unknown): string | null {
@@ -42,10 +42,6 @@ export function describeEvent(event: TimelineEvent): string {
 
 function detail(event: TimelineEvent): string | null {
   return text(event.data.summary) ?? text(event.data.reason)
-}
-
-function safeLink(value: unknown): string | null {
-  return typeof value === 'string' && /^https?:\/\//.test(value) ? value : null
 }
 
 export default function Timeline({ events }: { events: TimelineEvent[] }) {

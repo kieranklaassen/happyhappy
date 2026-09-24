@@ -2,7 +2,14 @@ import { Head, Link, router, usePage } from '@inertiajs/react'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import AppNav from '../../components/app-nav'
 import Timeline from '../../components/timeline'
-import { formatPercent, formatTime, sentimentLabel, sourceKindLabel, statusLabel } from '../../lib/feed-format'
+import {
+  formatPercent,
+  formatTime,
+  safeLink,
+  sentimentLabel,
+  sourceKindLabel,
+  statusLabel,
+} from '../../lib/feed-format'
 import type {
   CategoryOption,
   FlashProps,
@@ -99,6 +106,7 @@ function LabelForm({ itemId, name, title, label, current, display, threshold, ch
 export default function ItemShow({ item, messages, events, options, low_confidence_threshold }: ItemShowProps) {
   const { flash } = usePage<FlashProps>().props
   const { labels } = item
+  const permalink = safeLink(item.permalink)
 
   function changeStatus(status: ItemStatus) {
     router.patch(`/items/${item.id}/status`, { status }, { preserveScroll: true })
@@ -131,10 +139,10 @@ export default function ItemShow({ item, messages, events, options, low_confiden
           <p className="text-sm text-gray-600">
             {sourceKindLabel(item.source.kind)} · {item.source.name}
             {item.author_email && <> · {item.author_email}</>}
-            {item.permalink && (
+            {permalink && (
               <>
                 {' · '}
-                <a href={item.permalink} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+                <a href={permalink} target="_blank" rel="noreferrer" className="text-blue-700 underline">
                   Open original
                 </a>
               </>

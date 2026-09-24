@@ -108,7 +108,7 @@ class ItemsQuery
   end
 
   def parse_time(name, value)
-    value.is_a?(Time) || value.is_a?(ActiveSupport::TimeWithZone) ? value : Time.zone.iso8601(value.to_s)
+    value.is_a?(Time) ? value : Time.zone.iso8601(value.to_s)
   rescue ArgumentError
     raise InvalidFilter.new(name, "must be an ISO 8601 time")
   end

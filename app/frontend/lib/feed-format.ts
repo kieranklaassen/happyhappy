@@ -1,5 +1,11 @@
 import type { ItemStatus, Sentiment, SourceKind } from '../types/items'
 
+export const SENTIMENTS: readonly Sentiment[] = ['complaint', 'praise', 'question', 'neutral']
+
+export function safeLink(value: unknown): string | null {
+  return typeof value === 'string' && /^https?:\/\//.test(value) ? value : null
+}
+
 export function formatPercent(probability: number | null): string {
   return probability === null ? 'n/a' : `${Math.round(probability * 100)}%`
 }

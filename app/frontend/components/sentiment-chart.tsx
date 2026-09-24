@@ -1,5 +1,4 @@
-import { SENTIMENT_COLORS, sentimentLabel } from '../lib/feed-format'
-import type { Sentiment } from '../types/items'
+import { SENTIMENTS, SENTIMENT_COLORS, sentimentLabel } from '../lib/feed-format'
 
 export interface DayCounts {
   date: string
@@ -9,8 +8,6 @@ export interface DayCounts {
   neutral: number
   total: number
 }
-
-const SENTIMENTS: Sentiment[] = ['complaint', 'praise', 'question', 'neutral']
 
 function dayLabel(day: DayCounts): string {
   const parts = SENTIMENTS.filter((sentiment) => day[sentiment] > 0).map(
