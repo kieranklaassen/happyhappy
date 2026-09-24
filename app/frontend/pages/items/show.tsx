@@ -93,7 +93,7 @@ function LabelForm({ itemId, name, title, label, current, display, threshold, ch
         </select>
         <button
           type="submit"
-          disabled={processing || value === current}
+          disabled={processing || (label.human_set && value === current)}
           className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50"
         >
           Save {title.toLowerCase()}

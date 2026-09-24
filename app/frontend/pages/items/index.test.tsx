@@ -102,6 +102,13 @@ describe('Feed page', () => {
     expect(screen.getByRole('link', { name: 'Cora overview' })).toHaveAttribute('href', '/products/cora/overview')
   })
 
+  it('selects the product when the filter uses its slug', () => {
+    render(<ItemsIndex {...props({ filters: { product: ['cora'], relevance: 'relevant' } })} />)
+
+    expect(screen.getByLabelText('Product')).toHaveValue('3')
+    expect(screen.getByRole('link', { name: 'Cora overview' })).toHaveAttribute('href', '/products/cora/overview')
+  })
+
   it('shows an empty state when nothing matches', () => {
     render(<ItemsIndex {...props({ items: [] })} />)
 

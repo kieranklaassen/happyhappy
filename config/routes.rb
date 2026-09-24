@@ -27,6 +27,19 @@ Rails.application.routes.draw do
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker,
     defaults: { format: :js }, constraints: { format: "js" }
 
+  # Intercom webhooks (U6)
+  namespace :webhooks do
+    match "intercom", to: "intercom#validate", via: :head
+    post "intercom", to: "intercom#create"
+  end
+  # U10: feed, item timeline, corrections, product overview
+  resources :items, only: %i[index show] do
+    resource :labels, only: :update, controller: "item_labels"
+    resource :status, only: :update, controller: "item_statuses"
+  end
+  resources :products, only: [] do
+    resource :overview, only: :show, controller: "product_overviews"
+  end
   # Products, categories, sources, and settings (U3)
   resources :products, only: %i[index new create edit update] do
     member do
@@ -64,6 +77,8 @@ Rails.application.routes.draw do
 
   # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
   match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
+  # Postmark inbound email webhook (U7)
+  post "webhooks/postmark" => "webhooks/postmark#create", as: :postmark_webhook
 
   # Defines the root path route ("/")
   root "home#index"

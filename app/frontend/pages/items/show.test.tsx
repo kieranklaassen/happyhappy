@@ -107,11 +107,19 @@ describe('Item page', () => {
     render(<ItemShow {...props()} />)
 
     const save = screen.getByRole('button', { name: 'Save product' })
-    expect(save).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save category' })).toBeDisabled()
     fireEvent.change(screen.getByLabelText('Correct product'), { target: { value: '3' } })
     fireEvent.click(save)
 
     expect(patch).toHaveBeenCalledWith('/items/7/labels', { label: 'product', value: '3' }, expect.any(Object))
+  })
+
+  it('confirms a label the classifier already got right', () => {
+    render(<ItemShow {...props()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save product' }))
+
+    expect(patch).toHaveBeenCalledWith('/items/7/labels', { label: 'product', value: '5' }, expect.any(Object))
   })
 
   it('changes status with the offered actions and warns about releasing the claim', () => {

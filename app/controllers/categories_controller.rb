@@ -21,7 +21,7 @@ class CategoriesController < InertiaController
     if category.save
       redirect_to categories_path, notice: "Added #{category.name}."
     else
-      redirect_to categories_path, inertia: { errors: category.errors }
+      redirect_to categories_path, inertia: { errors: bagged_errors(category) }
     end
   end
 
@@ -29,7 +29,7 @@ class CategoriesController < InertiaController
     if @category.update(category_params)
       redirect_to categories_path, notice: "Saved #{@category.name}."
     else
-      redirect_to categories_path, inertia: { errors: @category.errors }
+      redirect_to categories_path, inertia: { errors: bagged_errors(@category) }
     end
   end
 
@@ -47,6 +47,13 @@ class CategoriesController < InertiaController
 
   def set_category
     @category = Category.find(params[:id])
+  end
+
+  # Each category row and the add form post with their own Inertia error bag,
+  # so a failed save only marks the form that sent it.
+  def bagged_errors(category)
+    bag = request.headers["X-Inertia-Error-Bag"].presence
+    bag ? { bag => category.errors } : category.errors
   end
 
   def category_params
