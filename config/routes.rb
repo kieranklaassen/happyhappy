@@ -1,5 +1,8 @@
 Rails.application.routes.draw do
-  resource :session
+  # --- Sign in with Every (U2). /auth/every itself is the OmniAuth middleware. ---
+  resource :session, only: %i[new destroy]
+  get "auth/every/callback", to: "sessions/every#create"
+  draw :dev_login if Rails.env.development?
 
   # Redirect to localhost from 127.0.0.1 to use same IP address with Vite server
   constraints(host: "127.0.0.1") do
@@ -10,6 +13,9 @@ Rails.application.routes.draw do
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
+
+  # Slack connector (U4): Events API request URL, signature-authenticated.
+  post "webhooks/slack/events" => "webhooks/slack#create", as: :webhooks_slack_events
 
   # PWA surface (docs/modules/pwa.md): Rails' built-in controller renders
   # app/views/pwa/*, public and outside the Inertia auth gate. Formats are pinned

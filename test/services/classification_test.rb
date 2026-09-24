@@ -30,6 +30,6 @@ class ClassificationTest < ActiveSupport::TestCase
       assert_same fake, Classification.classifier
     end
 
-    assert_raises(NameError) { Classification.classifier } unless Object.const_defined?("Classification::Classifier")
+    assert_instance_of Classification::Classifier, Classification.classifier
   end
 end

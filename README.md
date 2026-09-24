@@ -28,10 +28,13 @@ bin/rails test       # Ruby suite
 npm run check        # tsc x2 + Vitest
 ```
 
-Create a user (there is no open registration):
+Sign in with Every is the only production login (set the `EVERY_OAUTH_*` and
+`PUBLIC_BASE_URL` variables from `.env.example`). Locally, `bin/rails db:seed`
+adds dev login people to the sign-in page. There is no open registration; to
+pre-provision an every.to person:
 
 ```sh
-EMAIL=you@example.com PASSWORD='a-long-password' bin/rails users:create
+EMAIL=ana@every.to NAME='Ana' bin/rails users:create
 ```
 
 ## Modules
