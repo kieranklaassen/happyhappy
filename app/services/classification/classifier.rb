@@ -7,7 +7,7 @@ module Classification
   # broken" or "thanks, that fixed it" is read against what it answers.
   class Classifier
     MODEL = "jev-latest"
-    CONTEXT_MESSAGES = 4
+    CONTEXT_MESSAGES = 8
     CONTEXT_CHARACTERS = 1_200
 
     def call(message)

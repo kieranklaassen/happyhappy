@@ -132,9 +132,21 @@ module Classification
       item.category_probability = probability(answer, answer["choice"])
     end
 
-    def assign_sentiment(item, answer)
-      item.sentiment = answer["choice"].presence_in(Item.sentiments.keys)
-      item.sentiment_probability = probability(answer, answer["choice"])
+    def assign_sentiment(item, answer, earlier)
+      choice = answer["choice"].presence_in(Item.sentiments.keys)
+      # Relief needs an earlier upset in the thread; without one it is praise.
+      if choice == "relieved" && earlier.none? { |message| upset?(message) }
+        item.sentiment = "praise"
+        item.sentiment_probability = [ probability(answer, "praise"), probability(answer, "relieved") ].compact.sum
+      else
+        item.sentiment = choice
+        item.sentiment_probability = probability(answer, answer["choice"])
+      end
+    end
+
+    def upset?(message)
+      message.classification_answers.dig("sentiment", "choice") == "complaint" ||
+        message.anger_probability.to_f >= Mood::GRUMPY_ANGER
     end
 
     def low_confidence?(item)
