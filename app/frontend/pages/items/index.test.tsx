@@ -65,6 +65,8 @@ function props(overrides: Partial<FeedProps> = {}): FeedProps {
       sorts: ['recent', 'actionability'],
     },
     anomalies: [],
+    search: null,
+    smart: null,
     error: null,
     ...overrides,
   }
@@ -193,6 +195,42 @@ describe('Feed page', () => {
 
     expect(screen.getByRole('link', { name: 'Newer' })).toHaveAttribute('href', '/items?sentiment=praise&page=1')
     expect(screen.getByRole('link', { name: 'Older' })).toHaveAttribute('href', '/items?sentiment=praise&page=3')
+  })
+
+  it('a search shows its chips and best matches, and applying filters keeps the query', () => {
+    const search = {
+      query: 'angry Cora',
+      chips: [{ key: 'anger', label: 'anger', kind: 'filter' as const, name: 'Anger' }],
+      removed: [],
+      invite_row: null,
+      encoding_status: 'cached' as const,
+      explicit_action: 'enter',
+      run_id: null,
+    }
+    render(<ItemsIndex {...props({ search })} />)
+
+    expect(screen.getByRole('searchbox', { name: 'Search the feed' })).toHaveValue('angry Cora')
+    expect(screen.getByText('Anger')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Best matches' })).toBeInTheDocument()
+
+    fireEvent.submit(screen.getByRole('form', { name: 'Filter the feed' }))
+    expect(get).toHaveBeenCalledWith('/items', { q: 'angry Cora' }, { preserveScroll: true })
+  })
+
+  it('a search with no matches suggests Smart search', () => {
+    const search = {
+      query: 'praise for Thesis',
+      chips: [],
+      removed: [],
+      invite_row: { query: 'praise for Thesis', reason: 'empty' as const },
+      encoding_status: 'cached' as const,
+      explicit_action: 'enter',
+      run_id: null,
+    }
+    render(<ItemsIndex {...props({ items: [], search })} />)
+
+    expect(screen.getByRole('heading', { name: 'Nothing in the feed matches “praise for Thesis”' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /No keyword matches/ })).toBeInTheDocument()
   })
 })
 

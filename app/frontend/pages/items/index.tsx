@@ -3,6 +3,8 @@ import { type FormEvent, useState } from 'react'
 import AppNav from '../../components/app-nav'
 import ItemRow from '../../components/item-row'
 import { useMoodStream } from '../../components/mood/use-mood-stream'
+import FeedSearch from '../../components/search/feed-search'
+import SmartResults from '../../components/search/smart-results'
 import { anomalySummary, anomalyTag } from '../../lib/anomaly-format'
 import { actionabilityLabel, sentimentLabel, sourceKindLabel, statusLabel } from '../../lib/feed-format'
 import type { AnomalyProps } from '../../types/anomalies'
@@ -16,6 +18,7 @@ import type {
   Sentiment,
   SourceOption,
 } from '../../types/items'
+import type { SearchProps, SmartProps } from '../../types/search'
 
 export interface FeedFilters {
   product?: string[]
@@ -50,6 +53,8 @@ export interface FeedProps {
     sorts: FeedSort[]
   }
   anomalies: AnomalyProps[]
+  search: SearchProps | null
+  smart: SmartProps | null
   error: string | null
 }
 
@@ -160,7 +165,7 @@ const SELECT = 'rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm
 
 const LIVE_PROPS = ['items', 'anomalies']
 
-export default function ItemsIndex({ items, filters, pagination, options, anomalies, error }: FeedProps) {
+export default function ItemsIndex({ items, filters, pagination, options, anomalies, search, smart, error }: FeedProps) {
   useMoodStream(LIVE_PROPS)
   const [form, setForm] = useState<FormState>(() => initialState(filters, options.products))
   const query = toQuery(initialState(filters, options.products))
@@ -172,7 +177,7 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    router.get('/items', toQuery(form), { preserveScroll: true })
+    router.get('/items', search ? { ...toQuery(form), q: search.query } : toQuery(form), { preserveScroll: true })
   }
 
   function pageHref(page: number) {
@@ -195,6 +200,8 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
         </header>
 
         <AnomalyBanner anomalies={anomalies} filter={filters.anomaly} />
+
+        <FeedSearch search={search} filterQuery={query} />
 
         <form
           onSubmit={submit}
@@ -348,6 +355,8 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
           </div>
         </form>
 
+        {smart && <SmartResults smart={smart} />}
+
         {error ? (
           <p role="alert" className="rounded bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -355,16 +364,18 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
         ) : items.length === 0 ? (
           <section aria-labelledby="empty-feed" className="rounded border border-dashed border-gray-300 p-8 text-center">
             <h2 id="empty-feed" className="text-base font-semibold text-gray-900">
-              No items match these filters
+              {search ? `Nothing in the feed matches “${search.query}”` : 'No items match these filters'}
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Try a wider time range or clear the filters. New messages appear here once a source delivers them.
+              {search
+                ? 'Press Enter to have Jev read the feed for it, remove a chip, or widen the filters.'
+                : 'Try a wider time range or clear the filters. New messages appear here once a source delivers them.'}
             </p>
           </section>
         ) : (
           <section aria-labelledby="feed-items">
-            <h2 id="feed-items" className="sr-only">
-              Items
+            <h2 id="feed-items" className={search ? 'mb-2 text-sm font-medium text-gray-700' : 'sr-only'}>
+              {search ? 'Best matches' : 'Items'}
             </h2>
             <ul className="rounded border border-gray-200 bg-white">
               {items.map((item) => (
