@@ -17,7 +17,7 @@ const RANGE_LABELS: Record<string, string> = {
   '7d': 'the last 7 days',
 }
 
-const BAR_MOODS: readonly SettledMood[] = ['beaming', 'content', 'meh', 'grumpy', 'furious']
+const BAR_MOODS: readonly SettledMood[] = ['beaming', 'content', 'relieved', 'meh', 'grumpy', 'furious']
 
 export function headline(mood: SettledMood | null): string {
   switch (mood) {
@@ -25,6 +25,8 @@ export function headline(mood: SettledMood | null): string {
       return 'Everyone is over the moon.'
     case 'content':
       return 'Mostly sunny out there.'
+    case 'relieved':
+      return 'The clouds are clearing.'
     case 'meh':
       return 'A bit of a shrug today.'
     case 'grumpy':
@@ -112,7 +114,7 @@ export default function Home({ scene, today, filters, options }: MoodDashboardPr
               <p className="mt-2 text-lg text-[#3E3542]/85">
                 <strong className="font-semibold">{headline(today.mood)}</strong>{' '}
                 {today.people > 0
-                  ? `${today.smiling} smiling, ${today.counts.meh} meh, and ${today.grumpy} grumpy across ${plural(today.people, 'person', 'people')} in ${rangeLabel}.`
+                  ? `${today.smiling} smiling${today.relieved > 0 ? ` (${today.relieved} relieved)` : ''}, ${today.counts.meh} meh, and ${today.grumpy} grumpy across ${plural(today.people, 'person', 'people')} in ${rangeLabel}.`
                   : `Nobody has written in ${rangeLabel}.`}
               </p>
               <MoodBar today={today} />

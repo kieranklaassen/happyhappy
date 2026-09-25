@@ -67,6 +67,12 @@ function arms(mood: Mood, g: Geometry): ArmSet {
         ],
         fists: [],
       }
+    case 'relieved':
+      return {
+        back: [`M ${rx} ${ry} Q ${CX + out + 5} ${ry + 14} ${CX + out + 2} ${ry + 33}`],
+        front: [`M ${lx} ${ly} Q ${CX - out - 12} ${ly - 16} ${CX - g.headR * 0.55} ${g.eyeY - 9}`],
+        fists: [],
+      }
     case 'meh':
       return {
         back: [
@@ -130,6 +136,14 @@ function Eyes({ mood, g, gap }: { mood: Mood; g: Pick<Geometry, 'eyeY'>; gap: nu
               <ellipse cx={x} cy={y} rx={2.7} ry={3.1} fill={INK} />
               <circle cx={x + 0.9} cy={y - 1.1} r={0.8} fill="#fff" />
             </g>
+          ))}
+        </g>
+      )
+    case 'relieved':
+      return (
+        <g fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round">
+          {xs.map((x) => (
+            <path key={x} d={`M ${x - 4} ${y - 0.5} Q ${x} ${y + 3.5} ${x + 4} ${y - 0.5}`} />
           ))}
         </g>
       )
@@ -212,6 +226,13 @@ function Mouth({ mood, g }: { mood: Mood; g: Pick<Geometry, 'mouthY'> }) {
       )
     case 'content':
       return <path d={`M ${CX - 6} ${y} Q ${CX} ${y + 5.5} ${CX + 6} ${y}`} stroke={INK} strokeWidth={1.9} fill="none" strokeLinecap="round" />
+    case 'relieved':
+      return (
+        <g stroke={INK} strokeWidth={1.9} fill="none" strokeLinecap="round">
+          <path d={`M ${CX - 6.5} ${y} Q ${CX} ${y + 6} ${CX + 6.5} ${y}`} />
+          <ellipse cx={CX + 9.5} cy={y + 0.5} rx={1.3} ry={1.6} strokeWidth={1.3} />
+        </g>
+      )
     case 'meh':
       return <path d={`M ${CX - 5.5} ${y + 1.5} Q ${CX - 1} ${y + 0.4} ${CX + 5.5} ${y + 2}`} stroke={INK} strokeWidth={1.9} fill="none" strokeLinecap="round" />
     case 'grumpy':
@@ -427,6 +448,23 @@ function Extras({ mood, g, traits }: { mood: Mood; g: Geometry; traits: Traits }
             d={`M ${CX + 30} ${top + 2} l 1.6 4.4 l 4.4 1.6 l -4.4 1.6 l -1.6 4.4 l -1.6 -4.4 l -4.4 -1.6 l 4.4 -1.6 Z`}
             fill="#F2C46B"
           />
+        </g>
+      )
+    case 'relieved':
+      return (
+        <g>
+          <path
+            className="hh-drip"
+            d={`M ${CX + g.headR * 0.72} ${g.headY - g.headR * 0.55} q 3.4 5.2 0 7.6 q -3.4 -2.4 0 -7.6 Z`}
+            fill="#8CB8F2"
+            stroke="#5E8FCF"
+            strokeWidth={0.5}
+            filter="url(#hh-wash-1)"
+          />
+          <g className="hh-exhale" stroke={INK} strokeWidth={1.2} fill="none" opacity={0.5} strokeLinecap="round">
+            <path d={`M ${CX + 14} ${g.mouthY + 1} q 5 -2 9 1`} />
+            <path d={`M ${CX + 15} ${g.mouthY + 5} q 6 0 11 3`} />
+          </g>
         </g>
       )
     case 'meh':

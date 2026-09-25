@@ -35,6 +35,7 @@ export interface MoodSummary {
   people: number
   counts: MoodCounts
   smiling: number
+  relieved: number
   grumpy: number
   updated_at: string
 }

@@ -8,14 +8,38 @@ interface SettingsEditProps {
     low_confidence_threshold: number
     escalation_threshold: number
     report_back_window_minutes: number
+    team_email_domains: string[]
+    team_discord_role_ids: string[]
+    team_discord_user_ids: string[]
   }
 }
+
+const TEAM_LISTS = [
+  {
+    name: 'team_email_domains',
+    label: 'Team email domains',
+    hint: 'Messages from these email domains are written by Every’s team and never count toward moods.',
+  },
+  {
+    name: 'team_discord_role_ids',
+    label: 'Team Discord role IDs',
+    hint: 'Discord members holding any of these server roles are Every’s team.',
+  },
+  {
+    name: 'team_discord_user_ids',
+    label: 'Team Discord user IDs',
+    hint: 'Discord users who are Every’s team even without a team role.',
+  },
+] as const
 
 export default function SettingsEdit({ setting }: SettingsEditProps) {
   const form = useForm({
     low_confidence_threshold: setting.low_confidence_threshold.toString(),
     escalation_threshold: setting.escalation_threshold.toString(),
     report_back_window_minutes: setting.report_back_window_minutes.toString(),
+    team_email_domains: setting.team_email_domains.join(', '),
+    team_discord_role_ids: setting.team_discord_role_ids.join(', '),
+    team_discord_user_ids: setting.team_discord_user_ids.join(', '),
   })
 
   function submit(event: FormEvent) {
@@ -88,6 +112,24 @@ export default function SettingsEdit({ setting }: SettingsEditProps) {
               className={inputClass}
             />
           </Field>
+
+          {TEAM_LISTS.map((list) => (
+            <Field
+              key={list.name}
+              label={list.label}
+              htmlFor={`setting_${list.name}`}
+              error={form.errors[list.name]}
+              hint={`${list.hint} Separate entries with commas.`}
+            >
+              <input
+                id={`setting_${list.name}`}
+                type="text"
+                value={form.data[list.name]}
+                onChange={(e) => form.setData(list.name, e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+          ))}
 
           <div>
             <button type="submit" disabled={form.processing || !form.isDirty} className={primaryButtonClass}>

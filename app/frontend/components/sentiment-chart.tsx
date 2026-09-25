@@ -6,6 +6,7 @@ export interface DayCounts {
   praise: number
   question: number
   neutral: number
+  relieved: number
   total: number
 }
 

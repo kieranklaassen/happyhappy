@@ -24,6 +24,14 @@ describe('Character', () => {
     expect(beaming.querySelectorAll('.hh-rise')).toHaveLength(3)
   })
 
+  it('gives a relieved customer a sweat drop and an exhale', () => {
+    const relieved = render(<Character seed="ana" mood="relieved" idle />).container
+
+    expect(relieved.querySelector('.hh-drip')).not.toBeNull()
+    expect(relieved.querySelector('.hh-exhale')).not.toBeNull()
+    expect(relieved.querySelector('.hh-idle')).toHaveClass('hh-idle--relieved')
+  })
+
   it('is decorative unless given a title', () => {
     const { container, rerender } = render(<Character seed="ana" mood="meh" />)
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')

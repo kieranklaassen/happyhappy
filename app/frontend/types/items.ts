@@ -1,4 +1,5 @@
-export type Sentiment = 'complaint' | 'praise' | 'question' | 'neutral'
+export type Sentiment = 'complaint' | 'praise' | 'question' | 'neutral' | 'relieved'
+export type AuthorRole = 'customer' | 'team' | 'unknown'
 export type ItemStatus = 'new' | 'claimed' | 'in_progress' | 'handled' | 'dismissed'
 export type SourceKind = 'slack' | 'discord' | 'intercom' | 'email' | 'x' | 'custom'
 export type EventKind =
@@ -84,6 +85,9 @@ export interface MessageData {
   body: string
   occurred_at: string
   anger_probability: number | null
+  author: string | null
+  author_role: AuthorRole
+  sentiment: Sentiment | null
   classified: boolean
 }
 

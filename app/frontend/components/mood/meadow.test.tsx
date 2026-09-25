@@ -32,7 +32,7 @@ function person(overrides: Partial<MoodCharacter>): MoodCharacter {
   }
 }
 
-const counts = { beaming: 1, content: 0, meh: 0, grumpy: 0, furious: 1, pending: 0 }
+const counts = { beaming: 1, content: 0, relieved: 0, meh: 0, grumpy: 0, furious: 1, pending: 0 }
 
 function group(characters: MoodCharacter[]): MoodGroup {
   return { product: { slug: 'cora', name: 'Cora', retired: false }, mood: 'meh', counts, overflow: 0, characters }

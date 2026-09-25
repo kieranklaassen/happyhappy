@@ -1,6 +1,6 @@
 import type { ItemStatus, Sentiment, SourceKind } from '../types/items'
 
-export const SENTIMENTS: readonly Sentiment[] = ['complaint', 'praise', 'question', 'neutral']
+export const SENTIMENTS: readonly Sentiment[] = ['complaint', 'praise', 'relieved', 'question', 'neutral']
 
 export function safeLink(value: unknown): string | null {
   return typeof value === 'string' && /^https?:\/\//.test(value) ? value : null
@@ -63,6 +63,7 @@ export const SENTIMENT_COLORS: Record<Sentiment, string> = {
   praise: 'bg-emerald-500',
   question: 'bg-sky-500',
   neutral: 'bg-gray-400',
+  relieved: 'bg-cyan-400',
 }
 
 export const SENTIMENT_BADGES: Record<Sentiment, string> = {
@@ -70,4 +71,5 @@ export const SENTIMENT_BADGES: Record<Sentiment, string> = {
   praise: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   question: 'bg-sky-50 text-sky-700 ring-sky-200',
   neutral: 'bg-gray-50 text-gray-700 ring-gray-200',
+  relieved: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
 }

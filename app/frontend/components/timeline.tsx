@@ -12,7 +12,7 @@ export function describeEvent(event: TimelineEvent): string {
     case 'arrived':
       return 'Message arrived'
     case 'classified':
-      return 'Classified'
+      return text(data.mood) ? `Classified, mood ${text(data.mood)}` : 'Classified'
     case 'classification_failed':
       return text(data.error) ? `Classification failed: ${text(data.error)}` : 'Classification failed'
     case 'corrected':

@@ -42,7 +42,26 @@ function props(): ItemShowProps {
       },
     },
     messages: [
-      { id: 1, body: 'Trying out that new file organizer.', occurred_at: '2026-09-24T10:00:00Z', anger_probability: 0.1, classified: true },
+      {
+        id: 1,
+        body: 'Trying out that new file organizer.',
+        occurred_at: '2026-09-24T10:00:00Z',
+        anger_probability: 0.1,
+        author: 'Dee',
+        author_role: 'customer',
+        sentiment: 'neutral',
+        classified: true,
+      },
+      {
+        id: 2,
+        body: 'Thanks Dee, we have shipped a fix.',
+        occurred_at: '2026-09-24T10:30:00Z',
+        anger_probability: 0.0,
+        author: 'Kieran',
+        author_role: 'team',
+        sentiment: 'neutral',
+        classified: true,
+      },
     ],
     events: [
       { id: 1, kind: 'arrived', actor: { type: null, name: 'happyhappy' }, data: {}, created_at: '2026-09-24T10:00:00Z' },
@@ -85,6 +104,17 @@ describe('Item page', () => {
     const corrected = entries.findIndex((text) => text?.includes('Ana Every · Changed category from bug to other'))
     expect(arrived).toBeGreaterThanOrEqual(0)
     expect(corrected).toBeGreaterThan(arrived)
+  })
+
+  it('labels team messages and leaves them out of the mood', () => {
+    render(<ItemShow {...props()} />)
+
+    const team = screen.getByText('Thanks Dee, we have shipped a fix.').closest('li')
+    expect(team).toHaveTextContent('Every team')
+    expect(team).toHaveTextContent('Not counted toward mood')
+    const customer = screen.getByText('Trying out that new file organizer.').closest('li')
+    expect(customer).not.toHaveTextContent('Every team')
+    expect(customer).toHaveTextContent('Neutral · Anger 10%')
   })
 
   it('does not link a permalink that is not http', () => {
