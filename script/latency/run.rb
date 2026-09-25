@@ -21,13 +21,14 @@ require "action_dispatch/testing/integration"
 require "optparse"
 require Rails.root.join("test/support/fake_classifier").to_s
 
-OPTIONS = { burst: 50, backfill: 0, spacing: 40, seed: 22, live: 0, label: "run", timeout: 180 }
+OPTIONS = { burst: 50, backfill: 0, spacing: 40, seed: 22, live: 0, geneva: 0, label: "run", timeout: 180 }
 OptionParser.new do |parser|
   parser.on("--burst N", Integer, "live messages, spread over the five kinds (50)") { |value| OPTIONS[:burst] = value }
   parser.on("--backfill N", Integer, "backfilled messages queued just before the burst (0)") { |value| OPTIONS[:backfill] = value }
   parser.on("--spacing MS", Integer, "milliseconds between burst messages (40)") { |value| OPTIONS[:spacing] = value }
   parser.on("--seed N", Integer, "stub latency seed (22)") { |value| OPTIONS[:seed] = value }
   parser.on("--live N", Integer, "also time N real TypeSafe calls (0)") { |value| OPTIONS[:live] = value }
+  parser.on("--geneva N", Integer, "also time N four-step no-op Geneva Drive workflows (0)") { |value| OPTIONS[:geneva] = value }
   parser.on("--label NAME", "names tmp/latency/NAME.json") { |value| OPTIONS[:label] = value }
 end.parse!(ARGV)
 
@@ -142,6 +143,17 @@ module LatencyHooks
       end
     end
   end
+end
+
+# The ingest -> classify -> apply -> notify chain as a Geneva Drive workflow
+# with empty steps, on the queue live classification uses: what the per-step
+# hops alone would cost.
+class LatencyProbeWorkflow < GenevaDrive::Workflow
+  set_step_job_options queue: ClassifyMessageJob.queue_name
+  step(:ingest) { nil }
+  step(:classify) { nil }
+  step(:apply) { nil }
+  step(:notify) { nil }
 end
 
 Items::Ingest.prepend(LatencyHooks::Ingest)
@@ -310,6 +322,18 @@ def live_sample(count)
   end
 end
 
+# Starts one probe workflow per live message, 40 ms apart, after the burst.
+def geneva_probe(count)
+  return [] if count.zero?
+
+  workflows = Message.where(backfilled: false).order(:id).limit(count).map do |message|
+    LatencyProbeWorkflow.create!(hero: message).tap { sleep 0.04 }
+  end
+  deadline = 60.seconds.from_now
+  sleep 0.2 until workflows.all? { |workflow| workflow.reload.finished? } || Time.current > deadline
+  workflows.select(&:finished?).map { |workflow| (workflow.updated_at - workflow.created_at) * 1000 }
+end
+
 # --- run ---
 
 pings = []
@@ -428,6 +452,12 @@ per_kind = kinds.to_h do |kind|
   [ kind, %i[ack ingested].to_h { |to| [ to, percentile(span(kind_rows, :receipt, to), 0.95)&.round ] } ]
 end
 live = live_sample(OPTIONS[:live])
+geneva = geneva_probe(OPTIONS[:geneva])
+first_per_kind = burst.first(kinds.size).map { |message| message[:external_id] }.to_set
+warm = burst.each_with_index.reject { |message, _index| first_per_kind.include?(message[:external_id]) }.map { |_message, index| rows[index] }
+warm_ack = span(warm, :receipt, :ack)
+summary = summary.to_a.insert(1, [ "webhook ack, warm (first request per kind excluded)",
+  { n: warm_ack.size, p50: percentile(warm_ack, 0.5)&.round, p95: percentile(warm_ack, 0.95)&.round } ]).to_h
 workers = SolidQueue::Configuration.new(mode: :fork).configured_processes.select { |process| process.kind == :worker }
   .map { |process| process.attributes.slice(:queues, :threads, :polling_interval) }
 
@@ -441,9 +471,13 @@ puts "|---|---|---|---|"
 summary.each { |label, stats| puts "| #{label} | #{stats[:n]} | #{stats[:p50]} | #{stats[:p95]} |" }
 puts
 puts "p95 ms per kind: #{per_kind.map { |kind, stats| "#{kind} ack #{stats[:ack]} / stored #{stats[:ingested]}" }.join(", ")}"
+if geneva.any?
+  puts "Geneva Drive probe (#{geneva.size} four-step no-op workflows): p50 #{percentile(geneva, 0.5).round} ms, " \
+    "p95 #{percentile(geneva, 0.95).round} ms"
+end
 if live.any?
   puts "Live TypeSafe sample (#{live.size} calls): p50 #{percentile(live, 0.5).round} ms, p95 #{percentile(live, 0.95).round} ms"
 end
 
 DIR.join("#{OPTIONS[:label]}.json").write(JSON.pretty_generate(options: OPTIONS, wall_s: wall.round(2), workers: workers,
-  client: constants, summary: summary, per_kind: per_kind, live_typesafe_ms: live.map(&:round)))
+  client: constants, summary: summary, per_kind: per_kind, live_typesafe_ms: live.map(&:round), geneva_ms: geneva.map(&:round)))
