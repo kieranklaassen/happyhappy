@@ -8,10 +8,6 @@ Truffler.configure do |config|
   # live classification, so search keeps to half of it.
   config.headroom = 0.5
 
-  # Dollars per backfill run, automatic or `truffler:backfill` without SPEND_CAP;
-  # truffler's default is no cap.
-  config.backfill_spend_cap = 5.0
-
   # Smart search waits on these jobs, so they stay off the backfill queue, and
   # off realtime, which belongs to live classification (config/queue.yml).
   config.queue_name = :default
@@ -27,8 +23,4 @@ Truffler.configure do |config|
     # The test Rails.cache is a null store, which cannot count budgets or hold Smart runs.
     config.cache_store = ActiveSupport::Cache::MemoryStore.new
   end
-end
-
-Rails.application.config.to_prepare do
-  Truffler.config.client = FeedSearch::EncodingClient.new unless Rails.env.test?
 end

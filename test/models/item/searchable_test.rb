@@ -17,7 +17,7 @@ class Item::SearchableTest < ActiveSupport::TestCase
   end
 
   test "refreshing supplied labels writes what classification answered, with no Jev call" do
-    fake = truffler_fake
+    fake = Truffler.config.client
     item = items(:angry_slack)
     item.update_columns(actionability: 0.8, status: "claimed")
 
@@ -47,7 +47,7 @@ class Item::SearchableTest < ActiveSupport::TestCase
   end
 
   test "a watched column change rewrites that label, and the labeler asks Jev only churn_risk" do
-    fake = truffler_fake(labels: { "churn_risk" => 0.9 })
+    fake = Truffler.config.client.answer(:churn_risk, 0.9)
     item = items(:claimed_intercom)
 
     perform_enqueued_jobs { item.update!(anger_probability: 0.95) }
@@ -55,6 +55,20 @@ class Item::SearchableTest < ActiveSupport::TestCase
     assert_in_delta 0.95, labels(item).fetch("anger")
     assert_in_delta 0.9, labels(item).fetch("churn_risk")
     asked = fake.calls.flat_map { |call| call[:questions].keys }.map { |id| id.split("__").last }.uniq
+    assert_equal ASKED, asked
+  end
+
+  test "a new message re-asks only churn_risk, since the conversation it reads is a method" do
+    fake = Truffler.config.client.answer(:churn_risk, 0.2)
+    item = items(:claimed_intercom)
+    perform_enqueued_jobs { item.update!(anger_probability: 0.95) }
+    fake.answer(:churn_risk, 0.9)
+    calls = fake.calls.size
+
+    perform_enqueued_jobs { item.update!(last_message_at: Time.current) }
+
+    assert_in_delta 0.9, labels(item).fetch("churn_risk")
+    asked = fake.calls.drop(calls).flat_map { |call| call[:questions].keys }.map { |id| id.split("__").last }.uniq
     assert_equal ASKED, asked
   end
 

@@ -1,6 +1,6 @@
 import type { ItemRowData } from './items'
 
-export type ChipKind = 'filter' | 'boost'
+export type ChipKind = 'filter' | 'boost' | 'time'
 export type EncodingStatus = 'cached' | 'pending' | 'none'
 export type InviteReason = 'weak' | 'empty' | 'encoding_pending'
 export type SmartBucket = 'strong' | 'possible' | 'unlikely'
@@ -8,8 +8,8 @@ export type SmartStatus = 'pending' | 'running' | 'complete' | 'paused' | 'cance
 
 export const SMART_BUCKETS: SmartBucket[] = ['strong', 'possible', 'unlikely']
 
-// key "time" is the feed's own time filter; label keys come from truffler
-// ("anger", or "product:cora" for a choice option).
+// Label keys come from truffler ("anger", or "product:cora" for a choice
+// option); key "time" is the query's time phrase.
 export interface SearchChip {
   key: string
   label: string

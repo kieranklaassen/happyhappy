@@ -58,7 +58,7 @@ class WebmcpToolsControllerTest < ActionDispatch::IntegrationTest
   test "returns exactly what MCP returns for search_items, with customer text marked untrusted" do
     sign_in_as @user
     index_items_for_search!
-    truffler_fake(intents: { "product" => "filter" }, options: { "product" => "cora" }, tokens: { "cora" => "label_term" })
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
     arguments = { query: "cora", status: [ "new", "claimed" ] }
 
     result = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) { webmcp_tool("search_items", arguments) }

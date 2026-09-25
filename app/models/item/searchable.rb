@@ -43,47 +43,37 @@ module Item::Searchable
 
     after_commit :refresh_search_document, if: -> { destroyed? || saved_changes.keys.intersect?(%w[author_handle author_name author_email]) }
 
-    declare_truffler if table_exists?
-  end
+    truffler do
+      reads :search_author, :search_conversation
 
-  class_methods do
-    # Truffler checks every declared column against the table, so a process
-    # that boots before the items table exists (db:prepare on a new database,
-    # a fresh test database) skips the declaration; test/support/truffler_helper.rb
-    # declares it once the test schema is loaded.
-    def declare_truffler
-      truffler do
-        reads :search_author, :search_conversation, :last_message_at
+      label :sentiment, :choice, options: SENTIMENTS, description: "how the customer feels",
+        from: ->(item) { item.sentiment }, watch: %i[sentiment], filter_at: 0.5
+      label :product, :choice, options: ->(_) { Item::Searchable.product_options }, description: "which Every product it is about",
+        from: ->(item) { item.product&.slug || (NO_PRODUCT if item.classified?) }, watch: %i[product_id relevance_probability],
+        filter_at: 0.5
+      label :category, :choice, options: ->(_) { Item::Searchable.category_options }, description: "what the feedback is about",
+        from: ->(item) { item.category&.name || (OTHER_CATEGORY if item.classified?) }, watch: %i[category_id relevance_probability],
+        filter_at: 0.5
+      label :anger, :noul, description: "the customer is angry",
+        from: ->(item) { item.anger_probability }, watch: %i[anger_probability], filter_at: 0.5, boost: 2.0
+      label :needs_action, :noul, description: "someone at Every needs to act or reply",
+        from: ->(item) { item.actionability }, watch: %i[actionability], filter_at: Actionability::SHOULD_REPLY, boost: 2.0
+      label :status, :choice, options: STATUSES, description: "where the team is with it",
+        from: ->(item) { item.status }, watch: %i[status], filter_at: 0.5
+      label :source, :choice, options: Source.kinds.values, description: "the channel it came from (Slack, Discord, Intercom, email, X)",
+        from: ->(item) { item.source_kind }, filter_at: 0.5
+      label :team_replied, :noul, description: "someone at Every already replied in the thread",
+        from: ->(item) { item.messages.author_team.exists? }, filter_at: 0.5
+      label :needs_review, :noul, description: "a label is low confidence and needs a human to check it",
+        from: ->(item) { item.needs_review }, watch: %i[needs_review], filter_at: 0.5
 
-        label :sentiment, :choice, options: SENTIMENTS, description: "how the customer feels",
-          from: ->(item) { item.sentiment }, watch: %i[sentiment], filter_at: 0.5
-        label :product, :choice, options: ->(_) { Item::Searchable.product_options }, description: "which Every product it is about",
-          from: ->(item) { item.product&.slug || (NO_PRODUCT if item.classified?) }, watch: %i[product_id relevance_probability],
-          filter_at: 0.5
-        label :category, :choice, options: ->(_) { Item::Searchable.category_options }, description: "what the feedback is about",
-          from: ->(item) { item.category&.name || (OTHER_CATEGORY if item.classified?) }, watch: %i[category_id relevance_probability],
-          filter_at: 0.5
-        label :anger, :noul, description: "the customer is angry",
-          from: ->(item) { item.anger_probability }, watch: %i[anger_probability], filter_at: 0.5, boost: 2.0
-        label :needs_action, :noul, description: "someone at Every needs to act or reply",
-          from: ->(item) { item.actionability }, watch: %i[actionability], filter_at: Actionability::SHOULD_REPLY, boost: 2.0
-        label :status, :choice, options: STATUSES, description: "where the team is with it",
-          from: ->(item) { item.status }, watch: %i[status], filter_at: 0.5
-        label :source, :choice, options: Source.kinds.values, description: "the channel it came from (Slack, Discord, Intercom, email, X)",
-          from: ->(item) { item.source_kind }, filter_at: 0.5
-        label :team_replied, :noul, description: "someone at Every already replied in the thread",
-          from: ->(item) { item.messages.author_team.exists? }, filter_at: 0.5
-        label :needs_review, :noul, description: "a label is low confidence and needs a human to check it",
-          from: ->(item) { item.needs_review }, watch: %i[needs_review], filter_at: 0.5
+      label :churn_risk, :noul, question: "Is this customer at risk of leaving?", criteria: CHURN_RISK,
+        description: "the customer might cancel or leave", watch: %i[last_message_at], filter_at: 0.6, boost: 2.0
 
-        label :churn_risk, :noul, question: "Is this customer at risk of leaving?", criteria: CHURN_RISK,
-          description: "the customer might cancel or leave", filter_at: 0.6, boost: 2.0
-
-        keyword ->(scope, tokens) { FeedSearch::TextIndex.matching(scope, tokens) }
-        order :last_message_at, :desc
-        arrived_at :last_message_at
-        surface :feed, explicit_action: :enter
-      end
+      keyword ->(scope, tokens) { FeedSearch::TextIndex.matching(scope, tokens) }
+      order :last_message_at, :desc
+      arrived_at :last_message_at
+      surface :feed, explicit_action: :enter
     end
   end
 
@@ -91,6 +81,8 @@ module Item::Searchable
   OTHER_CATEGORY = Classification::SchemaBuilder::OTHER_CATEGORY
 
   # Retired products and categories stay, so their past items stay findable.
+  # `none` and `other` are answers `from:` gives, and the option set is part of
+  # every stored product and category label's fingerprint.
   def self.product_options
     options = Product.ordered.to_h do |product|
       [ product.slug, [ product.name, product.description.presence, product.hint_words.presence&.join(", ") ].compact.join(": ") ]

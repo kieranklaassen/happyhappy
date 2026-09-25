@@ -10,9 +10,8 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
     index_items_for_search!
   end
 
-  def angry_cora_fake(**options)
-    truffler_fake(intents: { "anger" => "filter", "product" => "filter" }, options: { "product" => "cora" },
-      tokens: { "angry" => "label_term", "cora" => "label_term" }, **options)
+  def angry_cora_fake
+    Truffler.config.client.answer("intent__anger", "filter").answer("intent__product", "filter").answer("option__product", "cora")
   end
 
   def partial_reload(params, only:)
@@ -33,12 +32,12 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a query on the feed returns ranked items and the search chips, with no Smart run yet" do
-    get items_path, params: { q: "cora last 3 hours", status: [ "new" ] }
+    get items_path, params: { q: "cora last 1 day", status: [ "new" ] }
 
     assert_inertia_component "items/index"
     assert_equal [ items(:angry_slack).id ], inertia.props[:items].pluck(:id)
     search = inertia.props[:search]
-    assert_equal "cora last 3 hours", search[:query]
+    assert_equal "cora last 1 day", search[:query]
     assert_equal [ "time" ], search[:chips].pluck(:key)
     assert_equal "pending", search[:encoding_status].to_s
     assert_equal "enter", search[:explicit_action].to_s
@@ -47,15 +46,15 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a removed chip is dropped" do
-    get items_path, params: { q: "cora last 3 hours", removed: [ "time" ] }
+    get items_path, params: { q: "cora last 1 day", removed: [ "time" ] }
 
     assert_equal [ "time" ], inertia.props[:search][:removed]
     assert_empty inertia.props[:search][:chips]
-    assert_includes inertia.props[:items].pluck(:id), items(:claimed_intercom).id
+    assert_includes inertia.props[:items].pluck(:id), items(:handled_email).id
   end
 
   test "Enter starts a Smart run and redirects to the feed with its run id; the run streams in buckets" do
-    angry_cora_fake(labels: { "relevance" => 0.9 })
+    angry_cora_fake.answer(:relevance, 0.9)
     encode_query!("angry cora", user: @user)
 
     perform_enqueued_jobs { post item_search_path, params: { q: "angry cora", status: [ "new" ] } }
@@ -73,7 +72,7 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a bucket never shows an item the feed filters drop" do
-    angry_cora_fake(labels: { "relevance" => 0.9 })
+    angry_cora_fake.answer(:relevance, 0.9)
     encode_query!("angry cora", user: @user)
     perform_enqueued_jobs { post item_search_path, params: { q: "angry cora" } }
     run_id = Rack::Utils.parse_nested_query(URI(response.location).query).fetch("run_id")
