@@ -23,6 +23,10 @@ module Mcp
       annotations(read_only_hint: true, open_world_hint: false)
 
       class << self
+        def untrusted_content?
+          false
+        end
+
         def call(server_context:, product: nil, status: "active", granularity: nil, limit: DEFAULT_LIMIT)
           return failure("Invalid filter status: must be one of #{STATUSES.join(', ')}") unless STATUSES.include?(status)
 

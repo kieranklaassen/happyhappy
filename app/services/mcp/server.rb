@@ -7,9 +7,6 @@ module Mcp
   #   status, headers, body = transport.handle_request(request)
   module Server
     NAME = "happyhappy"
-    TOOLS = [
-      Tools::ListItems, Tools::GetItem, Tools::ClaimItem, Tools::ReleaseItem, Tools::ReportItem, Tools::ListAnomalies
-    ].freeze
     LOCAL_HOSTS = %w[localhost 127.0.0.1 ::1].freeze
     INSTRUCTIONS = <<~TEXT.squish
       happyhappy is Every's customer sentiment feed. List items, claim one before working it, handle it with
@@ -23,7 +20,7 @@ module Mcp
       MCP::Server.new(
         name: NAME,
         instructions: INSTRUCTIONS,
-        tools: TOOLS,
+        tools: ToolRegistry::TOOLS,
         server_context: { agent: agent },
         configuration: MCP::Configuration.new(
           exception_reporter: ->(error, context) { Rails.error.report(error, context: { mcp: context.to_s }) }

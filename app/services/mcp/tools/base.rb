@@ -7,6 +7,11 @@ module Mcp
       ITEM_ID = { type: "integer", description: "The item id, as returned by list_items." }.freeze
 
       class << self
+        # Whether results carry customer-written content (WebMCP's untrustedContentHint).
+        def untrusted_content?
+          true
+        end
+
         private
 
         def agent(server_context)

@@ -73,6 +73,10 @@ Rails.application.routes.draw do
   # MCP server for agents (U12): Streamable HTTP, stateless, bearer-token authenticated.
   match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
 
+  # WebMCP for signed-in people (U21): the same tools, session and CSRF authenticated.
+  get "webmcp/tools", to: "webmcp_tools#index", as: :webmcp_tools
+  post "webmcp/tools/:name", to: "webmcp_tools#create", as: :webmcp_tool, format: false
+
   # Custom inbound webhook sources (U16)
   post "webhooks/custom/:token" => "webhooks/custom#create", as: :webhooks_custom, format: false
   patch "sources/:id/rotate_secret" => "sources#rotate_secret", as: :rotate_secret_source
