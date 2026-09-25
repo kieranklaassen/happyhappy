@@ -35,7 +35,7 @@ module Agents
       reported = Item.transaction do
         updated = Item.where(id: @item.id, claimed_by_agent_id: @agent.id, status: from).update_all(changes(from))
         if updated == 1
-          @item.record_event!(:reported, actor: @agent, summary: @summary, link: @link, status: @status, from: from)
+          @item.record_event!(:reported, actor: @agent.event_actor, summary: @summary, link: @link, status: @status, from: from)
         end
         updated == 1
       end

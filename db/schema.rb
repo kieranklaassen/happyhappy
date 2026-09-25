@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_034449) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -18,8 +18,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_030000) do
     t.datetime "revoked_at"
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id"
     t.index ["name"], name: "index_agents_on_name", unique: true
     t.index ["token_digest"], name: "index_agents_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_agents_on_user_id", unique: true
   end
 
   create_table "anomalies", force: :cascade do |t|
@@ -311,6 +313,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_030000) do
     t.string "url", null: false
   end
 
+  add_foreign_key "agents", "users"
   add_foreign_key "anomalies", "products"
   add_foreign_key "anomalies", "sources"
   add_foreign_key "digests", "products"

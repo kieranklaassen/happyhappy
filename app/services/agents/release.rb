@@ -31,7 +31,7 @@ module Agents
           status_changed_at: now, overdue: false, updated_at: now
         )
         if updated == 1
-          @item.record_event!(agent? ? :released : :reassigned, actor: @actor,
+          @item.record_event!(agent? ? :released : :reassigned, actor: agent? ? @actor.event_actor : @actor,
             from: from, to: "new", agent_id: holder_id)
         end
         updated == 1
