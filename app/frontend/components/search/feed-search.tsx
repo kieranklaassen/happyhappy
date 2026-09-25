@@ -131,7 +131,7 @@ export default function FeedSearch({ search, filterQuery }: Props) {
           className="self-start rounded border border-dashed border-gray-300 px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
         >
           {invite.reason === 'empty' ? 'No keyword matches. ' : 'Only a few matches. '}
-          Press Enter to have Jev read the feed for “{invite.query}”.
+          Press Enter to have Jev read the feed for “{search?.query}”.
         </button>
       )}
     </section>

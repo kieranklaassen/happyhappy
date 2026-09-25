@@ -33,7 +33,7 @@ module FeedSearch
 
       connection = Item.connection
       Item.transaction do
-        connection.exec_delete("DELETE FROM #{TABLE} WHERE rowid IN (#{ids.map { |id| Integer(id) }.join(', ')})")
+        connection.exec_delete(Item.sanitize_sql_array([ "DELETE FROM #{TABLE} WHERE rowid IN (?)", ids.map { |id| Integer(id) } ]))
         documents(ids).each do |document|
           connection.exec_insert(Item.sanitize_sql_array([ "INSERT INTO #{TABLE} (rowid, author, body) VALUES (?, ?, ?)", *document ]))
         end

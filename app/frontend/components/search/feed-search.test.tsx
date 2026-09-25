@@ -99,9 +99,9 @@ describe('FeedSearch', () => {
   })
 
   it('invites a Smart search when keyword results are thin', () => {
-    render(<FeedSearch search={search({ invite_row: { query: 'praise for Thesis', reason: 'weak' } })} filterQuery={{}} />)
+    render(<FeedSearch search={search({ invite_row: { query: 'angry Cora billing', reason: 'weak' } })} filterQuery={{}} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Jev read the feed for “praise for Thesis”/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Jev read the feed for “angry Cora billing this week”/ }))
 
     expect(post).toHaveBeenCalledWith('/items/search', expect.objectContaining({ q: 'angry Cora billing this week' }), expect.anything())
   })
