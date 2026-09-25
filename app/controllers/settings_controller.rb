@@ -4,6 +4,7 @@ class SettingsController < InertiaController
   FIELDS = %i[
     low_confidence_threshold escalation_threshold report_back_window_minutes
     anomaly_sensitivity anomaly_min_count anomaly_min_baseline_windows anomaly_active_days
+    team_email_domains team_discord_role_ids team_discord_user_ids
   ].freeze
 
   def show

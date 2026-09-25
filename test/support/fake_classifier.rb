@@ -7,18 +7,19 @@
 #
 #   fake.fail_with(RubyLLM::ServerError.new("boom")) # every call raises
 class FakeClassifier
-  SENTIMENTS = %w[complaint praise question neutral].freeze
+  SENTIMENTS = %w[complaint praise question neutral relieved].freeze
 
   attr_reader :calls
 
   def self.answers(relevant: 0.95, product: "cora", product_probability: 0.9, category: "bug",
-    category_probability: 0.85, sentiment: "complaint", sentiment_probability: 0.8, anger: 0.2)
+    category_probability: 0.85, sentiment: "complaint", sentiment_probability: 0.8, anger: 0.2, team_author: nil)
     {
       "relevant" => noul(relevant),
       "product" => choice(product, product_probability, fallback: "none"),
       "category" => choice(category, category_probability, fallback: "other"),
       "sentiment" => choice(sentiment, sentiment_probability, others: SENTIMENTS),
-      "anger" => noul(anger)
+      "anger" => noul(anger),
+      **(team_author ? { "team_author" => noul(team_author) } : {})
     }
   end
 

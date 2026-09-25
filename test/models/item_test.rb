@@ -7,8 +7,8 @@ class ItemTest < ActiveSupport::TestCase
     assert items(:claimed_intercom).status_claimed?
   end
 
-  test "sentiments are complaint, praise, question, and neutral" do
-    assert_equal %w[complaint praise question neutral], Item.sentiments.keys
+  test "sentiments are complaint, praise, question, neutral, and relieved" do
+    assert_equal %w[complaint praise question neutral relieved], Item.sentiments.keys
   end
 
   test "thread key is unique per source kind" do

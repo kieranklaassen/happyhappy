@@ -88,17 +88,11 @@ class Anomalies::SeriesTest < ActiveSupport::TestCase
     Mood.define_singleton_method(:for, original)
   end
 
-  test "counts only customer messages once messages record an author role" do
-    added = !Message.column_names.include?("author_role")
-    Message.connection.add_column(:messages, :author_role, :string) if added
-    Message.reset_column_information
+  test "counts customer messages and authors nobody has placed yet, never the team" do
     customer_message!(at: @last + 1.minute, author_role: "customer")
     customer_message!(at: @last + 2.minutes, author_role: "team")
-    customer_message!(at: @last + 3.minutes)
+    customer_message!(at: @last + 3.minutes, author_role: "unknown")
 
     assert_equal 2, line("volume").points.last.value
-  ensure
-    Message.connection.remove_column(:messages, :author_role) if added
-    Message.reset_column_information
   end
 end

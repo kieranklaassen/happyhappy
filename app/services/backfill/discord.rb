@@ -4,6 +4,8 @@ module Backfill
   # threads (a forum channel has only threads). Messages go through
   # Connectors::Discord.ingest as backfill, oldest first so replies find the item
   # they answer, and dedupe on the message id, so a rerun creates nothing new.
+  # Each author's server roles are added to the payload (DiscordMembers) so the
+  # message's author role is known.
   #
   #   Backfill::Discord.call(since: 90.days.ago) # => [Backfill::Stats, ...]
   class Discord
@@ -22,6 +24,7 @@ module Backfill
       @sources = sources
       @http = HttpClient.new(base_url: API_URL, headers: { "Authorization" => "Bot #{token.strip}" },
         throttle: method(:throttle), **{ sleeper: sleeper }.compact)
+      @members = DiscordMembers.new(http: @http)
       @active_threads = {}
     end
 
@@ -50,8 +53,8 @@ module Backfill
     def import(channel_id, guild_id, stats, parent_channel_id: nil)
       history(channel_id).reverse_each do |payload|
         stats.fetched += 1
-        stats.record(Connectors::Discord.ingest(payload.merge("guild_id" => guild_id),
-          parent_channel_id: parent_channel_id, backfill: true))
+        payload = @members.with_member(payload.merge("guild_id" => guild_id), guild_id)
+        stats.record(Connectors::Discord.ingest(payload, parent_channel_id: parent_channel_id, backfill: true))
       end
     end
 

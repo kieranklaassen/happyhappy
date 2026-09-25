@@ -80,7 +80,8 @@ class MoodScene
       mood: Mood.overall(moods),
       people: moods.size,
       counts: tally,
-      smiling: tally["beaming"] + tally["content"],
+      smiling: tally["beaming"] + tally["content"] + tally["relieved"],
+      relieved: tally["relieved"],
       grumpy: tally["grumpy"] + tally["furious"],
       updated_at: @now.iso8601
     }
@@ -126,7 +127,7 @@ class MoodScene
   def latest_bodies
     @latest_bodies ||= begin
       ids = people.map { |person| person.item.id }
-      ranked = Message.where(item_id: ids)
+      ranked = Message.from_customers.where(item_id: ids)
         .select(:item_id, :body, "ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY occurred_at DESC, id DESC) AS position")
       Message.from(ranked, :messages).where(position: 1).pluck(:item_id, :body).to_h
     end

@@ -5,7 +5,9 @@ class Item < ApplicationRecord
   enum :status, {
     new: "new", claimed: "claimed", in_progress: "in_progress", handled: "handled", dismissed: "dismissed"
   }, prefix: true, validate: true
-  enum :sentiment, { complaint: "complaint", praise: "praise", question: "question", neutral: "neutral" },
+  enum :sentiment, {
+    complaint: "complaint", praise: "praise", question: "question", neutral: "neutral", relieved: "relieved"
+  },
     validate: { allow_nil: true }
 
   belongs_to :source
@@ -35,6 +37,11 @@ class Item < ApplicationRecord
   # Messages received since the last status change; item anger is the highest among them.
   def open_messages
     messages.where(created_at: status_changed_at..)
+  end
+
+  def mood
+    Mood.for(sentiment: sentiment, anger: anger_probability, sentiment_probability: sentiment_probability,
+      furious_at: product&.effective_escalation_threshold || Setting.current.escalation_threshold)
   end
 
   def record_event!(kind, actor: nil, **data)

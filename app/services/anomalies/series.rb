@@ -22,7 +22,6 @@ module Anomalies
     Point = Data.define(:window_start, :window_end, :value, :count, :item_ids)
 
     COUNT_METRICS = %w[volume category_volume].freeze
-    CUSTOMER_ROLE = "customer".freeze
 
     Bucket = Struct.new(:messages, :items, :complaints, :sentiments, :complaint_items, :angers, :angry_items,
       :categories, :customers) do
@@ -57,13 +56,9 @@ module Anomalies
     ].freeze
 
     def messages
-      scope = Message.joins(item: :product).merge(Item.relevant)
+      Message.from_customers.joins(item: :product).merge(Item.relevant)
         .where(occurred_at: @windows.first.first...@windows.last.last)
-      # The customer-only filter applies once messages record who wrote them.
-      if Message.column_names.include?("author_role")
-        scope = scope.where(author_role: [ CUSTOMER_ROLE, nil ])
-      end
-      scope.order(:occurred_at, :id).pluck(*COLUMNS)
+        .order(:occurred_at, :id).pluck(*COLUMNS)
     end
 
     def bucket_messages

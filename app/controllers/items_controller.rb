@@ -89,7 +89,11 @@ class ItemsController < InertiaController
   end
 
   def message_props(message)
-    message.slice(:id, :body, :occurred_at, :anger_probability).merge(classified: message.classified?)
+    message.slice(:id, :body, :occurred_at, :anger_probability, :author_role).merge(
+      author: message.author_label,
+      sentiment: message.classification_answers&.dig("sentiment", "choice"),
+      classified: message.classified?
+    )
   end
 
   def event_props(event)

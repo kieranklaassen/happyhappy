@@ -105,13 +105,30 @@ class Escalations::CheckTest < ActiveSupport::TestCase
     assert_empty item.escalations
   end
 
-  test "an event without a message uses the angriest open message" do
+  test "an event without a message judges the customer's latest open message, not the angriest" do
+    item, = classified_item(anger: 0.9)
+    add_message(item, anger: 0.1, body: "Thanks, that fixed it!")
+
+    assert_no_enqueued_jobs(only: PostEscalationJob) { item.publish_classified }
+    assert_empty item.escalations
+  end
+
+  test "an event without a message skips team replies when picking the trigger" do
     item, message = classified_item(anger: 0.9)
-    add_message(item, anger: 0.1, body: "ok")
+    add_message(item, anger: 0.95, body: "We are on it, sorry!", author_role: "team")
 
     item.publish_classified
 
     assert_equal message, item.escalations.sole.message
+  end
+
+  test "a team message never escalates" do
+    item, = classified_item(anger: 0.9)
+    reply = add_message(item, anger: 0.95, body: "Kieran from Every here: this is unacceptable on our side.",
+      author_role: "team")
+
+    assert_no_enqueued_jobs(only: PostEscalationJob) { item.publish_classified(reply) }
+    assert_empty item.escalations
   end
 
   test "the post is enqueued only after the surrounding transaction commits" do
@@ -141,8 +158,8 @@ class Escalations::CheckTest < ActiveSupport::TestCase
     [ item, add_message(item, anger: anger, occurred_at: occurred_at, body: "Cora ate my drafts again. Unacceptable.") ]
   end
 
-  def add_message(item, anger:, body:, occurred_at: Time.current)
+  def add_message(item, anger:, body:, occurred_at: Time.current, author_role: "customer")
     item.messages.create!(source: item.source, external_id: SecureRandom.hex(8), body: body,
-      occurred_at: occurred_at, anger_probability: anger, classified_at: Time.current)
+      occurred_at: occurred_at, anger_probability: anger, classified_at: Time.current, author_role: author_role)
   end
 end

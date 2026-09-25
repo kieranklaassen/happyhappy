@@ -72,6 +72,15 @@ export default function Sky({ mood, className }: { mood: SettledMood | null; cla
         </g>
       )
       break
+    case 'relieved':
+      art = (
+        <g>
+          <Sun x={60} y={56} r={26} rays={false} />
+          <path d={cloudPath(28, 88, 44)} fill="#EEF2F6" filter="url(#hh-wash-1)" />
+          <Face mood="relieved" eyeY={52} mouthY={64} gap={10} />
+        </g>
+      )
+      break
     case 'meh':
       art = (
         <g>

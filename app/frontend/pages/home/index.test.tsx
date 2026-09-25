@@ -24,7 +24,7 @@ vi.mock('@rails/actioncable', () => ({
   }),
 }))
 
-const counts = { beaming: 1, content: 0, meh: 0, grumpy: 0, furious: 1, pending: 0 }
+const counts = { beaming: 1, content: 0, relieved: 0, meh: 0, grumpy: 0, furious: 1, pending: 0 }
 
 const props: MoodDashboardProps = {
   scene: [
@@ -53,7 +53,7 @@ const props: MoodDashboardProps = {
       ],
     },
   ],
-  today: { range: '24h', mood: 'meh', people: 2, counts, smiling: 1, grumpy: 1, updated_at: new Date().toISOString() },
+  today: { range: '24h', mood: 'meh', people: 2, counts, smiling: 1, relieved: 0, grumpy: 1, updated_at: new Date().toISOString() },
   filters: { range: '24h', product: null },
   options: { ranges: ['24h', '7d'], products: [{ slug: 'cora', name: 'Cora' }] },
 }
@@ -65,6 +65,14 @@ describe('Home mood dashboard', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'How is everyone feeling?' })).toBeInTheDocument()
     expect(screen.getByText(/1 smiling, 0 meh, and 1 grumpy across 2 people in the last 24 hours/)).toBeInTheDocument()
     expect(screen.getByText('A bit of a shrug today.')).toBeInTheDocument()
+  })
+
+  it('counts relieved customers among the smiling and in the legend', () => {
+    const today = { ...props.today, counts: { ...props.today.counts, relieved: 2 }, smiling: 3, relieved: 2 }
+    render(<Home {...props} today={today} />)
+
+    expect(screen.getByText(/3 smiling \(2 relieved\), 0 meh, and 1 grumpy/)).toBeInTheDocument()
+    expect(screen.getByText('2 relieved')).toBeInTheDocument()
   })
 
   it('draws a meadow per product and offers filters', () => {
@@ -94,6 +102,7 @@ describe('Home mood dashboard', () => {
 describe('headline', () => {
   it('has a line for every overall mood', () => {
     expect(headline('furious')).toBe('Stormy. Grab an umbrella.')
+    expect(headline('relieved')).toBe('The clouds are clearing.')
     expect(headline(null)).toBe('Quiet so far.')
   })
 

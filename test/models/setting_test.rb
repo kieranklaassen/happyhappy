@@ -20,6 +20,19 @@ class SettingTest < ActiveSupport::TestCase
     assert_equal 1, Setting.count
   end
 
+  test "team lists default to the every.to domain and accept comma- or space-separated strings" do
+    Setting.delete_all
+    setting = Setting.current
+    assert_equal [ "every.to" ], setting.team_email_domains
+
+    setting.update!(team_email_domains: " Every.to, @cora.computer every.to", team_discord_role_ids: "797, 789 ",
+      team_discord_user_ids: [ " 42 ", "" ])
+
+    assert_equal %w[every.to cora.computer], setting.reload.team_email_domains
+    assert_equal %w[797 789], setting.team_discord_role_ids
+    assert_equal %w[42], setting.team_discord_user_ids
+  end
+
   test "rejects probabilities outside 0 to 1" do
     setting = Setting.current
     setting.low_confidence_threshold = 1.5

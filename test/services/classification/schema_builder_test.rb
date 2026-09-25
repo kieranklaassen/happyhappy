@@ -23,6 +23,19 @@ class Classification::SchemaBuilderTest < ActiveSupport::TestCase
     assert_equal %w[Cora Sparkle Spiral], @questions.dig("relevant", "instructions", "products").pluck("name")
   end
 
+  test "offers relieved for a customer who was upset earlier and is satisfied now" do
+    assert_equal %w[complaint praise question neutral relieved], @questions.dig("sentiment", "criteria").keys
+  end
+
+  test "asks whether Every's team wrote the message only when asked to" do
+    refute @questions.key?("team_author")
+
+    question = Classification::SchemaBuilder.call(ask_author_role: true).questions["team_author"]
+    assert_equal "noul", question["type"]
+    assert_includes question["instructions"], "staff or support team rather than a customer"
+    assert_includes question.dig("criteria", "true"), "Kieran from Every"
+  end
+
   test "a retired product is not offered" do
     refute_includes @questions.dig("product", "criteria").keys, "lex"
     refute_includes @questions.dig("relevant", "instructions", "products").pluck("name"), "Lex"

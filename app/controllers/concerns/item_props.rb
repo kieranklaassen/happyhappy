@@ -8,7 +8,7 @@ module ItemProps
 
   def item_rows(items)
     items = items.includes(:product, :category, :source, :claimed_by_agent).to_a
-    ranked = Message.where(item_id: items.map(&:id))
+    ranked = Message.from_customers.where(item_id: items.map(&:id))
       .select(:item_id, :body, "ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY occurred_at DESC, id DESC) AS position")
     latest_bodies = Message.from(ranked, :messages).where(position: 1).pluck(:item_id, :body).to_h
 

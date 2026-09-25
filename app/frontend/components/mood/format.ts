@@ -3,6 +3,7 @@ import type { Mood } from './moods'
 export const MOOD_COLORS: Record<Mood, string> = {
   beaming: '#F5C862',
   content: '#9FD6AE',
+  relieved: '#A8D8E8',
   meh: '#CFC8DA',
   grumpy: '#F2A98A',
   furious: '#E86A6A',

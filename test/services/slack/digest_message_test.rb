@@ -28,7 +28,7 @@ class Slack::DigestMessageTest < ActiveSupport::TestCase
 
     assert_equal "Cora digest for #{@day.to_fs(:long)}", payload[:text]
     assert_includes rendered, "7 items with new messages"
-    assert_includes rendered, "Complaint: 4  |  Praise: 2  |  Question: 1  |  Neutral: 0"
+    assert_includes rendered, "Complaint: 4  |  Praise: 2  |  Question: 1  |  Neutral: 0  |  Relieved: 0"
     assert_includes rendered, "bug (3), praise (2)"
     assert_includes rendered, "worst_day"
     assert_includes rendered, "&gt; Cora lost every email"
@@ -42,6 +42,22 @@ class Slack::DigestMessageTest < ActiveSupport::TestCase
     assert_includes rendered, "Agents handled 2 items"
     assert_includes rendered, "Cursor 1"
     assert_includes rendered, "Baby Agent 1"
+  end
+
+  test "only customer messages count toward the day and the quoted standout" do
+    loud = add_item(sentiment: "complaint", anger: 0.9, handle: "loud_customer", body: "Brief never arrived")
+    loud.messages.create!(source: loud.source, external_id: SecureRandom.hex(8), body: "Team here, we are on it",
+      occurred_at: @noon + 1.hour, author_role: "team")
+    old = add_item(sentiment: "complaint", anger: 0.8, occurred_at: @noon - 3.days, handle: "old_thread")
+    old.messages.create!(source: old.source, external_id: SecureRandom.hex(8), body: "Following up from Every",
+      occurred_at: @noon, author_role: "team")
+
+    rendered = Slack::DigestMessage.new(products(:cora), @day).to_h[:blocks].to_json
+
+    assert_includes rendered, "1 item with new messages"
+    assert_includes rendered, "Brief never arrived"
+    assert_not_includes rendered, "Team here"
+    assert_not_includes rendered, "old_thread"
   end
 
   test "covers AE8: a product with no items that day gets a quiet-day digest" do

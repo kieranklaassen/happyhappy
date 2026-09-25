@@ -49,9 +49,9 @@ module Slack
       ]
     end
 
-    # Relevant items of this product with at least one message received in the window.
+    # Relevant items of this product with at least one customer message received in the window.
     def items
-      @items ||= @product.items.relevant.where(id: Message.where(occurred_at: @window).select(:item_id))
+      @items ||= @product.items.relevant.where(id: Message.from_customers.where(occurred_at: @window).select(:item_id))
     end
 
     def sentiment_text
@@ -77,7 +77,7 @@ module Slack
 
     def standouts_text(scope, probability, label)
       lines = scope.map do |item|
-        body = item.messages.where(occurred_at: @window).last&.body
+        body = item.messages.from_customers.where(occurred_at: @window).last&.body
         "#{link(item_url(item), customer_handle(item))} (#{label} #{percent(item.public_send(probability))})\n#{quote(body)}"
       end
       lines.presence&.join("\n") || "None"

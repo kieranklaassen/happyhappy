@@ -33,6 +33,7 @@ class Backfill::DiscordTest < ActiveSupport::TestCase
       query: { "limit" => "100" })
     stub_discord("/channels/1201/messages", [ discord_message(5100, at: 12.days.ago, channel: "1201") ],
       query: { "limit" => "100" })
+    stub_discord("/guilds/#{GUILD}/members/900000000000000042", { "roles" => [ "555" ] })
   end
 
   test "imports channel and thread history since the cutoff as backfill, skipping bots and older messages" do
@@ -51,6 +52,25 @@ class Backfill::DiscordTest < ActiveSupport::TestCase
     assert_equal "https://discord.com/channels/#{GUILD}/#{CHANNEL}/3000", messages.find_by!(external_id: "3000").item.permalink
     assert_enqueued_jobs 103, only: ClassifyMessageJob
     assert_not_requested :get, "#{API}/channels/1202/messages", query: hash_including({})
+  end
+
+  test "looks up each author's server roles once and marks team authors" do
+    Setting.current.update!(team_discord_role_ids: [ "555" ])
+
+    backfill
+
+    assert_equal [ "team" ], @source.messages.where(backfilled: true).distinct.pluck(:author_role)
+    assert_requested :get, "#{API}/guilds/#{GUILD}/members/900000000000000042", times: 1
+  end
+
+  test "an author without a team role is a customer, and one who left the server is unknown" do
+    assert_equal 103, backfill.sole.created
+    assert_equal [ "customer" ], @source.messages.where(backfilled: true).distinct.pluck(:author_role)
+
+    Item.where(id: @source.messages.where(backfilled: true).select(:item_id)).destroy_all
+    stub_request(:get, "#{API}/guilds/#{GUILD}/members/900000000000000042").to_return(status: 404, body: "{}")
+    backfill
+    assert_equal [ "unknown" ], @source.messages.where(backfilled: true).distinct.pluck(:author_role)
   end
 
   test "a rerun creates nothing new" do

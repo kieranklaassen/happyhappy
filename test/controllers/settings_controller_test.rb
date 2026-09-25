@@ -12,7 +12,8 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_inertia_component "settings/edit"
     assert_inertia_props({ setting: {
       low_confidence_threshold: 0.6, escalation_threshold: 0.8, report_back_window_minutes: 240,
-      anomaly_sensitivity: 3.0, anomaly_min_count: 5, anomaly_min_baseline_windows: 6, anomaly_active_days: 7
+      anomaly_sensitivity: 3.0, anomaly_min_count: 5, anomaly_min_baseline_windows: 6, anomaly_active_days: 7,
+      team_email_domains: [ "every.to" ], team_discord_role_ids: [], team_discord_user_ids: []
     } })
   end
 
@@ -26,6 +27,19 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0.55, setting.low_confidence_threshold
     assert_equal 0.9, setting.escalation_threshold
     assert_equal 120, setting.report_back_window_minutes
+  end
+
+  test "update saves the team lists from comma-separated text" do
+    patch settings_path, params: { setting: {
+      team_email_domains: "every.to, cora.computer", team_discord_role_ids: "797476545076920320",
+      team_discord_user_ids: ""
+    } }
+
+    assert_redirected_to settings_path
+    setting = Setting.current
+    assert_equal %w[every.to cora.computer], setting.team_email_domains
+    assert_equal %w[797476545076920320], setting.team_discord_role_ids
+    assert_empty setting.team_discord_user_ids
   end
 
   test "a threshold of 1.5 is rejected" do

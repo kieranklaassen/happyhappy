@@ -8,6 +8,10 @@
   animation: hh-bounce calc(var(--hh-tempo, 3.2s) * 0.32) ease-in-out var(--hh-phase, 0s) infinite;
 }
 
+.hh-idle--relieved {
+  animation: hh-exhale-body calc(var(--hh-tempo, 3.2s) * 1.3) ease-in-out var(--hh-phase, 0s) infinite;
+}
+
 .hh-idle--meh {
   animation: hh-sway calc(var(--hh-tempo, 3.2s) * 1.6) ease-in-out var(--hh-phase, 0s) infinite;
 }
@@ -162,6 +166,32 @@
   to { transform: rotate(360deg); }
 }
 
+.hh-drip {
+  animation: hh-drip 3.6s ease-in infinite;
+}
+
+.hh-exhale {
+  animation: hh-exhale 3.6s ease-out infinite;
+}
+
+@keyframes hh-exhale-body {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  45% { transform: translateY(-1px) scaleY(1.02); }
+  70% { transform: translateY(1px) scaleY(0.98); }
+}
+
+@keyframes hh-drip {
+  0%, 35% { transform: translateY(0); opacity: 0.9; }
+  75% { transform: translateY(6px); opacity: 0.6; }
+  100% { transform: translateY(9px); opacity: 0; }
+}
+
+@keyframes hh-exhale {
+  0%, 40% { opacity: 0; transform: translateX(0); }
+  60% { opacity: 0.55; }
+  100% { opacity: 0; transform: translateX(6px); }
+}
+
 @keyframes hh-sigh {
   0% { transform: translate(0, 0); opacity: 0; }
   30% { opacity: 0.6; }
@@ -217,6 +247,8 @@
   .hh-storm,
   .hh-rain,
   .hh-steam,
+  .hh-drip,
+  .hh-exhale,
   .hh-dot {
     animation: none !important;
   }

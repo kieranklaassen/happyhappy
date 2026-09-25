@@ -1,6 +1,6 @@
-export type Mood = 'beaming' | 'content' | 'meh' | 'grumpy' | 'furious' | 'pending'
+export type Mood = 'beaming' | 'content' | 'relieved' | 'meh' | 'grumpy' | 'furious' | 'pending'
 
-export const MOODS: readonly Mood[] = ['beaming', 'content', 'meh', 'grumpy', 'furious', 'pending']
+export const MOODS: readonly Mood[] = ['beaming', 'content', 'relieved', 'meh', 'grumpy', 'furious', 'pending']
 
 export function moodLabel(mood: Mood): string {
   switch (mood) {
@@ -8,6 +8,8 @@ export function moodLabel(mood: Mood): string {
       return 'Beaming'
     case 'content':
       return 'Content'
+    case 'relieved':
+      return 'Relieved'
     case 'meh':
       return 'Meh'
     case 'grumpy':
@@ -29,6 +31,8 @@ export function moodBlurb(mood: Mood): string {
       return 'over the moon'
     case 'content':
       return 'quietly pleased'
+    case 'relieved':
+      return 'breathing easy again'
     case 'meh':
       return 'shrugging'
     case 'grumpy':

@@ -34,10 +34,10 @@ class ProductOverviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 30, days.size
     assert_equal "2026-08-26", days.first[:date]
     assert_equal "2026-09-24", days.last[:date]
-    assert_equal({ date: "2026-09-24", complaint: 1, praise: 0, question: 0, neutral: 0, total: 1 }, days.last.symbolize_keys)
-    assert_equal({ date: "2026-09-23", complaint: 1, praise: 1, question: 0, neutral: 0, total: 3 }, days[-2].symbolize_keys)
-    assert_equal({ date: "2026-08-26", complaint: 0, praise: 0, question: 1, neutral: 0, total: 1 }, days.first.symbolize_keys)
-    assert_equal({ complaint: 2, praise: 1, question: 1, neutral: 0, total: 5 }, inertia.props[:totals].symbolize_keys)
+    assert_equal({ date: "2026-09-24", complaint: 1, praise: 0, question: 0, neutral: 0, relieved: 0, total: 1 }, days.last.symbolize_keys)
+    assert_equal({ date: "2026-09-23", complaint: 1, praise: 1, question: 0, neutral: 0, relieved: 0, total: 3 }, days[-2].symbolize_keys)
+    assert_equal({ date: "2026-08-26", complaint: 0, praise: 0, question: 1, neutral: 0, relieved: 0, total: 1 }, days.first.symbolize_keys)
+    assert_equal({ complaint: 2, praise: 1, question: 1, neutral: 0, relieved: 0, total: 5 }, inertia.props[:totals].symbolize_keys)
   end
 
   test "lists notable complaints by anger and praise by praise probability" do

@@ -194,7 +194,7 @@ export default function Meadow({ group, history, productHref, aside }: { group: 
   const { listRef, bottoms } = useRowBottoms(characters.length)
   const { ref: meadowRef, onScreen } = useOnScreen<HTMLElement>()
   const headingId = `meadow-${group.product?.slug ?? 'none'}`
-  const smiling = group.counts.beaming + group.counts.content
+  const smiling = group.counts.beaming + group.counts.content + group.counts.relieved
   const grumpy = group.counts.grumpy + group.counts.furious
 
   return (
@@ -211,7 +211,7 @@ export default function Meadow({ group, history, productHref, aside }: { group: 
         </h2>
         <p className="text-sm text-[#3E3542]/70">
           {group.mood ? `${moodLabel(group.mood)} overall · ` : ''}
-          {smiling} smiling · {group.counts.meh} meh · {grumpy} grumpy
+          {smiling} smiling{group.counts.relieved > 0 ? ` (${group.counts.relieved} relieved)` : ''} · {group.counts.meh} meh · {grumpy} grumpy
           {group.counts.pending > 0 ? ` · ${group.counts.pending} still reading` : ''}
         </p>
         {group.product && (
