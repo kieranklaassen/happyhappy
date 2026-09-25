@@ -32,12 +32,12 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a query on the feed returns ranked items and the search chips, with no Smart run yet" do
-    get items_path, params: { q: "cora last 1 day", status: [ "new" ] }
+    get items_path, params: { q: "cora last 3 hours", status: [ "new" ] }
 
     assert_inertia_component "items/index"
     assert_equal [ items(:angry_slack).id ], inertia.props[:items].pluck(:id)
     search = inertia.props[:search]
-    assert_equal "cora last 1 day", search[:query]
+    assert_equal "cora last 3 hours", search[:query]
     assert_equal [ "time" ], search[:chips].pluck(:key)
     assert_equal "pending", search[:encoding_status].to_s
     assert_equal "enter", search[:explicit_action].to_s
@@ -46,7 +46,7 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a removed chip is dropped" do
-    get items_path, params: { q: "cora last 1 day", removed: [ "time" ] }
+    get items_path, params: { q: "cora last 3 hours", removed: [ "time" ] }
 
     assert_equal [ "time" ], inertia.props[:search][:removed]
     assert_empty inertia.props[:search][:chips]

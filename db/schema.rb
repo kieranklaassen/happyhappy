@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_181500) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_194337) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -292,6 +292,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_181500) do
     t.index ["default_product_id"], name: "index_sources_on_default_product_id"
     t.index ["kind", "selector"], name: "index_sources_on_kind_and_selector", unique: true
     t.index ["public_token"], name: "index_sources_on_public_token", unique: true
+  end
+
+  create_table "truffler_backfill_spends", force: :cascade do |t|
+    t.string "record_type", null: false
+    t.string "vocabulary_version", null: false
+    t.float "spent_usd", default: 0.0, null: false
+    t.integer "requests", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["record_type", "vocabulary_version"], name: "index_truffler_backfill_spends_on_ledger", unique: true
   end
 
   create_table "truffler_embeddings", force: :cascade do |t|

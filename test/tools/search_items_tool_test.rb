@@ -23,7 +23,7 @@ class SearchItemsToolTest < ActiveSupport::TestCase
 
   test "takes list_items filters, a time phrase, and removed chips" do
     payload = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) do
-      call(query: "cora last 1 day", status: [ "new", "claimed" ], removed_chips: [ "time" ])
+      call(query: "cora last 3 hours", status: [ "new", "claimed" ], removed_chips: [ "time" ])
     end.structured_content
 
     assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ].sort, payload["items"].pluck("id").sort
