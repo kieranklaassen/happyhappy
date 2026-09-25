@@ -2,7 +2,7 @@
 
 The search box on the feed and the `search_items` agent tool search items and
 their messages in plain language, through the [truffler](https://github.com/kieranklaassen/truffler)
-gem (0.1.0). Both go through `FeedSearch`, so people and agents get the same
+gem (0.1.1). Both go through `FeedSearch`, so people and agents get the same
 results for the same query and filters.
 
 ## How a search runs
@@ -13,10 +13,13 @@ results for the same query and filters.
    SQLite FTS5 index (`item_search_documents`: author fields and every message
    body, prefix and stemmed). The page reloads itself until the encoding lands.
 2. **Chips.** Once Jev has read the query, labels it names become chips:
-   a filter (only items with that label) or a boost (ranked higher). A time
-   phrase ("this week", "yesterday", "last 3 days") becomes the feed's own time
-   filter and the first chip (`FeedSearch::TimePhrase`). Removing a chip
-   searches again without it. The feed filters above always apply too.
+   a filter (only items with that label) or a boost (ranked higher). Under a
+   label filter, words only rank; they are not required in the text. A time
+   phrase ("today", "yesterday", "this week", "last month", "last 3 days",
+   "past 2 weeks", "since monday") is read by truffler without Jev, limits
+   `last_message_at`, and shows as the last chip. Hours ("last 3 hours") are
+   not a time phrase. Removing a chip searches again without it. The feed
+   filters above always apply too.
 3. **Smart search (Enter).** Jev reads the top 30 candidates and sorts them
    into Strong, Possible, and Unlikely (collapsed). Buckets fill in as each
    chunk of 10 is read: `TrufflerChannel` pings the searcher and the page
@@ -77,7 +80,8 @@ SPEND_CAP=5 bin/rails "truffler:backfill[Item]"          # paid: churn_risk for 
 The backfill asks only `churn_risk` (supplied labels never reach Jev). At
 truffler's default price (`config.cost_per_million_tokens`, 0.042 dollars)
 20,000 items with long threads cost about a dollar. `SPEND_CAP` is in dollars;
-without it the run stops at `config.backfill_spend_cap` (5 dollars). Run it
+without it the run stops at truffler's default `config.backfill_spend_cap` (5
+dollars), which also caps automatic backfills. `SPEND_CAP=none` lifts the cap. Run it
 only when Kieran approves the spend. Until then, items have every supplied
 label and `churn_risk` fills in for new and updated items.
 
@@ -103,20 +107,11 @@ the feed search is full-text only.
 
 Measure with `script/latency/search.sh` (see `script/latency/README.md`).
 
-## Working around truffler 0.1.0
+## Working around truffler 0.1.1
 
-- **Declaring on a missing table.** Truffler checks declared columns when the
-  model loads, and an empty column list passes its rescue, so booting before
-  `items` exists (`db:prepare` on a new database) raised. `Item.declare_truffler`
-  runs only when the table exists; the test helper declares it after loading
-  the schema.
-- **Query word roles.** Jev is asked each word's role without seeing the
-  labels, so it calls nearly every word a keyword, and keywords must match the
-  text on top of the label filters: live queries found nothing.
-  `FeedSearch::EncodingClient` turns a keyword that names an applied label
-  (angry, cora, billing) into a label term and a stopword into filler.
-- **Time phrases.** Query encoding has no time; `FeedSearch::TimePhrase`
-  handles them before truffler sees the query.
-- **Relabel on conversation change.** Only declared columns trigger a relabel,
-  and `watch:` is limited to supplied labels, so `last_message_at` is in
-  `reads` to relabel `churn_risk` when a message arrives.
+- **Product names.** Query encoding matches a query word against a label's
+  key and its option keys. Product options are slugs, so a product whose name
+  shares nothing with its slug is read from Jev's own word roles only.
+- **`none` and `other`.** `product_options` and `category_options` always
+  offer them: they are answers `from:` gives, and the option set is part of
+  every stored product and category label's fingerprint.

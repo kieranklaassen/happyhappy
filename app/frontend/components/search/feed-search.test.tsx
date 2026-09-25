@@ -19,9 +19,9 @@ function search(overrides: Partial<SearchProps> = {}): SearchProps {
   return {
     query: 'angry Cora billing this week',
     chips: [
-      { key: 'time', label: 'time', kind: 'filter', name: 'This week' },
       { key: 'anger', label: 'anger', kind: 'filter', name: 'Anger' },
       { key: 'product:cora', label: 'product', kind: 'boost', name: 'Product: cora' },
+      { key: 'time', label: 'time', kind: 'time', name: 'This week' },
     ],
     removed: [],
     invite_row: null,
@@ -65,7 +65,7 @@ describe('FeedSearch', () => {
   it('shows filter and boost chips, and removing one searches again without it', () => {
     render(<FeedSearch search={search({ removed: ['mood:grumpy'] })} filterQuery={{}} />)
 
-    expect(screen.getByText('This week')).toBeInTheDocument()
+    expect(screen.getByText('This week')).toHaveAttribute('title', 'Only items with activity this week')
     expect(screen.getByText('Product: cora')).toHaveAttribute('title', 'Ranks items where product: cora higher')
     fireEvent.click(screen.getByRole('button', { name: 'Remove Anger' }))
 

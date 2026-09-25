@@ -11,8 +11,7 @@ class SearchItemsToolTest < ActiveSupport::TestCase
   end
 
   test "waits for the query encoding, then returns chips and ranked items with customer text marked untrusted" do
-    truffler_fake(intents: { "anger" => "filter", "product" => "filter" }, options: { "product" => "cora" },
-      tokens: { "angry" => "label_term", "cora" => "label_term" })
+    Truffler.config.client.answer("intent__anger", "filter").answer("intent__product", "filter").answer("option__product", "cora")
 
     payload = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) { call(query: "angry cora") }.structured_content
 
@@ -23,9 +22,8 @@ class SearchItemsToolTest < ActiveSupport::TestCase
   end
 
   test "takes list_items filters, a time phrase, and removed chips" do
-    truffler_fake
     payload = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) do
-      call(query: "cora last 3 hours", status: [ "new", "claimed" ], removed_chips: [ "time" ])
+      call(query: "cora last 1 day", status: [ "new", "claimed" ], removed_chips: [ "time" ])
     end.structured_content
 
     assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ].sort, payload["items"].pluck("id").sort

@@ -12,6 +12,7 @@ const VISIT = { preserveState: true, preserveScroll: true }
 const CHIP_STYLES: Record<ChipKind, string> = {
   filter: 'bg-gray-900 text-white',
   boost: 'bg-white text-gray-800 ring-1 ring-inset ring-gray-300',
+  time: 'bg-gray-900 text-white',
 }
 
 function chipTitle(chip: SearchChip): string {
@@ -20,6 +21,8 @@ function chipTitle(chip: SearchChip): string {
       return `Only items where ${chip.name.toLowerCase()}`
     case 'boost':
       return `Ranks items where ${chip.name.toLowerCase()} higher`
+    case 'time':
+      return `Only items with activity ${chip.name.toLowerCase()}`
     default: {
       const unreachable: never = chip.kind
       return unreachable

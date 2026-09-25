@@ -4,16 +4,16 @@
 #
 #   result = FeedSearch.keystroke("angry Cora billing this week", user: Current.user, filters: { status: "new" })
 #   result.records   # ranked items, all inside ItemsQuery.new(**filters)
-#   result.chips     # [{key:, label:, kind:, name:}], the time chip first
+#   result.chips     # [{key:, label:, kind:, name:}], filters, boosts, then the time chip
 #
 #   run = FeedSearch.smart("angry Cora billing", user: Current.user)   # on Enter
 #   FeedSearch.find_run(run.id, user: Current.user).to_h                   # the smart prop
 #
 # Keystroke search makes no network call: it reads the query encoding from
 # the cache and enqueues it on a miss (encoding_status :pending), so the next
-# keystroke or reload ranks by intent. Time phrases become a feed time filter
-# (FeedSearch::TimePhrase). Suppressed chip keys drop a label or the time
-# filter.
+# keystroke or reload ranks by intent. Truffler reads a time phrase ("this
+# week") locally into a `last_message_at` window and a `kind: :time` chip.
+# Suppressed chip keys drop a label or, with "time", the time window.
 module FeedSearch
   SURFACE = :feed
   MAX_QUERY_LENGTH = 200
@@ -27,8 +27,8 @@ module FeedSearch
   # wait: seconds to wait for a pending query encoding, for callers such as
   # agents that cannot come back on the next keystroke.
   def keystroke(query, user:, filters: {}, suppressed: [], limit: Truffler::Search::Keystroke::DEFAULT_LIMIT, wait: 0)
-    text, time, suppressed = prepare(query, suppressed)
-    scope = scope(filters, time)
+    text, suppressed = prepare(query, suppressed)
+    scope = scope(filters)
     result = Item.truffler(text, scope: scope, user: user, suppressed: suppressed, surface: SURFACE, limit: limit)
     deadline = monotonic + wait.to_f
     while result.encoding_status == :pending && monotonic < deadline
@@ -36,7 +36,7 @@ module FeedSearch
       result = Item.truffler(text, scope: scope, user: user, suppressed: suppressed, surface: SURFACE, limit: limit)
     end
 
-    Result.new(query: text, records: result.records, chips: [ time&.chip, *result.chips ].compact, invite_row: result.invite_row,
+    Result.new(query: text, records: result.records, chips: result.chips, invite_row: result.invite_row,
       encoding_status: result.encoding_status, explicit_action: result.explicit_action, watermark: result.watermark)
   end
 
@@ -44,10 +44,10 @@ module FeedSearch
   # and Unlikely) and supersedes the searcher's previous one. Nil for a query
   # with nothing left to rerank on.
   def smart(query, user:, filters: {}, suppressed: [])
-    text, time, suppressed = prepare(query, suppressed)
-    return if text.blank?
+    text, suppressed = prepare(query, suppressed)
+    return if Truffler::Search::Query.new(text).search_tokens.empty?
 
-    Item.jev_smart_search(text, scope: scope(filters, time), user: user, surface: SURFACE, suppressed: suppressed)
+    Item.jev_smart_search(text, scope: scope(filters), user: user, surface: SURFACE, suppressed: suppressed)
   end
 
   # The searcher's own run, or an expired one for anyone else's id.
@@ -62,12 +62,11 @@ module FeedSearch
 
   def prepare(query, suppressed)
     suppressed = Array(suppressed).map(&:to_s).compact_blank.first(MAX_SUPPRESSED)
-    text, time = TimePhrase.extract(query.to_s.first(MAX_QUERY_LENGTH))
-    [ text, (time unless suppressed.include?(TimePhrase::CHIP_KEY)), suppressed ]
+    [ query.to_s.first(MAX_QUERY_LENGTH).squish, suppressed ]
   end
 
-  def scope(filters, time)
-    ItemsQuery.new(**filters.to_h.symbolize_keys.merge(time&.filters.to_h)).call
+  def scope(filters)
+    ItemsQuery.new(**filters.to_h.symbolize_keys).call
   end
 
   def monotonic
