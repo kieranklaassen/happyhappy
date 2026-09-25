@@ -73,6 +73,15 @@ class Connectors::DiscordBotTest < ActiveSupport::TestCase
     assert_nil sources(:discord_spiral).reload.last_error
   end
 
+  test "the health check clears a disconnect recorded by another bot process, as during a deploy" do
+    @bot.instance_variable_get(:@bot).define_singleton_method(:connected?) { true }
+    Connectors::Discord.record_gateway_error!("disconnected, reconnecting")
+
+    @bot.check_health
+
+    assert_nil sources(:discord_spiral).reload.last_error
+  end
+
   test "the health check leaves other source errors alone while connected" do
     @bot.instance_variable_get(:@bot).define_singleton_method(:connected?) { true }
     sources(:discord_spiral).record_error!("Discord: Missing Access")

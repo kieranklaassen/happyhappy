@@ -52,10 +52,13 @@ module Connectors
       within_app { Connectors::Discord.record_gateway_error!("disconnected, reconnecting") }
     end
 
-    # Clears a recorded disconnect once the gateway is open again, which after a
-    # resume is the only sign of reconnection.
+    # Clears gateway errors whenever the gateway is open: after a resume this is
+    # the only sign of reconnection, and during a deploy the outgoing bot records
+    # its own shutdown as a disconnect after this one is already connected.
     def check_health
-      handle_connected if @gateway_error && @bot.connected?
+      return unless @bot.connected?
+
+      handle_connected if @gateway_error || within_app { Connectors::Discord.gateway_errors? }
     end
 
     private
