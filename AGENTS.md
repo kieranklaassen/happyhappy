@@ -10,9 +10,10 @@ parallel JSON API** — a page never fetches its own data; the controller passes
 via `render inertia:`.
 
 Agent protocol surfaces are not page data APIs: `/mcp` (agents with a bearer
-token) and `/webmcp/tools` (the same tools for browser agents over WebMCP, with
-the signed-in session and CSRF token) both serve `Mcp::ToolRegistry`. Add or
-change a tool there, never in TypeScript.
+token) and `/webmcp/tools/:name` (the same tools for browser agents over WebMCP,
+with the signed-in session and CSRF token) both serve `Mcp::ToolRegistry`, which
+also builds the `webmcp` manifest prop. Add or change a tool there, never in
+TypeScript.
 
 ## Local development
 

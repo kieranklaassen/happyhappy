@@ -3,7 +3,8 @@
 Source run: lfg pipeline for U21 (branch `cursor/happyhappy-u21-webmcp-5b96`), plan
 `docs/plans/2026-09-24-001-feat-happyhappy-sentiment-feed-plan.md`. Simplify and code review ran
 inline because no subagents were available, so the review lenses are not independent of each other
-and no cross-model peer ran. The browser check ran with agent-browser against `bin/rails s`. No
+and no cross-model peer ran. After Kieran's addendum the implementation was reshaped to Thinkroom's
+WebMCP modules; the browser check is now `npm run check:webmcp` (Playwright) against `bin/dev`. No
 tracker sink was used; this file is the durable record.
 
 ## Checked in review
@@ -11,7 +12,9 @@ tracker sink was used; this file is the durable record.
 - `list_items`, `get_item`, and `list_anomalies` never create a browser agent; only write tools do.
 - A signed-out POST gets 401 before the CSRF check, so a stale page hears "sign in" rather than a
   CSRF error; a signed-in POST without the page's CSRF token gets 422.
-- An agent bearer token on `/webmcp/tools` is ignored (401 without a session).
+- An agent bearer token on `/webmcp/tools/:name` is ignored (401 without a session).
+- The interpreter only fetches `/webmcp/tools/` on the page origin, and the `webmcp` prop is a lambda,
+  so partial reloads neither rebuild it nor re-register tools.
 - Tool internals never reach the browser: a raising tool answers 500 with the gem's generic
   "Internal error calling tool" text, and the exception goes to `Rails.error`.
 - WebMCP registrations use no `exposedTo`, so cross-origin frames cannot see the tools.
@@ -19,6 +22,10 @@ tracker sink was used; this file is the durable record.
 
 ## Residual Review Findings
 
+- P3 `app/frontend/lib/webmcp_execute.ts`: like Thinkroom's interpreter, it forwards only the declared
+  `body_params`, so an undeclared argument (say `mood`) is dropped in the browser instead of refused
+  the way `/mcp` refuses it. The schema says `additionalProperties: false`, and every declared
+  argument is still validated on the server.
 - P3 `app/frontend/lib/webmcp.ts`: Chrome 148 (the build agent-browser ships) exposes only the older
   `navigator.modelContext` with `registerTool`, and lists our tools with `annotations: {}`, so the
   read-only and untrusted-content hints do not reach that build yet. The current draft's
