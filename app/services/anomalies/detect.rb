@@ -138,8 +138,8 @@ module Anomalies
     end
 
     def graded(line, verdict, item_ids)
-      level = verdict[:level]
-      verdict.except(:level).merge(DetectedAnomaly.grade(metric: line.metric, dimension: line.dimension, item_ids: item_ids, level: level))
+      verdict.except(:level)
+        .merge(DetectedAnomaly.grade(metric: line.metric, dimension: line.dimension, item_ids: item_ids, level: verdict[:level]))
     end
 
     def create_row(line, point, verdict)
