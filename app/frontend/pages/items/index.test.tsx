@@ -217,6 +217,22 @@ describe('Feed page', () => {
     expect(get).toHaveBeenCalledWith('/items', { q: 'angry Cora' }, { preserveScroll: true })
   })
 
+  it('applying filters during a search keeps the chips the user removed', () => {
+    const search = {
+      query: 'angry Cora',
+      chips: [{ key: 'product:cora', label: 'product', kind: 'filter' as const, name: 'Product: cora' }],
+      removed: ['anger', 'time'],
+      invite_row: null,
+      encoding_status: 'cached' as const,
+      explicit_action: 'enter',
+      run_id: null,
+    }
+    render(<ItemsIndex {...props({ search })} />)
+
+    fireEvent.submit(screen.getByRole('form', { name: 'Filter the feed' }))
+    expect(get).toHaveBeenCalledWith('/items', { q: 'angry Cora', removed: ['anger', 'time'] }, { preserveScroll: true })
+  })
+
   it('a search with no matches suggests Smart search', () => {
     const search = {
       query: 'praise for Thesis',

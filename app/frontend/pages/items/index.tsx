@@ -113,6 +113,10 @@ export function toQuery(state: FormState): Record<string, string> {
   return query
 }
 
+function searchQuery(search: SearchProps): { q: string; removed?: string[] } {
+  return search.removed.length > 0 ? { q: search.query, removed: search.removed } : { q: search.query }
+}
+
 function describe(anomaly: AnomalyProps): string {
   return `${anomalyTag(anomaly)}: ${anomalySummary(anomaly)}`
 }
@@ -177,7 +181,7 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    router.get('/items', search ? { ...toQuery(form), q: search.query } : toQuery(form), { preserveScroll: true })
+    router.get('/items', search ? { ...toQuery(form), ...searchQuery(search) } : toQuery(form), { preserveScroll: true })
   }
 
   function pageHref(page: number) {
