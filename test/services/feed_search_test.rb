@@ -62,6 +62,30 @@ class FeedSearchTest < ActiveSupport::TestCase
     assert_equal %w[emailing change], encoding.keywords(Truffler::Search::Query.new(query))
   end
 
+  test "email and inbox stay search words under a Cora filter" do
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
+    query = "cora email inbox"
+    encode_query!(query, user: @user)
+
+    encoding = Item.truffler(query, scope: ItemsQuery.new.call, user: @user, surface: FeedSearch::SURFACE).encoding
+
+    assert_equal %w[product:cora], encoding.filters.keys
+    assert_equal %w[cora], encoding.label_term_tokens
+    assert_equal %w[email inbox], encoding.keywords(Truffler::Search::Query.new(query))
+  end
+
+  test "customers in the last 3 hours finds items heard from in the window, not older ones" do
+    result = FeedSearch.keystroke("customers in the last 3 hours", user: @user)
+    ids = result.records.map(&:id)
+
+    assert_equal [ "time" ], result.chips.pluck(:key)
+    assert_includes ids, items(:angry_slack).id
+    assert_includes ids, items(:needs_review_x).id
+    assert_not_includes ids, items(:claimed_intercom).id
+    assert_not_includes ids, items(:handled_email).id
+    assert ids.all? { |id| Item.find(id).last_message_at >= 3.hours.ago }
+  end
+
   test "needs action now filters on needs_action, with no word required in the text" do
     Truffler.config.client.answer("intent__needs_action", "filter")
     item = items(:handled_email)

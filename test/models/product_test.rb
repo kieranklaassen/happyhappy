@@ -9,6 +9,25 @@ class ProductTest < ActiveSupport::TestCase
     assert_equal %w[dictation voice], product.hint_words
   end
 
+  test "search blurb defaults to the name, is squished, and stays short" do
+    product = Product.create!(name: "Monologue", search_blurb: "  ")
+    assert_equal "Monologue", product.search_blurb
+
+    product.update!(search_blurb: "  Monologue   dictation ")
+    assert_equal "Monologue dictation", product.search_blurb
+
+    product.search_blurb = "x" * (SearchBlurb::MAX_LENGTH + 1)
+    refute product.valid?
+    assert product.errors.key?(:search_blurb)
+  end
+
+  test "the product search option matches the blurb while Jev reads the description and hint words" do
+    option = Item::Searchable.product_options.fetch("cora")
+
+    assert_equal "Cora assistant", option[:search]
+    assert_includes option[:description], "screener"
+  end
+
   test "requires unique name and slug" do
     duplicate = Product.new(name: "Cora", slug: "cora")
 
