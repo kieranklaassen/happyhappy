@@ -32,6 +32,9 @@ Rails.application.routes.draw do
     match "intercom", to: "intercom#validate", via: :head
     post "intercom", to: "intercom#create"
   end
+  # Feed search (U25): Enter starts a Smart search run over the current query.
+  post "items/search" => "item_searches#create", as: :item_search
+
   # U10: feed, item timeline, corrections, product overview
   resources :items, only: %i[index show] do
     resource :labels, only: :update, controller: "item_labels"

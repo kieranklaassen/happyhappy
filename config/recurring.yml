@@ -44,6 +44,21 @@ production: &recurring
     args: [ "day" ]
     schedule: every day at 0:10am
 
+  # Feed search (U25): truffler's upkeep, on the default queue, never realtime.
+  # Resume requeues labeling after a TypeSafe outage or a crashed worker.
+  truffler_resume:
+    class: "Truffler::Jobs::ResumeJob"
+    queue: default
+    schedule: every 5 minutes
+  truffler_prune_query_misses:
+    class: "Truffler::Jobs::PruneQueryMissesJob"
+    queue: default
+    schedule: every day at 3:10am
+  truffler_expire_lenses:
+    class: "Truffler::Jobs::ExpireLensesJob"
+    queue: default
+    schedule: every day at 3:20am
+
 development:
   <<: *recurring
 

@@ -71,6 +71,21 @@ class RecurringScheduleTest < ActiveSupport::TestCase
     assert_operator AnomalyDetectionJob, :<, ActiveJob::Base
   end
 
+  test "each environment runs truffler's upkeep jobs on the default queue, never realtime" do
+    %w[production development test].each do |env|
+      tasks = RECURRING.fetch(env)
+
+      assert_equal "every 5 minutes", tasks.dig("truffler_resume", "schedule")
+      { "truffler_resume" => Truffler::Jobs::ResumeJob, "truffler_prune_query_misses" => Truffler::Jobs::PruneQueryMissesJob,
+        "truffler_expire_lenses" => Truffler::Jobs::ExpireLensesJob }.each do |name, job|
+        assert_equal job.name, tasks.dig(name, "class")
+        assert_equal "default", tasks.dig(name, "queue")
+      end
+    end
+
+    assert_equal "default", Truffler.config.queue_name.to_s
+  end
+
   test "JOB_CONCURRENCY defaults processes to 1 when unset" do
     worker = QUEUE.fetch("production").fetch("workers").find { |candidate| Array(candidate["queues"]).include?("default") }
     assert_equal 1, worker.fetch("processes")

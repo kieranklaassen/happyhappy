@@ -19,7 +19,7 @@ class ToolRegistryTest < ActionDispatch::IntegrationTest
   end
 
   test "every registered tool is an ApplicationTool with a valid, unique name and a description" do
-    assert_equal %w[list_items get_item claim_item release_item report_item list_anomalies], ToolRegistry.tools.map(&:tool_name)
+    assert_equal %w[list_items get_item claim_item release_item report_item list_anomalies search_items], ToolRegistry.tools.map(&:tool_name)
     ToolRegistry.tools.each do |tool|
       assert_operator tool, :<, ApplicationTool
       assert_match TOOL_NAME, tool.tool_name
@@ -52,7 +52,7 @@ class ToolRegistryTest < ActionDispatch::IntegrationTest
   test "manifest annotations mark only the read tools read-only" do
     annotations = ToolRegistry.manifest[:tools].to_h { |tool| [ tool[:name], tool[:annotations] ] }
 
-    %w[list_items get_item list_anomalies].each { |name| assert_equal true, annotations[name][:readOnlyHint], name }
+    %w[list_items get_item list_anomalies search_items].each { |name| assert_equal true, annotations[name][:readOnlyHint], name }
     %w[claim_item release_item report_item].each { |name| assert_not annotations[name][:readOnlyHint], name }
     assert_equal false, annotations["claim_item"][:destructiveHint]
   end

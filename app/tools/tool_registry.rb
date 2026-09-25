@@ -19,7 +19,8 @@ module ToolRegistry
     ClaimItemTool,
     ReleaseItemTool,
     ReportItemTool,
-    ListAnomaliesTool
+    ListAnomaliesTool,
+    SearchItemsTool
   ].freeze
 
   # Must match the `webmcp_tool` route in config/routes.rb.

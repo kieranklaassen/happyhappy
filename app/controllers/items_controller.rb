@@ -6,6 +6,8 @@ class ItemsController < InertiaController
   HUMAN_STATUSES = Items::ChangeStatus::STATUSES
 
   def index
+    return search if params[:q].present?
+
     page = params[:page].to_i.clamp(1, MAX_PAGE)
     query = ItemsQuery.from_params(params)
     rows = item_rows(query.call.offset((page - 1) * PER_PAGE).limit(PER_PAGE + 1))
@@ -16,13 +18,12 @@ class ItemsController < InertiaController
       pagination: { page: page, prev_page: (page - 1 if page > 1), next_page: (page + 1 if rows.size > PER_PAGE) },
       options: feed_options,
       anomalies: DetectedAnomaly.active.includes(:product, :source).recent_first.map(&:to_props),
+      search: nil,
+      smart: nil,
       error: nil
     }
   rescue ItemsQuery::InvalidFilter => error
-    render inertia: "items/index", props: {
-      items: [], filters: {}, pagination: { page: 1, prev_page: nil, next_page: nil }, options: feed_options,
-      anomalies: [], error: "That filter is not valid (#{error.message})."
-    }
+    render_invalid_filter(error)
   end
 
   def show
@@ -43,6 +44,67 @@ class ItemsController < InertiaController
   end
 
   private
+
+  # Feed search (U25). A request without a run id is a new query or a chip
+  # change, which ends the searcher's Smart run. Partial reloads of `smart`
+  # (TrufflerChannel pings) compute only that prop.
+  def search
+    query = ItemsQuery.from_params(params)
+    removed = Array(params[:removed]).map(&:to_s)
+    run_id = params[:run_id].presence
+    FeedSearch.cancel(user: Current.user) unless run_id
+    result = nil
+    keystroke = -> { result ||= FeedSearch.keystroke(params[:q], user: Current.user, filters: query.filters, suppressed: removed) }
+
+    render inertia: "items/index", props: {
+      items: -> { ordered_rows(keystroke.call.records.map(&:id)) },
+      filters: query.filters,
+      pagination: { page: 1, prev_page: nil, next_page: nil },
+      options: feed_options,
+      anomalies: [],
+      search: -> { search_props(keystroke.call, removed, run_id) },
+      smart: -> { run_id && smart_props(FeedSearch.find_run(run_id, user: Current.user), query) },
+      error: nil
+    }
+  rescue ItemsQuery::InvalidFilter => error
+    render_invalid_filter(error)
+  end
+
+  def render_invalid_filter(error)
+    render inertia: "items/index", props: {
+      items: [], filters: {}, pagination: { page: 1, prev_page: nil, next_page: nil }, options: feed_options,
+      anomalies: [], search: nil, smart: nil, error: "That filter is not valid (#{error.message})."
+    }
+  end
+
+  def search_props(result, removed, run_id)
+    {
+      query: params[:q].to_s,
+      chips: result.chips,
+      removed: removed,
+      invite_row: result.invite_row,
+      encoding_status: result.encoding_status,
+      explicit_action: result.explicit_action,
+      run_id: run_id
+    }
+  end
+
+  # Bucket ids load through the feed filters again, so a run can never show
+  # an item the searcher's scope has since dropped.
+  def smart_props(run, query)
+    smart = run.to_h
+    visible = query.call.where(id: smart[:buckets].values.flatten.pluck(:id))
+    rows = item_rows(visible).index_by { |row| row[:id] }
+    buckets = smart[:buckets].transform_values do |entries|
+      entries.filter_map { |entry| rows[entry[:id].to_i]&.merge(score: entry[:score]) }
+    end
+    smart.slice(:run_id, :status, :reserved_slots, :paused, :pending, :collapsed, :no_strong_matches).merge(buckets: buckets)
+  end
+
+  def ordered_rows(ids)
+    rows = item_rows(Item.where(id: ids)).index_by { |row| row[:id] }
+    ids.filter_map { |id| rows[id] }
+  end
 
   def feed_options
     {

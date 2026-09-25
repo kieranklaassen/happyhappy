@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_170002) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_181500) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -294,6 +294,103 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_170002) do
     t.index ["public_token"], name: "index_sources_on_public_token", unique: true
   end
 
+  create_table "truffler_embeddings", force: :cascade do |t|
+    t.string "record_type", null: false
+    t.integer "record_id", null: false
+    t.string "tenant_key"
+    t.string "fingerprint"
+    t.binary "embedding"
+    t.integer "dimensions"
+    t.binary "label_vector"
+    t.string "label_vocabulary_version"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["record_type", "record_id"], name: "index_truffler_embeddings_on_record", unique: true
+    t.index ["record_type", "tenant_key"], name: "index_truffler_embeddings_on_tenant"
+  end
+
+  create_table "truffler_labels", force: :cascade do |t|
+    t.string "record_type", null: false
+    t.integer "record_id", null: false
+    t.string "tenant_key"
+    t.string "label_key", null: false
+    t.float "value", null: false
+    t.string "fingerprint", null: false
+    t.datetime "labeled_at", null: false
+    t.index ["record_type", "record_id", "label_key"], name: "index_truffler_labels_on_record_and_label", unique: true
+    t.index ["record_type", "tenant_key", "label_key", "value"], name: "index_truffler_labels_for_search"
+  end
+
+  create_table "truffler_lens_versions", force: :cascade do |t|
+    t.bigint "lens_id", null: false
+    t.integer "number", null: false
+    t.text "description"
+    t.text "questions", null: false
+    t.text "reused_keys"
+    t.string "fingerprint", null: false
+    t.string "created_by_digest"
+    t.string "status", default: "draft", null: false
+    t.integer "restored_from"
+    t.string "activated_by_digest"
+    t.datetime "activated_at"
+    t.datetime "created_at", null: false
+    t.index ["lens_id", "number"], name: "index_truffler_lens_versions_on_lens_and_number", unique: true
+  end
+
+  create_table "truffler_lenses", force: :cascade do |t|
+    t.string "record_type", null: false
+    t.string "scope_type", default: "app", null: false
+    t.string "scope_key"
+    t.string "tenant_key"
+    t.string "creator_digest"
+    t.string "name"
+    t.text "description"
+    t.text "questions"
+    t.text "reused_keys"
+    t.string "fingerprint"
+    t.string "status", default: "draft", null: false
+    t.string "origin", default: "user", null: false
+    t.string "proposal_digest"
+    t.bigint "active_version_id"
+    t.float "spend_cap_usd"
+    t.float "spent_usd", default: 0.0, null: false
+    t.integer "usage_count", default: 0, null: false
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["record_type", "status", "scope_type", "tenant_key"], name: "index_truffler_lenses_for_visibility"
+  end
+
+  create_table "truffler_query_misses", force: :cascade do |t|
+    t.string "record_type", null: false
+    t.string "tenant_key"
+    t.string "query_digest", null: false
+    t.string "user_digest"
+    t.text "query_text"
+    t.datetime "created_at", null: false
+    t.index ["created_at"], name: "index_truffler_query_misses_on_created_at"
+    t.index ["record_type", "tenant_key", "created_at"], name: "index_truffler_query_misses_on_tenant"
+  end
+
+  create_table "truffler_record_states", force: :cascade do |t|
+    t.string "record_type", null: false
+    t.integer "record_id", null: false
+    t.string "tenant_key"
+    t.string "vocabulary_version"
+    t.string "status", default: "pending", null: false
+    t.string "priority", default: "live", null: false
+    t.integer "attempts", default: 0, null: false
+    t.string "last_error_class"
+    t.datetime "claimed_at"
+    t.datetime "labeled_at"
+    t.string "embedding_fingerprint"
+    t.datetime "embedded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["record_type", "record_id"], name: "index_truffler_record_states_on_record", unique: true
+    t.index ["record_type", "tenant_key", "status", "priority"], name: "index_truffler_record_states_for_claims"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "avatar_url"
     t.datetime "created_at", null: false
@@ -356,4 +453,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_170002) do
   add_foreign_key "sources", "products", column: "default_product_id"
   add_foreign_key "webhook_deliveries", "item_events", on_delete: :nullify
   add_foreign_key "webhook_deliveries", "webhook_endpoints", on_delete: :cascade
+
+  # Virtual tables defined in this database.
+  # Note that virtual tables may not work with other database engines. Be careful if changing database.
+  create_virtual_table "item_search_documents", "fts5", ["author", "body", "tokenize='porter unicode61 remove_diacritics 2'"]
 end
