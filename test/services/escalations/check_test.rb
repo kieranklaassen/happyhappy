@@ -122,6 +122,16 @@ class Escalations::CheckTest < ActiveSupport::TestCase
     assert_equal message, item.escalations.sole.message
   end
 
+  test "an angry customer whose thread needs nothing from Every does not escalate" do
+    item, message = classified_item(anger: 0.9)
+    item.update!(actionability: 0.2, actionability_band: "fyi")
+
+    assert_no_enqueued_jobs(only: PostEscalationJob) { item.publish_classified(message) }
+
+    item.update!(actionability: 0.95, actionability_band: "act_now")
+    assert_enqueued_jobs(1, only: PostEscalationJob) { item.publish_classified(message) }
+  end
+
   test "a team message never escalates" do
     item, = classified_item(anger: 0.9)
     reply = add_message(item, anger: 0.95, body: "Kieran from Every here: this is unacceptable on our side.",

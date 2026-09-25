@@ -32,6 +32,7 @@ module Escalations
       @item.relevant? &&
         product&.slack_channel_id.present? &&
         angry?(@item.anger_probability) &&
+        actionable? &&
         trigger.present? &&
         !trigger.author_team? &&
         !trigger.backfilled? &&
@@ -43,6 +44,12 @@ module Escalations
 
     def product
       @item.product
+    end
+
+    # An angry customer whose thread needs nothing from Every (say, venting after
+    # a fix) is not worth a page; items classified before actionability existed pass.
+    def actionable?
+      @item.actionability.nil? || @item.actionability >= Actionability::SHOULD_REPLY
     end
 
     def angry?(probability)

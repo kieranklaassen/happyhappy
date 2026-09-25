@@ -4,10 +4,12 @@ import AppNav from '../../components/app-nav'
 import ItemRow from '../../components/item-row'
 import { useMoodStream } from '../../components/mood/use-mood-stream'
 import { anomalyValue, anomalyWindow } from '../../lib/anomaly-format'
-import { sentimentLabel, sourceKindLabel, statusLabel } from '../../lib/feed-format'
+import { actionabilityLabel, sentimentLabel, sourceKindLabel, statusLabel } from '../../lib/feed-format'
 import type { AnomalyProps } from '../../types/anomalies'
 import type {
+  ActionabilityBand,
   CategoryOption,
+  FeedSort,
   ItemRowData,
   ItemStatus,
   ProductOption,
@@ -29,6 +31,8 @@ export interface FeedFilters {
   overdue?: boolean
   relevance?: 'relevant' | 'not_relevant' | 'all'
   anomaly?: string
+  actionability?: string[]
+  sort?: FeedSort
 }
 
 export interface FeedProps {
@@ -42,6 +46,8 @@ export interface FeedProps {
     sentiments: Sentiment[]
     statuses: ItemStatus[]
     ranges: string[]
+    actionability: ActionabilityBand[]
+    sorts: FeedSort[]
   }
   anomalies: AnomalyProps[]
   error: string | null
@@ -58,6 +64,8 @@ interface FormState {
   needs_review: boolean
   overdue: boolean
   anomaly: string
+  actionability: string
+  sort: string
 }
 
 const RANGE_LABELS: Record<string, string> = {
@@ -82,18 +90,21 @@ function initialState(filters: FeedFilters, products: ProductOption[]): FormStat
     needs_review: Boolean(filters.needs_review),
     overdue: Boolean(filters.overdue),
     anomaly: filters.anomaly ?? '',
+    actionability: filters.actionability?.[0] ?? '',
+    sort: filters.sort ?? 'recent',
   }
 }
 
 export function toQuery(state: FormState): Record<string, string> {
   const query: Record<string, string> = {}
-  for (const key of ['product', 'sentiment', 'category', 'status', 'source', 'range'] as const) {
+  for (const key of ['product', 'sentiment', 'category', 'status', 'source', 'range', 'actionability'] as const) {
     if (state[key]) query[key] = state[key]
   }
   if (state.relevance !== 'relevant') query.relevance = state.relevance
   if (state.needs_review) query.needs_review = '1'
   if (state.overdue) query.overdue = '1'
   if (state.anomaly) query.anomaly = state.anomaly
+  if (state.sort !== 'recent') query.sort = state.sort
   return query
 }
 
@@ -260,6 +271,29 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
               {options.ranges.map((range) => (
                 <option key={range} value={range}>
                   {RANGE_LABELS[range] ?? range}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
+            Actionability
+            <select className={SELECT} value={form.actionability} onChange={(e) => update('actionability', e.target.value)}>
+              <option value="">Any (noise hidden)</option>
+              {options.actionability.map((band) => (
+                <option key={band} value={band}>
+                  {actionabilityLabel(band)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
+            Sort
+            <select className={SELECT} value={form.sort} onChange={(e) => update('sort', e.target.value)}>
+              {options.sorts.map((sort) => (
+                <option key={sort} value={sort}>
+                  {sort === 'actionability' ? 'Most actionable first' : 'Most recent first'}
                 </option>
               ))}
             </select>

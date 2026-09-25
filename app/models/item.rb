@@ -20,16 +20,23 @@ class Item < ApplicationRecord
 
   before_validation :copy_source_kind, if: -> { source && source_kind.blank? }
   before_validation -> { self.status_changed_at ||= Time.current }
+  # Noise means not relevant, so the band follows every change of relevance,
+  # including a person's correction.
+  before_save -> { self.actionability_band = Actionability.band(score: actionability, relevant: relevant) },
+    if: :relevant_changed?
   after_commit -> { MoodChannel.refresh }
 
   validates :thread_key, presence: true, uniqueness: { scope: :source_kind }
   validates :source_kind, inclusion: { in: Source.kinds.values }
   validates :last_message_at, presence: true
   validates :product_probability, :category_probability, :sentiment_probability,
-    :relevance_probability, :anger_probability,
+    :relevance_probability, :anger_probability, :actionability,
     numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }, allow_nil: true
 
+  validates :actionability_band, inclusion: { in: Actionability::BANDS }, allow_nil: true
+
   scope :relevant, -> { where(relevant: true) }
+  scope :by_actionability, -> { order(Arel.sql("actionability IS NULL"), actionability: :desc, last_message_at: :desc, id: :desc) }
   scope :recent_first, -> { order(last_message_at: :desc, id: :desc) }
   scope :unresolved, -> { where(status: %w[new claimed in_progress]) }
   scope :unclaimed, -> { where(claimed_by_agent_id: nil) }

@@ -14,6 +14,30 @@ class ItemsQueryTest < ActiveSupport::TestCase
     assert_not_includes items, items(:not_relevant_slack)
   end
 
+  test "filters by actionability band and score, and sorts by actionability" do
+    items(:angry_slack).update!(actionability: 0.95, actionability_band: "act_now")
+    items(:claimed_intercom).update!(actionability: 0.6, actionability_band: "should_reply")
+    items(:praise_discord).update!(actionability: 0.1, actionability_band: "fyi")
+
+    assert_equal [ items(:angry_slack) ], results(actionability: "act_now")
+    assert_equal [ items(:angry_slack), items(:claimed_intercom) ].to_set, results(min_actionability: "0.5").to_set
+    sorted = results(sort: "actionability")
+    assert_equal [ items(:angry_slack), items(:claimed_intercom), items(:praise_discord) ], sorted.first(3)
+  end
+
+  test "asking for noise looks past the default relevance" do
+    items(:not_relevant_slack).update!(actionability: 0.02, actionability_band: "noise")
+
+    assert_equal [ items(:not_relevant_slack) ], results(actionability: "noise")
+    assert_empty results(actionability: "noise", relevance: "relevant")
+  end
+
+  test "an unknown band, sort, or score is an invalid filter" do
+    assert_raises(ItemsQuery::InvalidFilter) { ItemsQuery.new(actionability: "urgent") }
+    assert_raises(ItemsQuery::InvalidFilter) { ItemsQuery.new(sort: "angriest") }
+    assert_raises(ItemsQuery::InvalidFilter) { ItemsQuery.new(min_actionability: "2") }
+  end
+
   test "filtering by product and complaint returns only matching items" do
     items = results(product: products(:cora).id, sentiment: "complaint")
 

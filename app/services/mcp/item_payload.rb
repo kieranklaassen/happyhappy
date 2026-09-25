@@ -9,7 +9,7 @@ module Mcp
 
     def summaries(items)
       items = items.includes(:product, :category, :source, :claimed_by_agent).to_a
-      ranked = Message.where(item_id: items.map(&:id))
+      ranked = Message.from_customers.where(item_id: items.map(&:id))
         .select(:item_id, :body, "ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY occurred_at DESC, id DESC) AS position")
       latest_bodies = Message.from(ranked, :messages).where(position: 1).pluck(:item_id, :body).to_h
 
@@ -47,7 +47,8 @@ module Mcp
           sentiment: label(item.sentiment, item.sentiment_probability, item.sentiment_human_set),
           relevant: label(item.relevant, item.relevance_probability, item.relevant_human_set)
         },
-        anger_probability: item.anger_probability
+        anger_probability: item.anger_probability,
+        actionability: { score: item.actionability, band: item.actionability_band }
       }
     end
 

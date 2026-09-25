@@ -27,6 +27,16 @@ class Mcp::Tools::ListItemsTest < ActiveSupport::TestCase
     assert_equal [ items(:needs_review_x).id ], call(needs_review: true).structured_content["items"].map { |item| item["id"] }
   end
 
+  test "filters and sorts by actionability and returns it on each item" do
+    items(:angry_slack).update!(actionability: 0.95, actionability_band: "act_now")
+    items(:claimed_intercom).update!(actionability: 0.6, actionability_band: "should_reply")
+
+    payload = call(actionability: [ "act_now", "should_reply" ], sort: "actionability").structured_content
+
+    assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ], payload["items"].map { |item| item["id"] }
+    assert_equal({ "score" => 0.95, "band" => "act_now" }, payload["items"].first["actionability"])
+  end
+
   test "an invalid time is a tool error" do
     response = call(since: "yesterday-ish")
 

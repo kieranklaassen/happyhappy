@@ -1,5 +1,7 @@
 export type Sentiment = 'complaint' | 'praise' | 'question' | 'neutral' | 'relieved'
 export type AuthorRole = 'customer' | 'team' | 'unknown'
+export type ActionabilityBand = 'act_now' | 'should_reply' | 'fyi' | 'noise'
+export type FeedSort = 'recent' | 'actionability'
 export type ItemStatus = 'new' | 'claimed' | 'in_progress' | 'handled' | 'dismissed'
 export type SourceKind = 'slack' | 'discord' | 'intercom' | 'email' | 'x' | 'custom'
 export type EventKind =
@@ -48,6 +50,8 @@ export interface ItemRowData {
   overdue: boolean
   claimed_by: string | null
   anger_probability: number | null
+  actionability: number | null
+  actionability_band: ActionabilityBand | null
   last_message_at: string
 }
 
@@ -72,6 +76,8 @@ export interface ItemDetail {
   last_reported_at: string | null
   last_message_at: string
   anger_probability: number | null
+  actionability: number | null
+  actionability_band: ActionabilityBand | null
   labels: {
     product: Label<ProductOption | null>
     category: Label<CategoryOption | null>

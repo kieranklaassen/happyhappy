@@ -316,6 +316,32 @@ class Classification::ApplyTest < ActiveSupport::TestCase
     assert message.reload.author_customer?
   end
 
+  test "actionability comes from the customer's current message and is banded" do
+    item = new_item
+    classify(add_message(item, body: "Charged twice, refund please", at: 5.minutes.ago), actionable: 0.97)
+    assert_equal [ 0.97, "act_now" ], item.reload.values_at(:actionability, :actionability_band)
+
+    classify(add_message(item, body: "Refund arrived, thanks!"), sentiment: "relieved", actionable: 0.05)
+    assert_equal [ 0.05, "fyi" ], item.reload.values_at(:actionability, :actionability_band)
+    assert_equal "fyi", item.events.last.data["actionability_band"]
+  end
+
+  test "spam is noise and scores no higher than its relevance" do
+    item = new_item
+    classify(add_message(item, body: "Boost your SEO today!"), relevant: 0.1, actionable: 0.8)
+
+    item.reload
+    assert_equal "noise", item.actionability_band
+    assert_in_delta 0.1, item.actionability
+  end
+
+  test "an item where only the team has spoken is noise" do
+    item = new_item
+    classify(add_message(item, body: "New release is out", author_role: "team"), actionable: 0.9)
+
+    assert_equal [ nil, "noise" ], item.reload.values_at(:actionability, :actionability_band)
+  end
+
   test "quiet applies record backfill events and publish nothing" do
     item = new_item
     message = add_message(item)

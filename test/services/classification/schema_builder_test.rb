@@ -5,9 +5,11 @@ class Classification::SchemaBuilderTest < ActiveSupport::TestCase
     @questions = Classification::SchemaBuilder.call.questions
   end
 
-  test "asks relevance, product, category, sentiment, and anger in one request" do
-    assert_equal %w[relevant product category sentiment anger], @questions.keys
-    assert_equal %w[noul choice choice choice noul], @questions.values.pluck("type")
+  test "asks relevance, product, category, sentiment, anger, and actionability in one request" do
+    assert_equal %w[relevant product category sentiment anger actionable], @questions.keys
+    assert_equal %w[noul choice choice choice noul noul], @questions.values.pluck("type")
+    assert_equal %w[true false], @questions.dig("actionable", "criteria").keys
+    assert_includes @questions.dig("actionable", "criteria", "false"), "spam"
     assert_equal %w[true false], @questions.dig("relevant", "criteria").keys
     assert_equal %w[true false], @questions.dig("anger", "criteria").keys
   end
@@ -45,8 +47,16 @@ class Classification::SchemaBuilderTest < ActiveSupport::TestCase
     criteria = @questions.dig("category", "criteria")
 
     assert_equal [ "bug", "billing", "feature request", "onboarding", "praise", "other" ], criteria.keys
-    assert_equal categories(:other).description, criteria["other"]
+    assert_equal categories(:other).description, criteria.dig("other", "what")
     refute_includes criteria.keys, "pricing"
+  end
+
+  test "adds inclusion and exclusion rules to categories that need them, keeping the stored description" do
+    criteria = @questions.dig("category", "criteria")
+
+    assert_equal categories(:bug).description, criteria.dig("bug", "what")
+    assert_includes criteria.dig("bug", "not_for"), "performance"
+    assert_equal categories(:billing).description, criteria["billing"]
   end
 
   test "adds an other option when no category is named other" do

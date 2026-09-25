@@ -14,7 +14,7 @@ module Classification
   DEFAULT_CLASSIFIER = "Classification::Classifier"
   # Stamped on each message it classifies; bump it when the questions or the
   # state change so `rake classifications:rerun` knows what is stale.
-  VERSION = "2026-09-25.1"
+  VERSION = "2026-09-25.2"
 
   class << self
     attr_writer :classifier

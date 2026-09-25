@@ -1,6 +1,8 @@
 import { Link } from '@inertiajs/react'
 import {
+  ACTIONABILITY_BADGES,
   SENTIMENT_BADGES,
+  actionabilityLabel,
   formatPercent,
   formatTime,
   sentimentLabel,
@@ -33,6 +35,12 @@ export default function ItemRow({ item }: { item: ItemRowData }) {
         <p className="line-clamp-2 text-sm text-gray-800">{item.excerpt || 'No message text.'}</p>
 
         <div className="flex flex-wrap items-center gap-1.5">
+          {item.actionability_band && (
+            <span className={`${BADGE} ${ACTIONABILITY_BADGES[item.actionability_band]}`}>
+              {actionabilityLabel(item.actionability_band)}
+              {item.actionability !== null && ` ${formatPercent(item.actionability)}`}
+            </span>
+          )}
           {item.sentiment && (
             <span className={`${BADGE} ${SENTIMENT_BADGES[item.sentiment]}`}>{sentimentLabel(item.sentiment)}</span>
           )}
