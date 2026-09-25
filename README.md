@@ -61,8 +61,9 @@ stateless). Issue a token on the Agents page; it is shown once. Every request
 sends it as `Authorization: Bearer <token>`, and revoking the agent cuts it off
 on its next request. The tools are `list_items` (the feed filters: product,
 sentiment, category, status, source, source_kind, range, since, until,
-needs_review, overdue, relevance), `get_item`, `claim_item`, `release_item`, and
-`report_item` (a summary, an optional link, and `in_progress` or `handled`).
+needs_review, overdue, relevance, anomaly), `get_item`, `claim_item`,
+`release_item`, `report_item` (a summary, an optional link, and `in_progress` or
+`handled`), and `list_anomalies`.
 
 Cursor, in `.cursor/mcp.json` (or `~/.cursor/mcp.json`), with the token in the
 `HAPPYHAPPY_TOKEN` environment variable:
