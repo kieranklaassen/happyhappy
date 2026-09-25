@@ -13,9 +13,24 @@ class DigestDispatchJob < ApplicationJob
       digest = claim(product, today)
       PostDigestJob.perform_later(digest) if digest
     end
+    dispatch_overview(now)
   end
 
   private
+
+  # The overview of all products runs on its own clock: Settings' time zone and hour.
+  def dispatch_overview(now)
+    setting = Setting.current
+    return unless setting.slack_channel?
+
+    local = now.in_time_zone(setting.digest_zone)
+    return if local.hour < setting.digest_hour
+
+    digest = OverviewDigest.create!(date: local.to_date)
+    PostOverviewDigestJob.perform_later(digest)
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+    nil
+  end
 
   def due_products(now)
     Product.active.where.not(slack_channel_id: [ nil, "" ]).where(digest_hour: ..now.hour)

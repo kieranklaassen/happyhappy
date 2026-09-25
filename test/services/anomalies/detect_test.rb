@@ -51,6 +51,31 @@ class Anomalies::DetectTest < ActiveSupport::TestCase
     assert_not DetectedAnomaly.exists?(metric: "complaint_share")
   end
 
+  test "a new high-severity bad-news spike queues one Slack alert, from its all-sources row" do
+    Setting.current.update!(slack_channel_id: "C0AGB2RKA6R")
+    hourly_baseline!
+    burst!(8)
+
+    detect
+
+    alerted = enqueued_jobs.select { |job| job["job_class"] == "PostAnomalyAlertJob" }
+      .map { |job| GlobalID::Locator.locate(job["arguments"].first["_aj_globalid"]) }
+    assert_includes alerted, bug_anomalies.sole
+    assert alerted.all? { |anomaly| anomaly.source_id.nil? && anomaly.negative? && anomaly.severity == "high" }
+    assert_equal DetectedAnomaly.all.count(&:slack_alertable?), alerted.size
+
+    clear_enqueued_jobs
+    detect(now: @now + 15.minutes)
+    assert_no_enqueued_jobs(only: PostAnomalyAlertJob)
+  end
+
+  test "no Slack alert is queued without a Settings channel" do
+    hourly_baseline!
+    burst!(8)
+
+    assert_no_enqueued_jobs(only: PostAnomalyAlertJob) { detect }
+  end
+
   test "the anomaly gem decides against a z-score of the baseline" do
     hourly_baseline!
     burst!(8)

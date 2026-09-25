@@ -15,7 +15,17 @@ interface SettingsEditProps {
     team_email_domains: string[]
     team_discord_role_ids: string[]
     team_discord_user_ids: string[]
+    slack_channel_id: string | null
+    digest_time_zone: string
+    digest_hour: number
   }
+  time_zones: string[]
+}
+
+const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
+
+function hourLabel(hour: number) {
+  return `${hour.toString().padStart(2, '0')}:00`
 }
 
 type AnomalyField = 'anomaly_sensitivity' | 'anomaly_min_count' | 'anomaly_min_baseline_windows' | 'anomaly_active_days'
@@ -69,7 +79,7 @@ const TEAM_LISTS = [
   },
 ] as const
 
-export default function SettingsEdit({ setting }: SettingsEditProps) {
+export default function SettingsEdit({ setting, time_zones }: SettingsEditProps) {
   const form = useForm({
     low_confidence_threshold: setting.low_confidence_threshold.toString(),
     escalation_threshold: setting.escalation_threshold.toString(),
@@ -81,6 +91,9 @@ export default function SettingsEdit({ setting }: SettingsEditProps) {
     team_email_domains: setting.team_email_domains.join(', '),
     team_discord_role_ids: setting.team_discord_role_ids.join(', '),
     team_discord_user_ids: setting.team_discord_user_ids.join(', '),
+    slack_channel_id: setting.slack_channel_id ?? '',
+    digest_time_zone: setting.digest_time_zone,
+    digest_hour: setting.digest_hour.toString(),
   })
 
   function submit(event: FormEvent) {
@@ -168,6 +181,61 @@ export default function SettingsEdit({ setting }: SettingsEditProps) {
               />
             </Field>
           ))}
+
+          <Field
+            label="Slack channel"
+            htmlFor="setting_slack_channel_id"
+            error={form.errors.slack_channel_id}
+            hint="Channel ID (like C0AGB2RKA6R) for the daily overview of all products, alerts about bad-news anomalies, and escalations of products without a channel of their own. Invite the happyhappy bot there. Leave empty to turn these off."
+          >
+            <input
+              id="setting_slack_channel_id"
+              type="text"
+              value={form.data.slack_channel_id}
+              onChange={(e) => form.setData('slack_channel_id', e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
+            label="Daily overview time zone"
+            htmlFor="setting_digest_time_zone"
+            error={form.errors.digest_time_zone}
+            hint="The overview covers the previous calendar day in this time zone."
+          >
+            <select
+              id="setting_digest_time_zone"
+              value={form.data.digest_time_zone}
+              onChange={(e) => form.setData('digest_time_zone', e.target.value)}
+              className={inputClass}
+            >
+              {time_zones.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field
+            label="Daily overview time"
+            htmlFor="setting_digest_hour"
+            error={form.errors.digest_hour}
+            hint="When the overview posts, in the time zone above."
+          >
+            <select
+              id="setting_digest_hour"
+              value={form.data.digest_hour}
+              onChange={(e) => form.setData('digest_hour', e.target.value)}
+              className={inputClass}
+            >
+              {HOURS.map((hour) => (
+                <option key={hour} value={hour.toString()}>
+                  {hourLabel(hour)}
+                </option>
+              ))}
+            </select>
+          </Field>
 
           {TEAM_LISTS.map((list) => (
             <Field

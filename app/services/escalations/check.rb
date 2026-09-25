@@ -20,7 +20,7 @@ module Escalations
       escalation = @item.with_lock do
         next unless escalate?
 
-        @item.escalations.create!(product: product, slack_channel_id: product.slack_channel_id, message: trigger)
+        @item.escalations.create!(product: product, slack_channel_id: channel_id, message: trigger)
       end
       ActiveRecord.after_all_transactions_commit { PostEscalationJob.perform_later(escalation) } if escalation
       escalation
@@ -30,7 +30,7 @@ module Escalations
 
     def escalate?
       @item.relevant? &&
-        product&.slack_channel_id.present? &&
+        channel_id.present? &&
         angry?(@item.anger_probability) &&
         actionable? &&
         trigger.present? &&
@@ -44,6 +44,11 @@ module Escalations
 
     def product
       @item.product
+    end
+
+    # A product's own channel wins; otherwise the Settings channel that gets the daily overview.
+    def channel_id
+      product && (product.slack_channel_id.presence || Setting.current.slack_channel_id)
     end
 
     # An angry customer whose thread needs nothing from Every (say, venting after
