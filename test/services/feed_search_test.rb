@@ -36,6 +36,20 @@ class FeedSearchTest < ActiveSupport::TestCase
     assert_equal calls, fake.calls.size
   end
 
+  test "a new team reply flips the team_replied filter with no Jev call" do
+    fake = truffler_fake(intents: { "team_replied" => "filter" }, tokens: { "replied" => "label_term" })
+    encode_query!("replied", user: @user)
+    item = items(:angry_slack)
+    calls = fake.calls.size
+    assert_not_includes FeedSearch.keystroke("replied", user: @user).records.map(&:id), item.id
+
+    item.messages.create!(source: item.source, external_id: "team-reply-1", body: "On it, fixing today",
+      occurred_at: Time.current, raw_payload: {}, author_role: "team")
+
+    assert_includes FeedSearch.keystroke("replied", user: @user).records.map(&:id), item.id
+    assert_equal calls, fake.calls.size
+  end
+
   test "a time phrase becomes the first chip and a feed time filter" do
     result = FeedSearch.keystroke("cora last 3 hours", user: @user)
 
