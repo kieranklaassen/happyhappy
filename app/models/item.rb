@@ -20,6 +20,10 @@ class Item < ApplicationRecord
 
   before_validation :copy_source_kind, if: -> { source && source_kind.blank? }
   before_validation -> { self.status_changed_at ||= Time.current }
+  # Noise means not relevant, so the band follows every change of relevance,
+  # including a person's correction.
+  before_save -> { self.actionability_band = Actionability.band(score: actionability, relevant: relevant) },
+    if: :relevant_changed?
   after_commit -> { MoodChannel.refresh }
 
   validates :thread_key, presence: true, uniqueness: { scope: :source_kind }
