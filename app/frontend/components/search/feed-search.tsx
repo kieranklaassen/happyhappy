@@ -39,17 +39,39 @@ export default function FeedSearch({ search, filterQuery }: Props) {
   const [text, setText] = useState(search?.query ?? '')
   const sent = useRef(search?.query ?? '')
   const reloads = useRef(0)
+  const keystrokeTimer = useRef<number | undefined>(undefined)
+  const keystrokeVisit = useRef<{ cancel: () => void } | null>(null)
   const filters = JSON.stringify(filterQuery)
 
   useEffect(() => {
     if (text === sent.current) return
     const timer = window.setTimeout(() => {
+      keystrokeTimer.current = undefined
+      if (text === sent.current) return
       sent.current = text
       const base = JSON.parse(filters) as Record<string, string>
-      router.get('/items', text.trim() ? { ...base, q: text } : base, { ...VISIT, replace: true })
+      router.get('/items', text.trim() ? { ...base, q: text } : base, {
+        ...VISIT,
+        replace: true,
+        onCancelToken: (token) => {
+          keystrokeVisit.current = token
+        },
+        onFinish: () => {
+          keystrokeVisit.current = null
+        },
+      })
     }, SEARCH_DEBOUNCE_MS)
+    keystrokeTimer.current = timer
     return () => window.clearTimeout(timer)
   }, [text, filters])
+
+  // A keystroke visit carries no run_id, so the server would cancel the Smart run Enter starts.
+  function dropKeystrokeSearch() {
+    window.clearTimeout(keystrokeTimer.current)
+    keystrokeTimer.current = undefined
+    keystrokeVisit.current?.cancel()
+    keystrokeVisit.current = null
+  }
 
   useEffect(() => {
     reloads.current = 0
@@ -67,6 +89,7 @@ export default function FeedSearch({ search, filterQuery }: Props) {
   function startSmart(event?: FormEvent) {
     event?.preventDefault()
     if (!text.trim()) return
+    dropKeystrokeSearch()
     sent.current = text
     const removed = search && search.query === text ? search.removed : []
     router.post('/items/search', { ...filterQuery, q: text, removed }, VISIT)

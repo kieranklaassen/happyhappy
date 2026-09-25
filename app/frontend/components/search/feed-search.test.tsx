@@ -36,7 +36,7 @@ describe('FeedSearch', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => {
     vi.useRealTimers()
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it('searches as you type, once the typing pauses, keeping the feed filters', () => {
@@ -88,6 +88,38 @@ describe('FeedSearch', () => {
     )
     act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS))
     expect(get).not.toHaveBeenCalled()
+  })
+
+  it('typing then pressing Enter before the pause starts only the Smart search', () => {
+    render(<FeedSearch search={search()} filterQuery={{ status: 'new' }} />)
+
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'needs action now' } })
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 50))
+    fireEvent.submit(screen.getByRole('search'))
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS * 2))
+
+    expect(post).toHaveBeenCalledTimes(1)
+    expect(post).toHaveBeenCalledWith('/items/search', { status: 'new', q: 'needs action now', removed: [] }, expect.anything())
+    expect(get).not.toHaveBeenCalled()
+  })
+
+  it('Enter cancels a keystroke search still in flight so its response cannot land', () => {
+    const cancel = vi.fn()
+    get.mockImplementation((_url: string, _data: unknown, options: { onCancelToken?: (token: { cancel: () => void }) => void }) => {
+      options.onCancelToken?.({ cancel })
+    })
+    render(<FeedSearch search={null} filterQuery={{}} />)
+
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'needs action' } })
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS))
+    expect(get).toHaveBeenCalledTimes(1)
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'needs action now' } })
+    fireEvent.submit(screen.getByRole('search'))
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS * 2))
+
+    expect(cancel).toHaveBeenCalledTimes(1)
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(post).toHaveBeenCalledWith('/items/search', { q: 'needs action now', removed: [] }, expect.anything())
   })
 
   it('reloads the results while the query is still being read', () => {
