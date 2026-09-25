@@ -74,6 +74,20 @@ class FeedSearchTest < ActiveSupport::TestCase
     assert_equal %w[email inbox], encoding.keywords(Truffler::Search::Query.new(query))
   end
 
+  test "when Jev reads email as the source channel, removing that chip makes email a search word again" do
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
+      .answer("intent__source", "filter").answer("option__source", "email")
+    query = "cora email inbox"
+    encode_query!(query, user: @user)
+
+    encoding = Item.truffler(query, scope: ItemsQuery.new.call, user: @user, surface: FeedSearch::SURFACE).encoding
+
+    assert_equal %w[product:cora source:email], encoding.filters.keys.sort
+    assert_equal %w[inbox], encoding.keywords(Truffler::Search::Query.new(query))
+    assert_equal %w[email inbox], encoding.without([ "source" ]).keywords(Truffler::Search::Query.new(query)).sort
+    assert_equal [ "product:cora" ], FeedSearch.keystroke(query, user: @user, suppressed: [ "source" ]).chips.pluck(:key)
+  end
+
   test "customers in the last 3 hours finds items heard from in the window, not older ones" do
     result = FeedSearch.keystroke("customers in the last 3 hours", user: @user)
     ids = result.records.map(&:id)
