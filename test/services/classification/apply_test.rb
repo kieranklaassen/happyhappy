@@ -236,6 +236,22 @@ class Classification::ApplyTest < ActiveSupport::TestCase
     assert_equal %w[furious relieved], item.events.classified.map { |event| event.data["mood"] }
   end
 
+  test "a live thank-you after a backfilled complaint is relief, and a live ok keeps the complaint" do
+    item = new_item
+    complaint = add_message(item, body: "Charged twice and nobody answers.", at: 2.days.ago)
+    complaint.update!(backfilled: true)
+    classify(complaint, sentiment: "complaint", anger: 0.6)
+    classify(add_message(item, body: "Refund arrived, thanks!"), sentiment: "relieved", anger: 0.0)
+    assert item.reload.relieved?
+
+    other = new_item
+    old = add_message(other, body: "Brief is broken again.", at: 2.days.ago)
+    old.update!(backfilled: true)
+    classify(old, sentiment: "complaint", anger: 0.6)
+    classify(add_message(other, body: "ok"), sentiment: "neutral", anger: 0.0)
+    assert other.reload.complaint?
+  end
+
   test "relief without an earlier upset in the thread is praise" do
     item = new_item
     classify(add_message(item, body: "Love the new Brief!"), sentiment: "relieved", sentiment_probability: 0.5, anger: 0.0)

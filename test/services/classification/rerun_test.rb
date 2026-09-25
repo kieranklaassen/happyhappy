@@ -51,6 +51,21 @@ class Classification::RerunTest < ActiveSupport::TestCase
     assert_equal @thanks.occurred_at.to_i, @item.last_message_at.to_i
   end
 
+  test "keeps the stored customer identity when the payload carries none" do
+    item = Item.create!(source: sources(:slack_community), thread_key: "slack-#{SecureRandom.hex(4)}",
+      author_handle: "ana_customer", author_email: "ana@example.com", product: products(:cora),
+      last_message_at: 1.hour.ago, status_changed_at: 2.hours.ago)
+    item.messages.create!(source: item.source, external_id: "t", body: "Hi from Every", occurred_at: 50.minutes.ago,
+      author_role: "team", raw_payload: { "user" => "U1" })
+    item.messages.create!(source: item.source, external_id: "c", body: "Help", occurred_at: 40.minutes.ago,
+      author_role: "customer", raw_payload: { "user" => "U2" })
+
+    Classification::Rerun.new(items: Item.where(id: item.id), classifier: FakeClassifier.new,
+      discord_members: @members).call
+
+    assert_equal [ "ana_customer", "ana@example.com" ], item.reload.values_at(:author_handle, :author_email)
+  end
+
   test "is idempotent: a second run reclassifies nothing" do
     rerun(FakeClassifier.new)
     fake = FakeClassifier.new

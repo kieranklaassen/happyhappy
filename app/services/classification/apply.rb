@@ -70,6 +70,9 @@ module Classification
       classified = item.messages.classified.reject(&:author_team?)
       return clear(item) if classified.empty?
 
+      # How the customer feels reads the whole thread, imported history included.
+      history = classified.select { |message| relevant?(message) }.presence || classified
+
       # Imported history is created now but written long ago, so it would count as
       # open; it only speaks for an item no live message has reached.
       live = classified.reject(&:backfilled?)
@@ -83,7 +86,7 @@ module Classification
 
       current = relevant.last || classified.last
       labels = current.classification_answers
-      stance = stance_for(current, relevant.presence || classified)
+      stance = stance_for(current, history)
 
       item.relevance_probability = open.map { |message| noul(message.classification_answers, "relevant") }.max
       item.relevant = relevant.any? unless item.relevant_human_set?
@@ -92,7 +95,7 @@ module Classification
       assign_product(item, labels["product"]) unless item.product_human_set?
       assign_category(item, labels["category"]) unless item.category_human_set?
       unless item.sentiment_human_set?
-        assign_sentiment(item, stance.classification_answers["sentiment"], classified.take_while { |message| message != stance })
+        assign_sentiment(item, stance.classification_answers["sentiment"], history.take_while { |message| message != stance })
       end
 
       item.needs_review = item.relevant? && low_confidence?(item)

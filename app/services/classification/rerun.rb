@@ -72,12 +72,26 @@ module Classification
       return if customers.empty?
 
       item.last_message_at = customers.map(&:occurred_at).max
-      if item.messages.first.author_team?
-        first = customers.first
-        item.assign_attributes(author_name: first.author_label, author_handle: first.raw_payload.dig("author", "username"),
-          author_email: first.raw_payload.dig("part", "author", "email"))
+      if item.messages.first.author_team? && (identity = identity(customers.first)).any?
+        item.assign_attributes(identity)
       end
       item.save! if item.changed?
+    end
+
+    # The customer's identity as the provider sent it, or nothing when the
+    # payload does not carry one (the item keeps what ingest stored).
+    def identity(message)
+      payload = message.raw_payload.is_a?(Hash) ? message.raw_payload : {}
+      case message.source.kind
+      when "discord"
+        { author_handle: payload.dig("author", "username"), author_name: message.author_label }
+      when "intercom"
+        { author_email: payload.dig("part", "author", "email"), author_name: payload.dig("part", "author", "name") }
+      when "email"
+        email = payload.dig("FromFull", "Email").presence&.downcase
+        { author_email: email, author_handle: email, author_name: payload.dig("FromFull", "Name") }
+      else {}
+      end.compact_blank
     end
 
     def log_progress
