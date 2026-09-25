@@ -108,6 +108,29 @@ class FeedSearchTest < ActiveSupport::TestCase
     assert_equal %w[product:cora source:email], FeedSearch.keystroke(query, user: @user).chips.pluck(:key).sort
   end
 
+  test "a filter no item carries is relaxed, the others stay, and the notice names it" do
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
+      .answer("intent__source", "filter").answer("option__source", "custom")
+    encode_query!("cora custom", user: @user)
+
+    result = FeedSearch.keystroke("cora custom", user: @user)
+
+    assert_equal [ "source:custom" ], result.relaxed_labels
+    assert_equal [ [ "product:cora", nil ], [ "source:custom", true ] ], result.chips.map { |chip| [ chip[:key], chip[:relaxed] ] }
+    assert result.records.any?
+    assert result.records.all? { |item| item.product == products(:cora) }
+    assert_equal "Nothing matched Source: custom; showing results without it.", result.relaxed_notice
+    assert_nil FeedSearch.keystroke("cora custom", user: @user, suppressed: [ "source" ]).relaxed_notice
+  end
+
+  test "the relaxed notice lists every relaxed filter" do
+    chips = [ { key: "anger", name: "Anger", relaxed: true }, { key: "source:custom", name: "Source: custom", relaxed: true } ]
+    result = FeedSearch::Result.new(query: "", records: [], chips: chips, relaxed_labels: chips.pluck(:key), invite_row: nil,
+      encoding_status: :cached, explicit_action: nil, watermark: nil)
+
+    assert_equal "Nothing matched Anger or Source: custom; showing results without them.", result.relaxed_notice
+  end
+
   test "customers in the last 3 hours finds items heard from in the window, not older ones" do
     result = FeedSearch.keystroke("customers in the last 3 hours", user: @user)
     ids = result.records.map(&:id)

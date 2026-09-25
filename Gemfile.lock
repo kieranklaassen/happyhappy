@@ -470,7 +470,7 @@ GEM
     thruster (0.1.26-arm64-darwin)
     thruster (0.1.26-x86_64-linux)
     timeout (0.6.1)
-    truffler (0.1.5)
+    truffler (0.1.6)
       activejob (>= 7.2, < 9)
       activerecord (>= 7.2, < 9)
       activesupport (>= 7.2, < 9)
@@ -558,7 +558,7 @@ DEPENDENCIES
   solid_queue
   sqlite3 (>= 2.1)
   thruster
-  truffler (~> 0.1.5)
+  truffler (~> 0.1.6)
   tzinfo-data
   vite_rails
   web-console
@@ -741,7 +741,7 @@ CHECKSUMS
   thruster (0.1.26-arm64-darwin) sha256=40676164c433abf31313422305d9e9e9210cf941b1befad88e2428b3b8dcc36c
   thruster (0.1.26-x86_64-linux) sha256=3117a6ee430663f845a0457699fe9a05232dcc6c396e2cc83504de5a223c60e8
   timeout (0.6.1) sha256=78f57368a7e7bbadec56971f78a3f5ecbcfb59b7fcbb0a3ed6ddc08a5094accb
-  truffler (0.1.5) sha256=96c303642cd8ed2abf607738fcf5952bea93e4540fd62933938b86438b5eb156
+  truffler (0.1.6) sha256=f488d3b5aa344f6a04cab0af1e7bc5fffd8bbf497a12e377500284de955a736f
   tsort (0.2.0) sha256=9650a793f6859a43b6641671278f79cfead60ac714148aabe4e3f0060480089f
   tzinfo (2.0.6) sha256=8daf828cc77bcf7d63b0e3bdb6caa47e2272dcfaf4fbfe46f8c3a9df087a829b
   unicode-display_width (3.3.0) sha256=4b7aa66a4b11db50f6f7e98411215cd0dd10eaecb665d36eec5bcacb3fa0b613

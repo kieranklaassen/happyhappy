@@ -15,7 +15,10 @@ const CHIP_STYLES: Record<ChipKind, string> = {
   time: 'bg-gray-900 text-white',
 }
 
+const RELAXED_CHIP_STYLE = 'border border-dashed border-gray-400 bg-gray-50 text-gray-500'
+
 function chipTitle(chip: SearchChip): string {
+  if (chip.relaxed) return `Nothing matched ${chip.name.toLowerCase()}, so it only ranks items higher`
   switch (chip.kind) {
     case 'filter':
       return `Only items where ${chip.name.toLowerCase()}`
@@ -130,12 +133,19 @@ export default function FeedSearch({ search, filterQuery }: Props) {
       {search && (search.chips.length > 0 || pending) && (
         <ul aria-label="How your search was read" className="flex flex-wrap items-center gap-2 text-sm">
           {search.chips.map((chip) => (
-            <li key={chip.key} className={`inline-flex items-center gap-1 rounded-full py-0.5 pr-1 pl-2.5 ${CHIP_STYLES[chip.kind]}`}>
-              <span title={chipTitle(chip)}>{chip.name}</span>
+            <li
+              key={chip.key}
+              data-relaxed={chip.relaxed ? 'true' : undefined}
+              className={`inline-flex items-center gap-1 rounded-full py-0.5 pr-1 pl-2.5 ${chip.relaxed ? RELAXED_CHIP_STYLE : CHIP_STYLES[chip.kind]}`}
+            >
+              <span title={chipTitle(chip)}>
+                {chip.name}
+                {chip.relaxed && <span className="sr-only"> (relaxed)</span>}
+              </span>
               <button
                 type="button"
                 onClick={() => removeChip(chip)}
-                aria-label={`Remove ${chip.name}`}
+                aria-label={`Remove ${chip.name}${chip.relaxed ? ' (relaxed)' : ''}`}
                 className="rounded-full px-1.5 leading-5 opacity-70 hover:opacity-100"
               >
                 ×
@@ -148,6 +158,12 @@ export default function FeedSearch({ search, filterQuery }: Props) {
             </li>
           )}
         </ul>
+      )}
+
+      {search?.relaxed_notice && (
+        <p role="status" className="text-sm text-gray-500">
+          {search.relaxed_notice}
+        </p>
       )}
 
       {invite && (

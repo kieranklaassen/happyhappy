@@ -2,7 +2,7 @@
 
 The search box on the feed and the `search_items` agent tool search items and
 their messages in plain language, through the [truffler](https://github.com/kieranklaassen/truffler)
-gem (0.1.5). Both go through `FeedSearch`, so people and agents get the same
+gem (0.1.6). Both go through `FeedSearch`, so people and agents get the same
 results for the same query and filters.
 
 ## How a search runs
@@ -25,7 +25,10 @@ results for the same query and filters.
    phrase anchors the search, so "customers in the last 3 hours" is only the
    time window. A word that names a label, option, or search word ("email",
    the source channel) is never dropped as filler. Removing a chip gives its
-   words back to the search.
+   words back to the search. When the filters leave nothing, truffler relaxes
+   the ones no item matched: they only rank, their chips show dimmed with
+   "(relaxed)" for screen readers, and a notice says "Nothing matched
+   Source: custom; showing results without it." The chip stays removable.
 3. **Smart search (Enter).** Jev reads the top 30 candidates and sorts them
    into Strong, Possible, and Unlikely (collapsed). Buckets fill in as each
    chunk of 10 is read: `TrufflerChannel` pings the searcher and the page
@@ -36,7 +39,8 @@ results for the same query and filters.
 
 Agents call `search_items` (read-only) with a `query`, the `list_items`
 filters, and `removed_chips`. It waits up to 2 seconds for the encoding, then
-answers with chips and items whose customer text is marked untrusted.
+answers with chips and items whose customer text is marked untrusted, plus
+`relaxed_labels` and `relaxed_notice` when a filter was relaxed.
 
 ## Labels
 
@@ -130,7 +134,14 @@ source exists). Connecting the first source of a new kind makes it pickable
 right away: the option keys change, which re-keys cached query encodings and
 restales the stored `source` labels. Search keeps working on those rows; run
 `bin/rails "truffler:backfill[Item]"` to rewrite them (no Jev call for
-`source`). Pausing a source changes nothing.
+`source`, and since 0.1.6 no new spend ledger). Pausing a source changes
+nothing.
+
+`config.skip_empty_options` stays off. It would narrow every choice label's
+options at query encoding to those with stored rows (cached for 5 minutes),
+so a product or category added today could not be picked until an item has
+it. The connected-source options already keep "email" out, and zero-result
+relaxation covers any other filter that finds nothing.
 
 ### Upgrading to 0.1.4
 
@@ -166,6 +177,14 @@ bin/rails db:migrate
 Choice labels now store rows only for options at or above 5 percent plus the
 most likely one; a missing option reads as 0. Existing rows stay valid and
 thin out as labels are rewritten.
+
+### Upgrading to 0.1.6
+
+No label restales: every fingerprint and the vocabulary version are the same
+as 0.1.5, so no backfill is needed, no migration, and `truffler:upgrade` has
+no new step. Backfill spend ledgers now key on the asked labels only
+(`churn_risk`), so supplied label changes never reset the cap; the existing
+ledger row keeps counting and the next backfill renames it to the new key.
 
 ## Development
 

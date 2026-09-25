@@ -23,6 +23,8 @@ function search(overrides: Partial<SearchProps> = {}): SearchProps {
       { key: 'product:cora', label: 'product', kind: 'boost', name: 'Product: cora' },
       { key: 'time', label: 'time', kind: 'time', name: 'This week' },
     ],
+    relaxed_labels: [],
+    relaxed_notice: null,
     removed: [],
     invite_row: null,
     encoding_status: 'cached',
@@ -74,6 +76,36 @@ describe('FeedSearch', () => {
       { q: 'angry Cora billing this week', removed: ['mood:grumpy', 'anger'] },
       expect.objectContaining({ preserveState: true }),
     )
+  })
+
+  it('a relaxed filter shows the notice and a dimmed chip that can still be removed', () => {
+    const relaxed = search({
+      query: 'cora email',
+      chips: [
+        { key: 'product:cora', label: 'product', kind: 'filter', name: 'Product: cora' },
+        { key: 'source:email', label: 'source', kind: 'filter', name: 'Source: email', relaxed: true },
+      ],
+      relaxed_labels: ['source:email'],
+      relaxed_notice: 'Nothing matched Source: email; showing results without it.',
+    })
+    render(<FeedSearch search={relaxed} filterQuery={{}} />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Nothing matched Source: email; showing results without it.')
+    const chips = screen.getAllByRole('listitem')
+    expect(chips[0]).not.toHaveAttribute('data-relaxed')
+    expect(chips[1]).toHaveAttribute('data-relaxed', 'true')
+    expect(chips[1]).toHaveTextContent('Source: email (relaxed)')
+    expect(screen.getByText(/^Source: email/)).toHaveAttribute('title', 'Nothing matched source: email, so it only ranks items higher')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Source: email (relaxed)' }))
+    expect(get).toHaveBeenCalledWith('/items', { q: 'cora email', removed: ['source:email'] }, expect.objectContaining({ preserveState: true }))
+  })
+
+  it('no notice without relaxed filters', () => {
+    render(<FeedSearch search={search()} filterQuery={{}} />)
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByText(/relaxed/)).not.toBeInTheDocument()
   })
 
   it('Enter starts a Smart search with the query, filters, and removed chips', () => {

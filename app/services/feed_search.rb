@@ -5,6 +5,7 @@
 #   result = FeedSearch.keystroke("angry Cora billing this week", user: Current.user, filters: { status: "new" })
 #   result.records   # ranked items, all inside ItemsQuery.new(**filters)
 #   result.chips     # [{key:, label:, kind:, name:}], filters, boosts, then the time chip
+#   result.relaxed_notice  # "Nothing matched Source: email; showing results without it." or nil
 #
 #   run = FeedSearch.smart("angry Cora billing", user: Current.user)   # on Enter
 #   FeedSearch.find_run(run.id, user: Current.user).to_h                   # the smart prop
@@ -20,7 +21,17 @@ module FeedSearch
   MAX_SUPPRESSED = 20
   ENCODING_POLL = 0.1
 
-  Result = Data.define(:query, :records, :chips, :invite_row, :encoding_status, :explicit_action, :watermark)
+  # relaxed_labels: filters truffler dropped because nothing matched with them
+  # (their chips carry `relaxed: true` and still rank matching items first).
+  Result = Data.define(:query, :records, :chips, :relaxed_labels, :invite_row, :encoding_status, :explicit_action, :watermark) do
+    def relaxed_notice
+      names = chips.select { |chip| chip[:relaxed] }.pluck(:name)
+      return if names.empty?
+
+      "Nothing matched #{names.to_sentence(two_words_connector: ' or ', last_word_connector: ', or ')}; " \
+        "showing results without #{names.one? ? 'it' : 'them'}."
+    end
+  end
 
   module_function
 
@@ -36,7 +47,7 @@ module FeedSearch
       result = Item.truffler(text, scope: scope, user: user, suppressed: suppressed, surface: SURFACE, limit: limit)
     end
 
-    Result.new(query: text, records: result.records, chips: result.chips, invite_row: result.invite_row,
+    Result.new(query: text, records: result.records, chips: result.chips, relaxed_labels: result.relaxed_labels, invite_row: result.invite_row,
       encoding_status: result.encoding_status, explicit_action: result.explicit_action, watermark: result.watermark)
   end
 
