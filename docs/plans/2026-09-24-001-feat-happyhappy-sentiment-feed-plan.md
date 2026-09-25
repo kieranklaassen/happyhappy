@@ -454,6 +454,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U19 | Sun logo and a crowd on the sign-in page | `app/frontend/components/sun-logo.tsx`, `app/frontend/components/mood/login-crowd.tsx`, `public/icon.*` | U2, U18 |
 | U18 | Mood dashboard home page | `app/queries/mood_scene.rb`, `app/frontend/pages/home/index.tsx`, `app/frontend/components/mood/` | U1 |
 | U20 | Anomaly detection | `app/services/anomalies/`, `app/models/detected_anomaly.rb`, `app/jobs/anomaly_detection_job.rb` | U10, U12, U17, U18 |
+| U21 | WebMCP for signed-in users | `app/services/mcp/tool_registry.rb`, `app/controllers/webmcp_tools_controller.rb`, `app/frontend/lib/webmcp.ts` | U12, U20 |
 
 ### U1. Foundation: gems, schema, models, ingest core
 
@@ -1123,6 +1124,45 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Happy path: the dashboard callout shows the metric, expected against actual, and a link to the feed filter.
 
 **Verification:** All gates pass, and the dashboard shows a callout on a product's hill with demo data from `bin/rails mood:demo`.
+
+### U21. WebMCP for signed-in users
+
+**Goal:** When a team member is signed in, expose the same tools the MCP server offers to agents running in their browser through WebMCP, so a browser agent can list, read, claim, and report on items with the person's own session.
+
+**Requirements:** R21, R24; KTD10; Kieran's WebMCP brief.
+
+**Dependencies:** U12 (MCP server and tools), U20 (`list_anomalies`).
+
+**Decisions:**
+- `decided (brief)`: implement WebMCP when you are signed in, with the same tools as the MCP server.
+- `assumed default`: target the current WebMCP draft of the W3C Web Machine Learning Community Group: `document.modelContext.registerTool(tool, { signal })`, unregistering by aborting the signal. `navigator.modelContext` is used only as a fallback for older implementations, and `unregisterTool(name)` is called only when present. `provideContext` and `clearContext` were removed from the draft and are not used. Sources: https://webmachinelearning.github.io/webmcp/, https://github.com/webmachinelearning/webmcp/issues/130, https://developer.chrome.com/docs/ai/webmcp/imperative-api.
+- `assumed default`: no polyfill ships. `@mcp-b/global` bundles an MCP server and transports (285 KB minified as an IIFE); browsers without WebMCP get nothing, and people who use the MCP-B extension get its injected runtime.
+- `assumed default`: one Ruby registry (`Mcp::ToolRegistry`) owns the tool list and definitions. The MCP server serves it, and signed-in pages receive the same definitions as a `webmcp` Inertia shared prop, so no schema text lives in TypeScript.
+- `assumed default`: `list_items` builds its input schema from `ItemsQuery::FILTERS`, so a new feed filter appears in MCP and WebMCP without further changes.
+- `assumed default`: WebMCP calls go to `POST /webmcp/tools/:name`, authenticated by the session cookie and the CSRF token, never an agent token. The endpoint runs the tool through the same `MCP::Server` `tools/call` path, so argument validation, `ItemsQuery` strictness, the Agents services, and the result shape match MCP exactly. Like `/mcp`, it is an agent protocol surface, not a page data API.
+- `assumed default`: claims need an agent to hold them (KTD11, the overdue sweep), so each person gets one browser agent record (`agents.user_id`, named after them with a WebMCP suffix) created on their first write call. It holds the claim; the timeline events it writes are attributed to the person (actor User). Revoking it on the agents page stops that person's WebMCP writes.
+
+**Files:**
+- Create: `db/migrate/*_add_user_to_agents.rb`, `app/services/mcp/tool_registry.rb`, `app/controllers/webmcp_tools_controller.rb`, `app/frontend/lib/webmcp.ts`
+- Modify: `app/models/agent.rb`, `app/models/user.rb`, `app/services/agents/{claim,release,report}.rb`, `app/services/mcp/server.rb`, `app/services/mcp/tools/{base,list_items,list_anomalies}.rb`, `app/controllers/inertia_controller.rb`, `app/frontend/entrypoints/inertia.tsx`, `app/frontend/pages/agents/index.tsx`, `config/routes.rb`, `AGENTS.md`, `README.md`
+- Test: `test/services/mcp/tool_registry_test.rb`, `test/controllers/webmcp_tools_controller_test.rb`, `test/models/agent_test.rb`, additions to the MCP controller and `list_items` tests, `app/frontend/lib/webmcp.test.ts`, and a browser check recorded in the PR body
+
+**Approach:**
+1. `Mcp::ToolRegistry` lists the tool classes and returns their MCP definitions and WebMCP definitions (the same name, title, description, and input schema, with WebMCP annotations `readOnlyHint` and `untrustedContentHint`). `Mcp::Server` takes its tools from it.
+2. `WebmcpToolsController` inherits from `ApplicationController`, resumes the session, answers 401 JSON when signed out, keeps Rails CSRF protection, parses the JSON body as the tool arguments, and calls the registry, which builds the MCP server with the person's browser agent for write tools and returns the `tools/call` result.
+3. `app/frontend/lib/webmcp.ts` syncs registration with the page props: on the first page and after each Inertia navigation it registers every tool from the `webmcp` prop when signed in, and aborts the registrations when the prop disappears (sign-out). It does nothing when no model context exists.
+4. The agents page says what WebMCP is and that it acts with your browser session.
+
+**Test scenarios:**
+- Happy path: MCP `tools/list` equals the registry definitions, and the WebMCP definitions carry the same names, descriptions, and schemas.
+- Happy path: every `ItemsQuery` filter appears in the `list_items` schema.
+- Happy path: a signed-in POST runs `list_items` with filters and returns the same result shape as MCP.
+- Happy path: `claim_item` then `report_item` over WebMCP holds the claim with the person's browser agent and writes timeline events with actor User.
+- Error path: signed out returns 401; a missing or wrong CSRF token is refused; an unknown tool returns 404; invalid arguments and a taken claim come back as tool errors.
+- Frontend: with a stubbed model context the module registers every tool, calls the endpoint with the CSRF token, unregisters on sign-out, and does nothing when the API is missing.
+- Browser: signed in with the dev login and a stub model context injected before page scripts, the tools are registered and `list_items` through the stub returns items.
+
+**Verification:** All gates pass, and the browser check shows the tools registered and `list_items` answering through the stub.
 
 ---
 
