@@ -1,4 +1,5 @@
 import { formatTime, safeLink } from '../lib/feed-format'
+import { useReveal } from '../lib/use-reveal'
 import type { TimelineEvent } from '../types/items'
 
 function text(value: unknown): string | null {
@@ -45,13 +46,15 @@ function detail(event: TimelineEvent): string | null {
 }
 
 export default function Timeline({ events }: { events: TimelineEvent[] }) {
+  const { shown, sentinel } = useReveal(events.length)
+
   if (events.length === 0) {
     return <p className="text-sm text-gray-500">Nothing has happened to this item yet.</p>
   }
 
   return (
     <ol className="relative flex flex-col gap-4 border-l border-gray-200 pl-5">
-      {events.map((event) => {
+      {events.slice(0, shown).map((event) => {
         const note = detail(event)
         const link = safeLink(event.data.link)
         return (
@@ -77,6 +80,7 @@ export default function Timeline({ events }: { events: TimelineEvent[] }) {
           </li>
         )
       })}
+      {shown < events.length && <li ref={sentinel} aria-hidden="true" className="h-px" />}
     </ol>
   )
 }
