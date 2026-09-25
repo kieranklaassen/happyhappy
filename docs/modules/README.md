@@ -25,6 +25,7 @@ or registered-but-undocumented.
 | [geneva_drive](geneva_drive.md) | Durable, resumable Active Job workflows | — |
 | [pwa](pwa.md) | Installable PWA: manifest, Inertia-safe service worker, offline page | — |
 | [feature_flags](feature_flags.md) | Flipper feature flags: per-user actors, YAML registry, admin UI, doc-first | — |
+| [webmcp](webmcp.md) | One tool registry for MCP clients and WebMCP browser agents, session + CSRF | — |
 
 ## Module-doc template
 

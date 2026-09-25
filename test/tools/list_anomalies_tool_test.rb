@@ -1,10 +1,10 @@
 require "test_helper"
 
-class Mcp::Tools::ListAnomaliesTest < ActiveSupport::TestCase
+class ListAnomaliesToolTest < ActiveSupport::TestCase
   include AnomalyHelper
 
   def call(**arguments)
-    Mcp::Tools::ListAnomalies.call(server_context: { agent: agents(:cursor) }, **arguments)
+    ListAnomaliesTool.call(server_context: { agent: agents(:cursor) }, **arguments)
   end
 
   setup do

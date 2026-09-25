@@ -1,8 +1,8 @@
 require "test_helper"
 
-class Mcp::Tools::ReportItemTest < ActiveSupport::TestCase
+class ReportItemToolTest < ActiveSupport::TestCase
   def call(**arguments)
-    Mcp::Tools::ReportItem.call(item_id: items(:claimed_intercom).id, server_context: { agent: agents(:cursor) }, **arguments)
+    ReportItemTool.call(item_id: items(:claimed_intercom).id, server_context: { agent: agents(:cursor) }, **arguments)
   end
 
   test "an in progress report keeps the claim" do

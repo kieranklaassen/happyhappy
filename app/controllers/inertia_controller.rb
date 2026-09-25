@@ -23,4 +23,9 @@ class InertiaController < ApplicationController
   # enabled. No secret is ever shared — see config/initializers/riffrec.rb.
   inertia_share feedback_capture_enabled: -> { Riffrec.configured? }
   inertia_share riffrec: -> { Riffrec.client_config }
+
+  # WebMCP tool definitions (docs/modules/webmcp.md), signed-in pages only:
+  # WebmcpProvider registers them on the browser's model context while this is
+  # non-null and unregisters them when it turns null (sign-out).
+  inertia_share webmcp: -> { ToolRegistry.manifest if authenticated? }
 end

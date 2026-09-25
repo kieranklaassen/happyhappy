@@ -16,6 +16,12 @@ this file is the tie-breaker. Keep entries short; link to module docs for depth.
 - **Upgrade agent** — an agent pointed at a downstream app that reads the
   changelog against the app's manifest, applies what is owed, and opens a PR.
 - **Shared props** — data every Inertia page receives via `InertiaController`
-  (flash, locale, feedback-capture gate). A page reads them; it does not fetch.
+  (flash, locale, feedback-capture gate, WebMCP tool manifest). A page reads them; it does not fetch.
+- **Tool registry**: `ToolRegistry` (`app/tools/`): the one list of agent tools.
+  It feeds both the MCP server and the WebMCP browser tools, so the two cannot
+  drift. See [docs/modules/webmcp.md](docs/modules/webmcp.md).
+- **WebMCP**: the browser API (`document.modelContext.registerTool`) through which a
+  page offers typed tools to an agent driving the tab. Here it is signed-in
+  only, and each call goes through `POST /webmcp/tools/:name`.
 - **Born-complete** — a fresh clone of the template already lists every module in
   its manifest, so it starts fully adopted.

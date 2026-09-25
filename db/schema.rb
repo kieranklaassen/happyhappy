@@ -18,8 +18,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_041000) do
     t.datetime "revoked_at"
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id"
     t.index ["name"], name: "index_agents_on_name", unique: true
     t.index ["token_digest"], name: "index_agents_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_agents_on_user_id", unique: true
   end
 
   create_table "anomalies", force: :cascade do |t|
@@ -314,6 +316,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_041000) do
     t.string "url", null: false
   end
 
+  add_foreign_key "agents", "users"
   add_foreign_key "anomalies", "products"
   add_foreign_key "anomalies", "sources"
   add_foreign_key "digests", "products"
