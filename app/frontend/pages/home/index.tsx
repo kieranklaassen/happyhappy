@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import '@fontsource/caveat/600.css'
 import '../../components/mood/mood.css'
 import AppNav from '../../components/app-nav'
+import AnomalyCallout from '../../components/mood/anomaly-callout'
 import { MOOD_COLORS, plural, timeAgo } from '../../components/mood/format'
 import { sourceKindLabel } from '../../lib/feed-format'
 import Meadow, { type MoodHistory } from '../../components/mood/meadow'
@@ -89,7 +90,7 @@ function Chip({ href, active, children }: { href: string; active: boolean; child
   )
 }
 
-export default function Home({ scene, today, filters, options }: MoodDashboardProps) {
+export default function Home({ scene, today, filters, options, anomalies }: MoodDashboardProps) {
   const status = useMoodStream()
   const history = useRef<Map<string, Mood> | null>(null)
   const previous: MoodHistory = useMemo(() => history.current, [scene])
@@ -156,7 +157,13 @@ export default function Home({ scene, today, filters, options }: MoodDashboardPr
           ) : (
             <div className="mt-6 flex flex-wrap gap-6">
               {scene.map((group) => (
-                <Meadow key={group.product?.slug ?? 'none'} group={group} history={previous} productHref={query(filters.range, group.product?.slug ?? null)} />
+                <Meadow
+                  key={group.product?.slug ?? 'none'}
+                  group={group}
+                  history={previous}
+                  productHref={query(filters.range, group.product?.slug ?? null)}
+                  aside={group.product && anomalies?.[group.product.slug] && <AnomalyCallout anomalies={anomalies[group.product.slug]} />}
+                />
               ))}
             </div>
           )}

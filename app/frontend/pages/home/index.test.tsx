@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { anomaly } from '../../test/anomaly-fixture'
 import Home, { headline } from './index'
 import type { MoodDashboardProps } from '../../types/mood'
 
@@ -103,5 +104,12 @@ describe('headline', () => {
     expect(headline('furious')).toBe('Stormy. Grab an umbrella.')
     expect(headline('relieved')).toBe('The clouds are clearing.')
     expect(headline(null)).toBe('Quiet so far.')
+  })
+
+  it('puts an anomaly callout on the affected product meadow', () => {
+    render(<Home {...props} anomalies={{ cora: [anomaly()] }} />)
+
+    const meadow = screen.getByRole('region', { name: 'Cora' })
+    expect(meadow).toContainElement(screen.getByRole('complementary', { name: 'Storm warning for Cora' }))
   })
 })

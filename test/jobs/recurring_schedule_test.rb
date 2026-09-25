@@ -58,6 +58,19 @@ class RecurringScheduleTest < ActiveSupport::TestCase
     assert_operator OverdueSweepJob, :<, ActiveJob::Base
   end
 
+  test "each environment detects anomalies every 15 minutes and once a day" do
+    %w[production development test].each do |env|
+      tasks = RECURRING.fetch(env)
+
+      assert_equal({ "class" => "AnomalyDetectionJob", "args" => [ "hour" ], "schedule" => "*/15 * * * *" },
+        tasks.fetch("anomaly_detection_hourly"))
+      assert_equal({ "class" => "AnomalyDetectionJob", "args" => [ "day" ], "schedule" => "every day at 0:10am" },
+        tasks.fetch("anomaly_detection_daily"))
+    end
+
+    assert_operator AnomalyDetectionJob, :<, ActiveJob::Base
+  end
+
   test "JOB_CONCURRENCY defaults processes to 1 when unset" do
     worker = QUEUE.fetch("production").fetch("workers").first
     assert_equal 1, worker.fetch("processes")

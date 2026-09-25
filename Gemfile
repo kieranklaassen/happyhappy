@@ -57,6 +57,9 @@ gem "slack-ruby-client"
 # HTTP client for provider APIs (Intercom, X)
 gem "faraday"
 
+# Gaussian anomaly detection for the per-product sentiment series
+gem "anomaly"
+
 # Durable, resumable workflows backed by Active Record
 gem "geneva_drive", "~> 0.5.0"
 

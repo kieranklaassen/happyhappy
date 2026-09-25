@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ProductOverviewsControllerTest < ActionDispatch::IntegrationTest
+  include AnomalyHelper
+
   setup do
     sign_in_as users(:every_ana)
     @product = products(:cora)
@@ -83,5 +85,21 @@ class ProductOverviewsControllerTest < ActionDispatch::IntegrationTest
     @sequence = (@sequence || 0) + 1
     Item.create!(source: sources(:slack_community), product: @product, thread_key: "overview-#{@sequence}",
       sentiment: sentiment, relevant: relevant, last_message_at: created_at, created_at: created_at, **attributes)
+  end
+
+  test "lists the product's anomalies from the last 30 days, newest window first" do
+    older = create_anomaly!(status: :ended, historical: true, window_start: 20.days.ago, window_end: 20.days.ago + 1.day,
+      granularity: "day", metric: "volume", dimension: nil, ended_at: 1.day.ago)
+    newer = create_anomaly!(source: sources(:slack_community))
+    create_anomaly!(window_start: 40.days.ago, window_end: 40.days.ago + 1.hour, status: :ended, ended_at: 39.days.ago)
+    create_anomaly!(product: products(:spiral))
+
+    get product_overview_path(@product)
+
+    anomalies = inertia.props[:anomalies]
+    assert_equal [ newer.id, older.id ], anomalies.map { |anomaly| anomaly["id"] }
+    assert_equal "Every community Slack", anomalies.first.dig("source", "name")
+    assert anomalies.last["historical"]
+    assert_equal "Message volume", anomalies.last["label"]
   end
 end

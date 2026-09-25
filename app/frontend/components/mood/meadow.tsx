@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react'
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Character from './character'
 import Flora from './flora'
 import { MOOD_COLORS, plural, timeAgo } from './format'
@@ -185,7 +185,7 @@ function Hill({ wash, seed, rowBottom }: { wash: string; seed: string; rowBottom
   )
 }
 
-export default function Meadow({ group, history, productHref }: { group: MoodGroup; history: MoodHistory; productHref: string }) {
+export default function Meadow({ group, history, productHref, aside }: { group: MoodGroup; history: MoodHistory; productHref: string; aside?: ReactNode }) {
   const name = group.product?.name ?? ''
   const title = group.product ? group.product.name : 'Not sure which product'
   const wash = GROUND_WASHES[hashSeed(group.product?.slug ?? 'none') % GROUND_WASHES.length]
@@ -220,6 +220,7 @@ export default function Meadow({ group, history, productHref }: { group: MoodGro
           </Link>
         )}
       </header>
+      {aside && <div className="relative mt-2 flex justify-end">{aside}</div>}
       <div className="relative mt-1">
         {bottoms.length === 0 ? (
           <Hill wash={wash} seed={group.product?.slug ?? 'none'} />

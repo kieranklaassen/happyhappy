@@ -1,4 +1,5 @@
 import type { Mood } from '../components/mood/moods'
+import type { AnomalyProps } from './anomalies'
 import type { ItemStatus, Sentiment, SourceKind } from './items'
 
 export type SettledMood = Exclude<Mood, 'pending'>
@@ -45,4 +46,5 @@ export interface MoodDashboardProps {
   today: MoodSummary
   filters: { range: string; product: string | null }
   options: { ranges: string[]; products: { slug: string; name: string }[] }
+  anomalies?: Record<string, AnomalyProps[]>
 }

@@ -18,10 +18,15 @@ module Backfill
       new(...).call
     end
 
-    def initialize(since:, token: ENV["INTERCOM_ACCESS_TOKEN"], sleeper: nil)
+    PROGRESS_EVERY = 100
+
+    # progress, when given, is called with the number of conversations scanned
+    # every PROGRESS_EVERY conversations.
+    def initialize(since:, token: ENV["INTERCOM_ACCESS_TOKEN"], sleeper: nil, progress: nil)
       raise ArgumentError, "INTERCOM_ACCESS_TOKEN is not set" if token.to_s.strip.empty?
 
       @since = since
+      @progress = progress
       @http = HttpClient.new(base_url: API_URL,
         headers: { "Authorization" => "Bearer #{token.strip}", "Intercom-Version" => API_VERSION },
         throttle: method(:throttle), **{ sleeper: sleeper }.compact)
@@ -33,6 +38,7 @@ module Backfill
       app_id = @http.get("/me").dig("app", "id_code")
       each_conversation_id do |id|
         @conversations += 1
+        @progress&.call(@conversations) if (@conversations % PROGRESS_EVERY).zero?
         conversation = @http.get("/conversations/#{id}")
         Connectors::Intercom.ingest_conversation(conversation, app_id: app_id, since: @since).each do |result|
           stats_for(result.message.source).tap do |stats|

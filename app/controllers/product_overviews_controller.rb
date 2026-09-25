@@ -3,6 +3,7 @@ class ProductOverviewsController < InertiaController
 
   DAYS = 30
   NOTABLE_LIMIT = 3
+  ANOMALY_LIMIT = 50
 
   def show
     product = Product.find_by(slug: params[:product_id]) || Product.find(params[:product_id])
@@ -16,7 +17,9 @@ class ProductOverviewsController < InertiaController
       totals: sentiment_counts(arrivals.map(&:last)),
       notable_complaints: item_rows(items.complaint.order(anger_probability: :desc, id: :desc).limit(NOTABLE_LIMIT)),
       notable_praise: item_rows(items.praise.order(sentiment_probability: :desc, id: :desc).limit(NOTABLE_LIMIT)),
-      products: Product.ordered.map { |other| product_props(other) }
+      products: Product.ordered.map { |other| product_props(other) },
+      anomalies: product.anomalies.includes(:source).where(window_end: first_day.beginning_of_day..)
+        .recent_first.limit(ANOMALY_LIMIT).map(&:to_props)
     }
   end
 

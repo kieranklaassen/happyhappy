@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { anomaly } from '../../test/anomaly-fixture'
 import ProductOverview, { type ProductOverviewProps } from './overview'
 
 vi.mock('@inertiajs/react', () => ({
@@ -46,6 +47,7 @@ function props(overrides: Partial<ProductOverviewProps> = {}): ProductOverviewPr
       { id: 3, name: 'Cora', slug: 'cora', retired: false },
       { id: 4, name: 'Spiral', slug: 'spiral', retired: false },
     ],
+    anomalies: [],
     ...overrides,
   }
 }
@@ -69,5 +71,19 @@ describe('Product overview page', () => {
 
     expect(screen.getByText('No items about Cora in the last 30 days.')).toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Items per day by sentiment' })).not.toBeInTheDocument()
+  })
+
+  it('shows the anomaly timeline, or a quiet note when there is none', () => {
+    const { unmount } = render(<ProductOverview {...props()} />)
+    expect(screen.getByText('Nothing unusual in the last 30 days.')).toBeInTheDocument()
+    unmount()
+
+    render(<ProductOverview {...props({ anomalies: [anomaly(), anomaly({ id: 13, status: 'ended', historical: true, label: 'Message volume' })] })} />)
+    expect(screen.getByRole('heading', { name: 'Unusual activity' })).toBeInTheDocument()
+    expect(screen.getByText('Bug messages')).toBeInTheDocument()
+    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.getByText('History')).toBeInTheDocument()
+    expect(screen.getAllByText(/9 against an expected 0\.4 per hour/)).toHaveLength(2)
+    expect(screen.getAllByRole('link', { name: '2 items' })[0]).toHaveAttribute('href', '/items?anomaly=12')
   })
 })

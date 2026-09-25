@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ItemsControllerTest < ActionDispatch::IntegrationTest
+  include AnomalyHelper
+
   setup do
     sign_in_as users(:every_ana)
   end
@@ -153,5 +155,17 @@ class ItemsControllerTest < ActionDispatch::IntegrationTest
     get item_path(id: 0)
 
     assert_response :not_found
+  end
+
+  test "the feed lists active anomalies for its banner and filters to their items" do
+    anomaly = create_anomaly!
+    create_anomaly!(status: :ended, ended_at: Time.current, item_ids: [ items(:praise_discord).id ])
+
+    get items_path, params: { anomaly: "active" }
+
+    assert_equal [ items(:angry_slack).id ], item_ids
+    assert_equal({ "anomaly" => "active", "relevance" => "relevant" }, inertia.props[:filters].as_json)
+    assert_equal [ anomaly.id ], inertia.props[:anomalies].map { |row| row["id"] }
+    assert_equal "Bug messages", inertia.props[:anomalies].first["label"]
   end
 end

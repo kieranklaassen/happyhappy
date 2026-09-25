@@ -56,6 +56,36 @@ module MoodDemo
     author.include?("@") ? { author_email: author, author_name: author.split("@").first.capitalize } : { author_handle: author }
   end
 
+  BUG_REPORTERS = %w[ana_customer mx_rage grumbles].freeze
+  QUIET_CORA = %w[bo@example.com cy@example.com priya_writes hotmailhenry dana@example.com].freeze
+
+  # A steady trickle of Cora messages over the past half day, then a burst of bug reports in the last
+  # hour, so hourly anomaly detection has something to find.
+  def seed_anomaly!
+    bug = Category.find_or_create_by!(name: "bug") { |category| category.description = "Something is broken." }
+    reporters = BUG_REPORTERS.map { |author| Item.find_by!(thread_key: "demo-#{author}") }
+    reporters.each { |item| item.update!(category: bug) }
+    quiet = QUIET_CORA.map { |author| Item.find_by!(thread_key: "demo-#{author}") }
+    last_window_start, last_window_end = Anomalies::Detect.windows("hour").last
+
+    (2..13).each do |hours|
+      (hours.even? ? 1 : 2).times do |index|
+        demo_message!(quiet[(hours + index) % quiet.size], "demo-anomaly-baseline-#{hours}-#{index}",
+          last_window_end - hours.hours + (index * 20 + 5).minutes, "Quick question about my brief settings.")
+      end
+    end
+    8.times do |index|
+      demo_message!(reporters[index % reporters.size], "demo-anomaly-burst-#{index}",
+        last_window_start + (index * 6 + 3).minutes, "Cora archived important mail again. This is broken.", anger: 0.75)
+    end
+    Anomalies::Detect.call(granularity: "hour")
+  end
+
+  def demo_message!(item, external_id, at, body, anger: 0.1)
+    message = item.messages.find_or_initialize_by(source: item.source, external_id: external_id)
+    message.update!(body: body, occurred_at: at, anger_probability: anger, classified_at: at)
+  end
+
   def classify!(item, sentiment:, confidence:, anger:, body:, at: Time.current)
     message = item.messages.create!(source: item.source, external_id: SecureRandom.uuid, body: body,
       occurred_at: at, anger_probability: anger, classified_at: sentiment && Time.current)
@@ -77,6 +107,8 @@ namespace :mood do
       MoodDemo.classify!(item, sentiment: sentiment, confidence: confidence, anger: anger, body: body, at: at)
     end
     puts "#{MoodDemo::PEOPLE.size} demo customers are on the dashboard."
+    anomalies = MoodDemo.seed_anomaly!
+    puts "#{anomalies.size} anomalies detected from a burst of Cora bug reports."
   end
 
   desc "Keep demo customers arriving and changing mood (development only)"
