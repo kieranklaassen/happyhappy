@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_025032) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -20,6 +20,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_agents_on_name", unique: true
     t.index ["token_digest"], name: "index_agents_on_token_digest", unique: true
+  end
+
+  create_table "anomalies", force: :cascade do |t|
+    t.float "actual", null: false
+    t.datetime "created_at", null: false
+    t.string "dimension"
+    t.datetime "ended_at"
+    t.float "expected", null: false
+    t.datetime "first_seen_at", null: false
+    t.string "granularity", null: false
+    t.boolean "historical", default: false, null: false
+    t.json "item_ids", default: [], null: false
+    t.datetime "last_seen_at", null: false
+    t.string "metric", null: false
+    t.integer "product_id", null: false
+    t.string "severity", null: false
+    t.integer "source_id"
+    t.string "status", default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "window_end", null: false
+    t.datetime "window_start", null: false
+    t.float "z_score", null: false
+    t.index ["product_id", "metric", "dimension", "granularity", "window_start"], name: "index_anomalies_on_series_and_window"
+    t.index ["product_id"], name: "index_anomalies_on_product_id"
+    t.index ["source_id"], name: "index_anomalies_on_source_id"
+    t.index ["status", "window_end"], name: "index_anomalies_on_status_and_window_end"
   end
 
   create_table "categories", force: :cascade do |t|
@@ -203,6 +229,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
   end
 
   create_table "settings", force: :cascade do |t|
+    t.integer "anomaly_active_days", default: 7, null: false
+    t.integer "anomaly_min_baseline_windows", default: 6, null: false
+    t.integer "anomaly_min_count", default: 5, null: false
+    t.float "anomaly_sensitivity", default: 3.0, null: false
     t.datetime "created_at", null: false
     t.float "escalation_threshold", default: 0.8, null: false
     t.float "low_confidence_threshold", default: 0.6, null: false
@@ -275,6 +305,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
     t.string "url", null: false
   end
 
+  add_foreign_key "anomalies", "products"
+  add_foreign_key "anomalies", "sources"
   add_foreign_key "digests", "products"
   add_foreign_key "escalations", "items"
   add_foreign_key "escalations", "messages"

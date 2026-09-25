@@ -19,6 +19,18 @@ module Webhooks
       new(item_event).call
     end
 
+    # Anomalies are not item timeline events, so they fan out on their own when Anomalies::Detect opens one.
+    def self.anomaly(anomaly)
+      event = DetectedAnomaly::WEBHOOK_EVENT
+      endpoints = WebhookEndpoint.active.select { |endpoint| endpoint.subscribed?(event) && endpoint.matches_anomaly?(anomaly) }
+      return [] if endpoints.empty?
+
+      payload = Payload.for_anomaly(anomaly)
+      endpoints.map do |endpoint|
+        endpoint.deliveries.create!(event: event, payload: payload).tap { |delivery| WebhookDeliveryJob.perform_later(delivery) }
+      end
+    end
+
     def self.events_for(item_event)
       events = EVENTS_BY_KIND.fetch(item_event.kind, [])
       # A report that moves the item (for example to handled) is also a status change.

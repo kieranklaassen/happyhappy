@@ -15,12 +15,13 @@ class ItemsController < InertiaController
       filters: query.filters,
       pagination: { page: page, prev_page: (page - 1 if page > 1), next_page: (page + 1 if rows.size > PER_PAGE) },
       options: feed_options,
+      anomalies: DetectedAnomaly.active.includes(:product, :source).recent_first.map(&:to_props),
       error: nil
     }
   rescue ItemsQuery::InvalidFilter => error
     render inertia: "items/index", props: {
       items: [], filters: {}, pagination: { page: 1, prev_page: nil, next_page: nil }, options: feed_options,
-      error: "That filter is not valid (#{error.message})."
+      anomalies: [], error: "That filter is not valid (#{error.message})."
     }
   end
 

@@ -3,6 +3,8 @@
 require "test_helper"
 
 class HomeControllerTest < ActionDispatch::IntegrationTest
+  include AnomalyHelper
+
   test "the mood dashboard needs a signed-in person" do
     get root_path
 
@@ -45,5 +47,16 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
 
     assert inertia.props.key?("flash"), "flash should be shared on every Inertia page"
     assert_inertia_props({ locale: "en" })
+  end
+
+  test "active anomalies are grouped by product slug for the dashboard callouts" do
+    sign_in_as users(:one)
+    anomaly = create_anomaly!
+    create_anomaly!(status: :ended, ended_at: Time.current)
+
+    get root_path
+
+    assert_equal [ "cora" ], inertia.props[:anomalies].keys
+    assert_equal [ anomaly.id ], inertia.props[:anomalies]["cora"].map { |row| row["id"] }
   end
 end

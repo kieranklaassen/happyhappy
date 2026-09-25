@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ItemsQueryTest < ActiveSupport::TestCase
+  include AnomalyHelper
+
   def results(**filters)
     ItemsQuery.new(**filters).call.to_a
   end
@@ -89,5 +91,20 @@ class ItemsQueryTest < ActiveSupport::TestCase
     error = assert_raises(ItemsQuery::InvalidFilter) { ItemsQuery.new(colour: "red") }
 
     assert_equal :colour, error.filter
+  end
+
+  test "anomaly narrows to the items behind active anomalies, or behind one anomaly" do
+    active = create_anomaly!(item_ids: [ items(:angry_slack).id, items(:claimed_intercom).id ])
+    ended = create_anomaly!(item_ids: [ items(:praise_discord).id ], status: :ended, ended_at: Time.current)
+
+    assert_equal [ items(:angry_slack), items(:claimed_intercom) ], results(anomaly: "active")
+    assert_equal [ items(:praise_discord) ], results(anomaly: ended.id.to_s)
+    assert_equal [ items(:angry_slack) ], results(anomaly: active.id, sentiment: "complaint", source_kind: "slack")
+    assert_empty results(anomaly: "0")
+  end
+
+  test "an anomaly filter that is neither active nor an id is invalid" do
+    error = assert_raises(ItemsQuery::InvalidFilter) { ItemsQuery.new(anomaly: "spiky") }
+    assert_equal :anomaly, error.filter
   end
 end

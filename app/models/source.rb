@@ -6,6 +6,7 @@ class Source < ApplicationRecord
   belongs_to :default_product, class_name: "Product", optional: true
   has_many :items, dependent: :restrict_with_error
   has_many :messages, dependent: :restrict_with_error
+  has_many :anomalies, class_name: "DetectedAnomaly", dependent: :delete_all
 
   encrypts :signing_secret
 

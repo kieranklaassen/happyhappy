@@ -31,6 +31,7 @@ module Mcp
           needs_review: { type: "boolean", description: "Only items flagged for human review." },
           overdue: { type: "boolean", description: "Only claimed items past the report-back window." },
           relevance: { type: "string", enum: ItemsQuery::RELEVANCE, description: "Defaults to relevant." },
+          anomaly: { type: "string", description: "\"active\" for items behind any active anomaly, or an anomaly id from list_anomalies." },
           limit: { type: "integer", minimum: 1, maximum: MAX_LIMIT, description: "Defaults to #{DEFAULT_LIMIT}." },
           offset: { type: "integer", minimum: 0, description: "Items to skip, for paging with next_offset." }
         }

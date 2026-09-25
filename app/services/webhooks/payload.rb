@@ -31,6 +31,22 @@ module Webhooks
       }
     end
 
+    # Anomalies carry item ids rather than customer text, so nothing in them is untrusted.
+    def self.for_anomaly(anomaly)
+      {
+        id: "evt_anomaly_#{anomaly.id}_detected",
+        event: DetectedAnomaly::WEBHOOK_EVENT,
+        occurred_at: anomaly.first_seen_at.iso8601,
+        untrusted_fields: [],
+        actor: { type: nil, name: "happyhappy" },
+        data: {},
+        anomaly: anomaly.to_props.merge(
+          url: "#{base_url}/items?anomaly=#{anomaly.id}",
+          product_url: "#{base_url}/products/#{anomaly.product.slug}/overview"
+        )
+      }
+    end
+
     def self.base_url
       Rails.application.config.x.public_base_url.presence || "http://localhost:3000"
     end

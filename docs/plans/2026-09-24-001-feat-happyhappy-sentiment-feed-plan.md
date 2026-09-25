@@ -453,6 +453,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U17 | Outbound webhooks | `app/models/webhook_endpoint.rb`, `app/jobs/webhook_delivery_job.rb` | U1, U9, U10, U16 |
 | U19 | Sun logo and a crowd on the sign-in page | `app/frontend/components/sun-logo.tsx`, `app/frontend/components/mood/login-crowd.tsx`, `public/icon.*` | U2, U18 |
 | U18 | Mood dashboard home page | `app/queries/mood_scene.rb`, `app/frontend/pages/home/index.tsx`, `app/frontend/components/mood/` | U1 |
+| U20 | Anomaly detection | `app/services/anomalies/`, `app/models/detected_anomaly.rb`, `app/jobs/anomaly_detection_job.rb` | U10, U12, U17, U18 |
 
 ### U1. Foundation: gems, schema, models, ingest core
 
@@ -1074,6 +1075,54 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Integration: the layout carries the description and absolute `og:` and `twitter:` image URLs, and `public/og-image.png` is 1200 by 630.
 
 **Verification:** `bin/rails test` and `npm run check` pass, and the sign-in page looks right on desktop and mobile with reduced motion on and off.
+
+### U20. Anomaly detection
+
+**Goal:** Notice when something unusual happens to a product (a burst of messages, a jump in complaints or anger, a shift in how customers feel, a sudden pile of bug or billing reports) and show it on the dashboard, the feed, the product overview, outbound webhooks, and MCP.
+
+**Requirements:** R20 (a glanceable product overview); Kieran's anomaly brief.
+
+**Dependencies:** U10 (feed and `ItemsQuery`), U12 (MCP tools), U17 (`Webhooks::FanOut` and `Webhooks::Payload`), U18 (mood mapping and dashboard).
+
+**Decisions:**
+- `decided (brief)`: use the `anomaly` gem (ankane/anomaly) for detection.
+- `decided (brief)`: hourly and daily series per product and per source for message volume, complaint share, mean anger, share of customers in each mood (from `Mood`), and per-category volume.
+- `decided (brief)`: detection runs in a recurring Solid Queue job every 15 minutes plus a daily pass, in every environment key of `config/recurring.yml`.
+- `decided (brief)`: one `anomalies` table with product, nullable source, metric, granularity, window start and end, expected and actual, severity, driving item ids, status (active or ended), and first and last seen. One spike is one row that updates while it lasts and ends when the series returns to normal.
+- `decided (brief)`: windows with too little data are ignored; anomalies whose window is older than the active window (7 days) are recorded as history only, never active, so backfilled history cannot raise live alerts. Sensitivity, minimum counts, and the active window live on the settings record with defaults.
+- `decided (brief)`: show anomalies as a watercolor weather callout on the product's hill, a feed filter and banner via `ItemsQuery`, a timeline on the product overview, an `anomaly.detected` outbound webhook event, and an MCP `list_anomalies` tool. Nothing is posted to Slack.
+- `decided (brief)`: count only customer messages when `messages.author_role` exists, and tolerate moods the app does not know yet (such as `relieved`).
+- `assumed default`: the gem's Gaussian detector is trained on the baseline windows with a fixed epsilon, so detection is deterministic; epsilon is the probability at `mean + sensitivity * std`, so sensitivity reads as a z-score (default 3).
+- `assumed default`: only upward spikes are flagged, and each metric also needs a minimum absolute lift (3 messages for counts, 15 points for shares and anger) so a flat baseline cannot turn a one-message wobble into an alert.
+- `assumed default`: hourly windows trail the detection time in one-hour steps over the last 48 hours against a 7-day baseline; daily windows are calendar days over the last 90 days against a 28-day baseline. A window needs at least 5 messages (or 5 customers for mood shares) and at least 6 usable baseline windows.
+- `assumed default`: severity is low, medium, or high at 1, 1.5, and 2 times the sensitivity in z-score.
+- `assumed default`: webhook endpoints filtered by product only receive anomalies for those products; a category filter only passes category anomalies in those categories; sentiment filters do not apply to anomalies.
+- `assumed default`: messages with a null `author_role` count as customer messages.
+
+**Files:**
+- Create: `db/migrate/*_create_anomalies.rb`, `app/models/detected_anomaly.rb` (the gem owns the top-level `Anomaly` constant), `app/services/anomalies/{series,detect}.rb`, `app/jobs/anomaly_detection_job.rb`, `app/services/mcp/tools/list_anomalies.rb`, `app/frontend/components/mood/anomaly-callout.tsx`, `app/frontend/components/anomaly-timeline.tsx`, `app/frontend/types/anomalies.ts`
+- Modify: `Gemfile`, `config/recurring.yml`, `app/models/{setting,product,source}.rb`, `app/models/webhook_endpoint.rb`, `app/services/webhooks/{fan_out,payload}.rb`, `app/services/mcp/{server,tools/list_items}.rb`, `app/queries/items_query.rb`, `app/controllers/{home,items,product_overviews,settings}_controller.rb`, `app/frontend/pages/{home/index,items/index,products/overview,settings/edit}.tsx`, `app/frontend/components/mood/meadow.tsx` (one optional prop), `app/frontend/lib/webhooks.ts`, `lib/tasks/mood_demo.rake`
+- Test: `test/services/anomalies/{series,detect}_test.rb`, `test/jobs/anomaly_detection_job_test.rb`, `test/services/mcp/tools/list_anomalies_test.rb`, additions to the items query, webhook fan-out, product overview, home, and recurring schedule tests, `app/frontend/components/mood/anomaly-callout.test.tsx`, `app/frontend/components/anomaly-timeline.test.tsx`
+
+**Approach:**
+1. `Anomalies::Series` loads messages on relevant items with a product for the lookback once and buckets them into windows per product and per product plus source, computing each metric's value, its denominator, and the item ids that drive it.
+2. `Anomalies::Detect` walks each series oldest to newest. For every scanned window with enough data it trains `Anomaly::Detector` on the previous baseline windows, and a spike opens or extends the series' active row; the first normal window after it ends the row. Rows already recorded for an overlapping window are reused, so rescans never duplicate.
+3. A new active row fans out `anomaly.detected` to subscribed endpoints; history rows do not.
+4. The dashboard gets active anomalies per product slug and draws a callout in the meadow header; the feed filter `anomaly=active` or an anomaly id narrows to the driving items and shows a banner; the product overview lists the last 30 days of anomalies.
+
+**Test scenarios:**
+- Happy path: series count volume, complaint share, mean anger, mood shares, and category volume per product and per source, with customer-only counts when `author_role` exists.
+- Edge case: an unknown mood becomes its own mood share without errors.
+- Happy path: a burst of bug messages on Cora against a steady baseline opens one active anomaly with expected, actual, severity, and the driving items.
+- Edge case: a second run while the spike lasts updates the same row; a normal window ends it.
+- Edge case: a window below the minimum count and a series without enough baseline are skipped.
+- Edge case: a spike in backfilled history older than 7 days is recorded as ended history and sends no webhook.
+- Integration: the job runs both granularities and `anomaly.detected` reaches a subscribed endpoint only.
+- Happy path: the feed filter returns only an anomaly's items, and the feed banner lists active anomalies.
+- Happy path: the product overview and MCP `list_anomalies` return anomalies with expected and actual.
+- Happy path: the dashboard callout shows the metric, expected against actual, and a link to the feed filter.
+
+**Verification:** All gates pass, and the dashboard shows a callout on a product's hill with demo data from `bin/rails mood:demo`.
 
 ---
 

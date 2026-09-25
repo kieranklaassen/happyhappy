@@ -18,6 +18,7 @@
 #   needs_review  true for items flagged for human review
 #   overdue       true for claimed items past the report-back window
 #   relevance     relevant (default), not_relevant, or all
+#   anomaly       "active" for items behind any active anomaly, or one anomaly id
 #
 # Results are ordered most recent message first. Unknown filters and invalid values raise InvalidFilter
 # at construction, so callers can report the problem instead of silently widening the feed.
@@ -32,11 +33,12 @@ class ItemsQuery
   end
 
   LIST_FILTERS = %i[product sentiment category status source source_kind].freeze
-  SCALAR_FILTERS = %i[range since until needs_review overdue relevance].freeze
+  SCALAR_FILTERS = %i[range since until needs_review overdue relevance anomaly].freeze
   FILTERS = (LIST_FILTERS + SCALAR_FILTERS).freeze
   RANGES = { "24h" => 24.hours, "7d" => 7.days, "30d" => 30.days, "90d" => 90.days }.freeze
   RELEVANCE = %w[relevant not_relevant all].freeze
   NO_PRODUCT = "none"
+  ACTIVE_ANOMALIES = "active"
   TRUE_VALUES = [ true, "true", "1" ].freeze
   FALSE_VALUES = [ false, "false", "0" ].freeze
 
@@ -68,6 +70,7 @@ class ItemsQuery
     scope = scope.where(last_message_at: ...filters[:until]) if filters[:until]
     scope = scope.where(needs_review: true) if filters[:needs_review]
     scope = scope.where(overdue: true) if filters[:overdue]
+    scope = scope.where(id: anomaly_item_ids) if filters[:anomaly]
     scope
   end
 
@@ -84,6 +87,7 @@ class ItemsQuery
     normalized[:until] = parse_time(:until, raw[:until]) if raw[:until].present?
     normalized[:needs_review] = true if flag(:needs_review, raw[:needs_review])
     normalized[:overdue] = true if flag(:overdue, raw[:overdue])
+    normalized[:anomaly] = validate_anomaly(raw[:anomaly]) if raw[:anomaly].present?
     normalized[:relevance] = validate_relevance(raw[:relevance].presence || "relevant")
     normalized
   end
@@ -107,6 +111,13 @@ class ItemsQuery
     RELEVANCE.include?(value.to_s) ? value.to_s : raise(InvalidFilter.new(:relevance, "must be one of #{RELEVANCE.join(', ')}"))
   end
 
+  def validate_anomaly(value)
+    value = value.to_s.strip
+    return value if value == ACTIVE_ANOMALIES || value.match?(/\A\d+\z/)
+
+    raise InvalidFilter.new(:anomaly, "must be #{ACTIVE_ANOMALIES} or an anomaly id")
+  end
+
   def parse_time(name, value)
     value.is_a?(Time) ? value : Time.zone.iso8601(value.to_s)
   rescue ArgumentError
@@ -122,6 +133,11 @@ class ItemsQuery
 
   def range_start
     [ filters[:range] && RANGES.fetch(filters[:range]).ago, filters[:since] ].compact.max
+  end
+
+  def anomaly_item_ids
+    anomalies = filters[:anomaly] == ACTIVE_ANOMALIES ? DetectedAnomaly.active : DetectedAnomaly.where(id: filters[:anomaly])
+    anomalies.pluck(:item_ids).flatten.uniq
   end
 
   def by_relevance(scope)
