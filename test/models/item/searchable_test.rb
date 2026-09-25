@@ -78,6 +78,27 @@ class Item::SearchableTest < ActiveSupport::TestCase
     assert_includes Item::Searchable.category_options.keys, Classification::SchemaBuilder::OTHER_CATEGORY
   end
 
+  test "source options are the kinds of connected sources, and connecting a new kind adds it" do
+    keep_only_sources!("slack", "intercom")
+    source = Item.truffler_definition.label(:source)
+    before = Item.truffler_definition.vocabulary.fingerprints(all_users: true)
+
+    assert_equal %w[slack intercom], source.options.keys
+    assert_equal %w[slack intercom], Item::Searchable.source_options
+
+    Source.create!(kind: "email", name: "Support inbox", selector: "support@every.to", status: "paused")
+    after = Item.truffler_definition.vocabulary.fingerprints(all_users: true)
+
+    assert_equal %w[slack intercom email], source.options.keys
+    assert_equal %w[source], before.keys.select { |key| before[key] != after[key] }
+  end
+
+  test "with no sources the source label drops out of the vocabulary" do
+    keep_only_sources!
+
+    assert_not Item.truffler_definition.vocabulary.labels_for(all_users: true).key?("source")
+  end
+
   test "the conversation Jev reads is newest first and marks who is on the team" do
     item = items(:angry_slack)
     item.messages.order(:occurred_at).first.update_columns(author_role: "team")

@@ -60,7 +60,7 @@ module Item::Searchable
         from: ->(item) { item.actionability }, watch: %i[actionability], filter_at: Actionability::SHOULD_REPLY, boost: 2.0
       label :status, :choice, options: Item::Searchable.named_options(STATUSES), description: "where the team is with it",
         from: ->(item) { item.status }, watch: %i[status], filter_at: 0.5
-      label :source, :choice, options: Source.kinds.values, description: "the channel it came from (Slack, Discord, Intercom, email, X)",
+      label :source, :choice, options: ->(_) { Item::Searchable.source_options }, description: "the channel it came from",
         from: ->(item) { item.source_kind }, filter_at: 0.5
       label :team_replied, :noul, description: "someone at Every already replied in the thread",
         from: ->(item) { item.messages.author_team.exists? }, filter_at: 0.5
@@ -99,6 +99,16 @@ module Item::Searchable
     end
     options[OTHER_CATEGORY] ||= { description: "Fits no other category", search: OTHER_CATEGORY }
     options
+  end
+
+  # Only kinds with a connected source (paused ones too), so Jev cannot read
+  # "email" as a channel filter before an email source exists. Every item's
+  # source_kind stays an option: an item needs its source, and a source with
+  # items cannot be deleted. Connecting a new kind changes the option keys,
+  # which restales the stored source labels and re-keys cached encodings.
+  def self.source_options
+    kinds = Source.distinct.pluck(:kind)
+    Source.kinds.values.select { |kind| kinds.include?(kind) }
   end
 
   # A fixed option's search text is its own name, so the long description

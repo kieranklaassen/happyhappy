@@ -88,6 +88,26 @@ class FeedSearchTest < ActiveSupport::TestCase
     assert_equal [ "product:cora" ], FeedSearch.keystroke(query, user: @user, suppressed: [ "source" ]).chips.pluck(:key)
   end
 
+  test "without an email source, Jev cannot pick source:email and email stays a search word" do
+    keep_only_sources!("slack", "intercom")
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
+      .answer("intent__source", "filter").answer("option__source", "email")
+    query = "cora email"
+    encode_query!(query, user: @user)
+
+    result = FeedSearch.keystroke(query, user: @user)
+    encoding = Item.truffler(query, scope: ItemsQuery.new.call, user: @user, surface: FeedSearch::SURFACE).encoding
+
+    assert_equal [ "product:cora" ], result.chips.pluck(:key)
+    assert_equal %w[email], encoding.keywords(Truffler::Search::Query.new(query))
+
+    Source.create!(kind: "email", name: "Support inbox", selector: "support@every.to")
+    assert_equal :pending, FeedSearch.keystroke(query, user: @user).encoding_status
+    encode_query!(query, user: @user)
+
+    assert_equal %w[product:cora source:email], FeedSearch.keystroke(query, user: @user).chips.pluck(:key).sort
+  end
+
   test "customers in the last 3 hours finds items heard from in the window, not older ones" do
     result = FeedSearch.keystroke("customers in the last 3 hours", user: @user)
     ids = result.records.map(&:id)
