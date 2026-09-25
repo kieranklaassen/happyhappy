@@ -45,6 +45,20 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "new" ], inertia.props[:filters][:status]
   end
 
+  test "a filter nothing matched reaches the feed as a relaxed chip with a notice" do
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
+      .answer("intent__source", "filter").answer("option__source", "custom")
+    encode_query!("cora custom", user: @user)
+
+    get items_path, params: { q: "cora custom" }
+
+    search = inertia.props[:search]
+    assert_equal [ "source:custom" ], search[:relaxed_labels]
+    assert_equal "Nothing matched Source: custom; showing results without it.", search[:relaxed_notice]
+    assert_equal({ "product:cora" => nil, "source:custom" => true }, search[:chips].to_h { |chip| [ chip[:key], chip[:relaxed] ] })
+    assert_includes inertia.props[:items].pluck(:id), items(:angry_slack).id
+  end
+
   test "a removed chip is dropped" do
     get items_path, params: { q: "cora last 3 hours", removed: [ "time" ] }
 

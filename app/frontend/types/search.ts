@@ -15,11 +15,15 @@ export interface SearchChip {
   label: string
   kind: ChipKind
   name: string
+  // A filter truffler stopped requiring because nothing matched with it.
+  relaxed?: boolean
 }
 
 export interface SearchProps {
   query: string
   chips: SearchChip[]
+  relaxed_labels: string[]
+  relaxed_notice: string | null
   removed: string[]
   invite_row: { query: string; reason: InviteReason } | null
   encoding_status: EncodingStatus

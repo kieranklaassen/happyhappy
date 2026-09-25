@@ -21,6 +21,18 @@ class SearchItemsToolTest < ActiveSupport::TestCase
     assert_equal true, payload["items"].first.dig("excerpt", "untrusted")
   end
 
+  test "a filter nothing matched is reported as relaxed" do
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
+      .answer("intent__source", "filter").answer("option__source", "custom")
+
+    payload = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) { call(query: "cora custom") }.structured_content
+
+    assert_equal [ "source:custom" ], payload["relaxed_labels"]
+    assert_equal "Nothing matched Source: custom; showing results without it.", payload["relaxed_notice"]
+    assert_equal true, payload["chips"].find { |chip| chip["key"] == "source:custom" }["relaxed"]
+    assert_includes payload["items"].pluck("id"), items(:angry_slack).id
+  end
+
   test "takes list_items filters, a time phrase, and removed chips" do
     payload = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) do
       call(query: "cora last 3 hours", status: [ "new", "claimed" ], removed_chips: [ "time" ])

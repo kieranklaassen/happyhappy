@@ -81,6 +81,8 @@ class ItemsController < InertiaController
     {
       query: params[:q].to_s,
       chips: result.chips,
+      relaxed_labels: result.relaxed_labels,
+      relaxed_notice: result.relaxed_notice,
       removed: removed,
       invite_row: result.invite_row,
       encoding_status: result.encoding_status,
