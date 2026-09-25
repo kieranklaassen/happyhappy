@@ -15,7 +15,7 @@ fails the render loudly instead of silently reusing another tenant's config.
 - Single `web` role (`SOLID_QUEUE_IN_PUMA: true`, `WEB_CONCURRENCY: "1"`), with a
   commented-out `job` role as the documented scale path.
 - SQLite storage volume at `/rails/storage`; `asset_path: /rails/public/vite`.
-- `Dockerfile`: `ruby:3.4.2-slim`, installs `sqlite3`, `EXPOSE 80`,
+- `Dockerfile`: `ruby:4.0.7-slim`, installs `sqlite3`, `EXPOSE 80`,
   `CMD ["./bin/thrust", "./bin/rails", "server"]` (Thruster on port 80).
 - `.kamal/secrets`: shell-indirection **placeholders only** —
   `$(gh auth token)`, `$(cat config/master.key)`, `$RIFFREC_API_KEY`. No raw

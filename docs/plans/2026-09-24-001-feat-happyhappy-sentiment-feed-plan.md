@@ -455,6 +455,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U18 | Mood dashboard home page | `app/queries/mood_scene.rb`, `app/frontend/pages/home/index.tsx`, `app/frontend/components/mood/` | U1 |
 | U20 | Anomaly detection | `app/services/anomalies/`, `app/models/detected_anomaly.rb`, `app/jobs/anomaly_detection_job.rb` | U10, U12, U17, U18 |
 | U21 | WebMCP for signed-in users | `app/tools/tool_registry.rb`, `app/controllers/webmcp_tools_controller.rb`, `app/frontend/lib/webmcp_provider.tsx` | U12, U20 |
+| U23 | Stack upgrade to compound-stack-rails 0.8.0 | `.ruby-version`, `Dockerfile`, `Gemfile`, `package.json`, `.template-manifest.yml` | U21, U22 |
 
 ### U1. Foundation: gems, schema, models, ingest core
 
@@ -1210,6 +1211,29 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Integration: Slack, Intercom, Postmark, and custom webhooks answer without waiting for classification.
 
 **Verification:** All gates pass, and `script/latency/run.sh` prints a before and after table in the PR body.
+
+---
+
+### U23. Stack upgrade to compound-stack-rails 0.8.0
+
+**Goal:** happyhappy runs the current compound-stack-rails stack, so production never runs old runtimes or dependencies.
+
+**Requirements:** Kieran's request (below).
+
+**Dependencies:** U21 (webmcp from 0.8.0), U22.
+
+**Decisions:**
+- `decided (brief)`: upgrade happyhappy to the current compound-stack-rails template: apply every 0.7.0 upgrade step (0.7.0-001 to 0.7.0-006: Ruby 4 and Node 24, ruby_llm 2, Geneva Drive 0.6, gem, npm and other dependency refreshes) and confirm 0.8.0 (webmcp) is complete. Keep the stack current so the app does not run old stuff.
+- `assumed default`: reconcile rather than overwrite: happyhappy's app code, the `ruby_llm-typesafe` provider, and the adapted `ApplicationTool` and `ToolRegistry` from U21 stay as they are.
+- `assumed default`: Geneva Drive 0.6 is installed with its three new migrations even though no workflow uses it yet, following the module doc's schema-bearing upgrade procedure.
+
+**Files:**
+- Create: `db/migrate/*_add_metadata_to_geneva_drive_workflows.rb`, `db/migrate/*_add_started_at_index_to_geneva_drive_step_executions.rb`, `db/migrate/*_add_resumable_step_support_to_geneva_drive_step_executions.rb`, `docs/changelog/0.7.0-00{1..6}-*.md`
+- Modify: `.ruby-version`, `Dockerfile`, `Gemfile`, `Gemfile.lock`, `package.json`, `package-lock.json`, `db/schema.rb`, `.github/workflows/ci.yml`, `.github/dependabot.yml`, `.template-manifest.yml`, `CHANGELOG.md`, `README.md`, `docs/modules/{deploy,ruby_llm,geneva_drive}.md`, `test/workflows/geneva_drive_smoke_test.rb`
+
+**Approach:** apply each 0.7.0 changelog entry in order with its own commit and verification, then bring the `mcp` pin in line with the 0.8.0 module and record the applied state in the manifest.
+
+**Verification:** All gates pass on Ruby 4.0.7 and Node 24, and the production image builds (or, without Docker, the base image tag exists and a deployment-mode `bundle install` works on Ruby 4).
 
 ---
 

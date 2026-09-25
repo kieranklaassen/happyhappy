@@ -4,7 +4,7 @@ source "https://rubygems.org"
 ruby file: ".ruby-version"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.3", ">= 8.1.3.1"
+gem "rails", "~> 8.1.4"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -31,7 +31,8 @@ gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 2.1"
-gem "ruby-vips", "~> 2.0"
+# image_processing 2.x no longer pulls in its backend; Active Storage variants use libvips
+gem "ruby-vips", "~> 2.2"
 
 # Inertia.js adapter for Rails — server-driven SPA without a parallel JSON API
 gem "inertia_rails"
@@ -41,8 +42,9 @@ gem "ruby_llm", "~> 2.0"
 # TypeSafe Jev provider for RubyLLM: calibrated probabilities per question
 gem "ruby_llm-typesafe"
 
-# Model Context Protocol server for agents over Streamable HTTP
-gem "mcp"
+# Official Ruby MCP SDK: app/tools/ subclass MCP::Tool, and ToolRegistry serves
+# them to MCP clients and to WebMCP browser agents (docs/modules/webmcp.md)
+gem "mcp", "~> 1.6"
 
 # Discord gateway bot; required only by the bin/discord process
 gem "discordrb", require: false
@@ -61,7 +63,7 @@ gem "faraday"
 gem "anomaly"
 
 # Durable, resumable workflows backed by Active Record
-gem "geneva_drive", "~> 0.5.0"
+gem "geneva_drive", "~> 0.6.0"
 
 # Vite integration for the app/frontend build pipeline
 gem "vite_rails"

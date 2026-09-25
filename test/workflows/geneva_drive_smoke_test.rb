@@ -46,7 +46,7 @@ class GenevaDriveSmokeTest < ActiveSupport::TestCase
   end
 
   test "loads the reviewed release with immediate test enqueue semantics" do
-    assert_equal "0.5.0", GenevaDrive::VERSION
+    assert_equal "0.6.0", GenevaDrive::VERSION
     assert_equal false, GenevaDrive.enqueue_after_commit
     assert_equal "default", GenevaDrive::PerformStepJob.queue_name
     assert_equal false, GenevaDrive::PerformStepJob.enqueue_after_transaction_commit

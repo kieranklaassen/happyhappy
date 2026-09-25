@@ -10,31 +10,34 @@ unavailable until a key is set.
   credentials (guarded so a missing master key never raises the boot).
 - `default_model` defaults to `gemini-2.5-flash` (`RUBY_LLM_MODEL` to override);
   `request_timeout` defaults to 60s (`RUBY_LLM_REQUEST_TIMEOUT`).
+- No `model_registry_class` or `use_new_acts_as`: 2.0 removed both settings
+  (setting them only logs a warning). In Rails the model registry reads a
+  `ruby_llm_models` table when one exists and otherwise falls back to the bundled
+  JSON catalog; the template ships no such table. Opt a model into persisted
+  chats with `acts_as_chat` / `acts_as_message` as usual.
+- 2.x emits instrumentation only through `config.instrumenter`; its Railtie sets
+  that to `ActiveSupport::Notifications`, so the subscriber below works unchanged.
 - A `chat.ruby_llm` `ActiveSupport::Notifications` subscriber logs one structured
   line per completion (model, duration, tokens) into the normal Rails log.
 
-## happyhappy delta from the template (ruby_llm 2.x)
+## happyhappy delta from the template
 
-The template still pins `ruby_llm ~> 1.16`. happyhappy moved to 2.x because
-`ruby_llm-typesafe` (the TypeSafe Jev provider) requires `ruby_llm >= 2.0.0.rc3, < 3`.
+happyhappy classifies with TypeSafe, so it adds the `ruby_llm-typesafe` provider
+(it requires `ruby_llm >= 2.0.0.rc3, < 3`).
 
-- `config.model_registry_class` and `config.use_new_acts_as` are gone in 2.0
-  (they only log a warning), so the initializer no longer sets them. In Rails the
-  model registry reads the `ruby_llm_models` table when it exists and otherwise
-  falls back to the bundled JSON catalog; happyhappy has no such table.
-- 2.x only emits instrumentation events through `config.instrumenter`. Its
-  Railtie sets that to `ActiveSupport::Notifications`, so the `chat.ruby_llm`
-  subscriber keeps working unchanged.
-- The CVE-2026-67991 bundler-audit ignore was removed: 2.0.0 stable carries the fix.
+- `Gemfile` also has `gem "ruby_llm-typesafe"`.
 - `config/initializers/typesafe.rb` sets `typesafe_api_key` and the optional
-  `typesafe_api_base` from `TYPESAFE_API_KEY` / `TYPESAFE_API_BASE`.
+  `typesafe_api_base` from `TYPESAFE_API_KEY` / `TYPESAFE_API_BASE`, and
+  `.env.example` lists both.
+- `test/initializers/ruby_llm_test.rb` also checks that the TypeSafe provider is
+  registered.
 
 ## Files (the module boundary)
 
-- `Gemfile`: `gem "ruby_llm", "~> 2.0"` and `gem "ruby_llm-typesafe"`
-- `config/initializers/ruby_llm.rb`, `config/initializers/typesafe.rb`
+- `Gemfile` — `gem "ruby_llm", "~> 2.0"`
+- `config/initializers/ruby_llm.rb`
 - `.env.example` — the `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` /
-  `RUBY_LLM_MODEL` / `RUBY_LLM_REQUEST_TIMEOUT` / `TYPESAFE_API_KEY` placeholder names.
+  `RUBY_LLM_MODEL` / `RUBY_LLM_REQUEST_TIMEOUT` placeholder names.
 - `test/initializers/ruby_llm_test.rb`
 
 ## Adopt into an existing app
@@ -46,10 +49,13 @@ The template still pins `ruby_llm ~> 1.16`. happyhappy moved to 2.x because
 ## Verify adoption
 
 - `bin/rails test test/initializers/ruby_llm_test.rb` (boots with no keys; the
-  default model and timeout fall back correctly; the TypeSafe provider is
-  registered; the notification subscriber logs).
+  default model and timeout fall back correctly; the notification subscriber logs).
 
 ## Opt-ins & non-adoptions
+
+- **Extra providers** ship as separate gems on the 2.x provider API, for example
+  `ruby_llm-typesafe` (needs `ruby_llm >= 2.0`). Add the gem plus a small
+  initializer that sets its key from `ENV`.
 
 - **`leva`** (LLM eval harness) is an optional add-on. Add the gem and
   `mount Leva::Engine => "/leva"` in `config/routes.rb` when you need eval runs.

@@ -5,6 +5,39 @@ Human-readable index of the agent-executable entries under
 instructions an agent applies to a downstream app — see the README there for the
 filter+apply algorithm.
 
+## 0.8.0
+
+- **0.8.0-001** · _feat_ · webmcp — [Add WebMCP module](docs/changelog/0.8.0-001-add-webmcp-module.md).
+  One agent-tool registry (`app/tools/`, official `mcp` gem) serves an MCP
+  server and WebMCP browser tools. Signed-in pages register tools on the
+  browser's model context and unregister them on sign-out. Calls go through a
+  session + CSRF JSON endpoint. Includes a `bin/rails g tool` generator and a
+  stubbed-`modelContext` test harness.
+
+## 0.7.0
+
+Dependency refresh so new clones and upgraded apps stop installing stale
+versions.
+
+- **0.7.0-001** · _refactor_ · deploy, ci — [Ruby 4.0.7 and Node 24](docs/changelog/0.7.0-001-ruby-4-and-node-24.md).
+  `.ruby-version`, the Dockerfile base image and the Dockerfile Node build move
+  to Ruby 4.0.7 and Node 24.21.0 (Active LTS); Bundler 4.0.21.
+- **0.7.0-002** · _feat_ · ruby_llm — [ruby_llm 2.0](docs/changelog/0.7.0-002-ruby-llm-2.md).
+  `~> 2.0`, drops the removed `model_registry_class` / `use_new_acts_as`
+  settings, and removes the CVE-2026-67991 bundler-audit ignore that 2.0.0 fixes.
+- **0.7.0-003** · _feat_ · geneva_drive — [Geneva Drive 0.6.0](docs/changelog/0.7.0-003-geneva-drive-0-6.md).
+  Resumable steps, per-step job options, and the in-progress recovery index,
+  via three generated migrations.
+- **0.7.0-004** · _refactor_ · frontend, auth, jobs, testing, deploy, copse — [Gem refresh](docs/changelog/0.7.0-004-gem-refresh.md).
+  Rails 8.1.4, image_processing 2.1 with explicit `ruby-vips`, and every other
+  gem at its latest compatible release.
+- **0.7.0-005** · _refactor_ · frontend — [npm refresh](docs/changelog/0.7.0-005-npm-refresh.md).
+  React 19.3, Inertia 3.7, Vite 8.3, TypeScript 7, Vitest 5 (clears an
+  `@vitest/mocker` advisory).
+- **0.7.0-006** · _refactor_ · ci — [Actions and npm Dependabot](docs/changelog/0.7.0-006-ci-actions-and-npm-dependabot.md).
+  checkout v7.0.1, cache v6.1.0, setup-node v7.0.0, setup-ruby v1.326.0, and
+  Dependabot now watches npm.
+
 ## 0.6.0
 
 - **0.6.0-001** · _feat_ · feature_flags — [Add feature flags module](docs/changelog/0.6.0-001-add-feature-flags-module.md).
