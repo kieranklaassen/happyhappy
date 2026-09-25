@@ -6,7 +6,6 @@ module Items
   #
   # Raises ActiveModel::ValidationError for an invalid inbound message and stores nothing.
   class Ingest
-    CLASSIFY_JOB = "ClassifyMessageJob"
     REOPENING_STATUSES = %w[handled dismissed].freeze
 
     Result = Data.define(:item, :message, :duplicate) do
@@ -17,9 +16,12 @@ module Items
       new(...).call
     end
 
-    def initialize(source:, inbound:)
+    # classify_wait delays the classification job, for callers that classify
+    # inline first and keep the job as the fallback.
+    def initialize(source:, inbound:, classify_wait: nil)
       @source = source
       @inbound = inbound
+      @classify_wait = classify_wait
     end
 
     def call
@@ -31,6 +33,11 @@ module Items
     end
 
     private
+
+    def enqueue_classification(message)
+      job = @classify_wait ? ClassifyMessageJob.set(wait: @classify_wait) : ClassifyMessageJob
+      job.perform_later(message)
+    end
 
     def store
       ApplicationRecord.transaction do
@@ -82,15 +89,6 @@ module Items
         attempts += 1
         retry if attempts < 2
         raise
-      end
-    end
-
-    def enqueue_classification(message)
-      job = CLASSIFY_JOB.safe_constantize
-      if job
-        job.perform_later(message)
-      else
-        Rails.logger.warn("[ingest] #{CLASSIFY_JOB} is not defined; message #{message.id} left unclassified")
       end
     end
   end

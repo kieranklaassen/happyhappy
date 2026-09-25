@@ -27,13 +27,23 @@ describe('AppNav', () => {
       expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', href)
     }
     expect(NAV_ENTRIES.map((entry) => entry.label)).toEqual([
+      'Mood',
       'Feed',
       'Products',
       'Categories',
       'Sources',
       'Agents',
+      'Webhooks',
       'Settings',
     ])
+  })
+
+  it('puts the sun mark next to the wordmark', () => {
+    render(<AppNav />)
+
+    const brand = screen.getByRole('link', { name: 'happyhappy' })
+    expect(brand).toHaveAttribute('href', '/')
+    expect(brand.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('marks the current section', () => {
@@ -52,5 +62,11 @@ describe('isActive', () => {
     expect(isActive('/items/42', '/items')).toBe(true)
     expect(isActive('/itemsx', '/items')).toBe(false)
     expect(isActive('/settings', '/items')).toBe(false)
+  })
+
+  it('treats the mood dashboard at / as active only on the home page', () => {
+    expect(isActive('/', '/')).toBe(true)
+    expect(isActive('/?product=cora', '/')).toBe(true)
+    expect(isActive('/items', '/')).toBe(false)
   })
 })

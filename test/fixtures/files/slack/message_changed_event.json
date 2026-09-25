@@ -1,0 +1,41 @@
+{
+  "token": "legacy-verification-token-unused",
+  "team_id": "T0EVERY",
+  "context_team_id": "T0EVERY",
+  "api_app_id": "A0HAPPYHAPPY",
+  "event": {
+    "type": "message",
+    "subtype": "message_changed",
+    "hidden": true,
+    "channel": "C0COMMUNITY",
+    "message": {
+      "type": "message",
+      "user": "U0CUSTOMER",
+      "text": "Cora archived my whole inbox overnight. Found the undo, all good.",
+      "ts": "1727200000.000200",
+      "edited": { "user": "U0CUSTOMER", "ts": "1727201100.000000" }
+    },
+    "previous_message": {
+      "type": "message",
+      "user": "U0CUSTOMER",
+      "text": "Cora archived my whole inbox overnight and I cannot find the undo. This is really frustrating.",
+      "ts": "1727200000.000200"
+    },
+    "ts": "1727201100.000500",
+    "event_ts": "1727201100.000500",
+    "channel_type": "channel"
+  },
+  "type": "event_callback",
+  "event_id": "Ev0EDITED00001",
+  "event_time": 1727201100,
+  "authorizations": [
+    {
+      "enterprise_id": null,
+      "team_id": "T0EVERY",
+      "user_id": "U0HAPPYBOT",
+      "is_bot": true,
+      "is_enterprise_install": false
+    }
+  ],
+  "is_ext_shared_channel": false
+}

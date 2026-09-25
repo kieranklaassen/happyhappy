@@ -6,3 +6,11 @@
 Rails.application.config.filter_parameters += [
   :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc
 ]
+
+# Customer message content arrives as webhook parameters (Slack text, Intercom
+# body, Postmark TextBody/HtmlBody/StrippedTextReply/Subject/Attachments, custom
+# webhook body) and must not reach the request log. Matching is partial and
+# case-insensitive.
+Rails.application.config.filter_parameters += [
+  :body, :text, :subject, :attachments
+]

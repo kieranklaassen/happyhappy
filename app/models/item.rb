@@ -1,5 +1,6 @@
 class Item < ApplicationRecord
   CLASSIFIED_EVENT = "item.classified"
+  HELD_STATUSES = %w[claimed in_progress].freeze
 
   enum :status, {
     new: "new", claimed: "claimed", in_progress: "in_progress", handled: "handled", dismissed: "dismissed"
@@ -17,6 +18,7 @@ class Item < ApplicationRecord
 
   before_validation :copy_source_kind, if: -> { source && source_kind.blank? }
   before_validation -> { self.status_changed_at ||= Time.current }
+  after_commit -> { MoodChannel.refresh }
 
   validates :thread_key, presence: true, uniqueness: { scope: :source_kind }
   validates :source_kind, inclusion: { in: Source.kinds.values }

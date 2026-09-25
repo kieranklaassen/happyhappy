@@ -18,4 +18,22 @@ class CIWorkflowTest < ActiveSupport::TestCase
       end
     end
   end
+
+  test "every Verification Contract gate runs in CI" do
+    commands = WORKFLOW.fetch("jobs").values.flat_map { |job| job.fetch("steps").filter_map { |step| step["run"] } }
+
+    [ "bin/brakeman --no-pager", "bin/bundler-audit", "bin/rubocop", "npm run check",
+      "npm audit --omit=dev --audit-level=moderate", "bin/rails db:test:prepare test" ].each do |gate|
+      assert commands.any? { |command| command.include?(gate) }, "CI does not run #{gate}"
+    end
+  end
+
+  test "the test job builds the Vite test assets before the parallel test run" do
+    runs = WORKFLOW.dig("jobs", "test", "steps").filter_map { |step| step["run"] }
+    build = runs.index { |command| command.include?("bin/vite build --mode test") }
+    tests = runs.index { |command| command.include?("bin/rails db:test:prepare test") }
+
+    assert build, "the test job must build the Vite test assets"
+    assert_operator build, :<, tests
+  end
 end

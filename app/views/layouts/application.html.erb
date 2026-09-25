@@ -3,8 +3,23 @@
   <head>
     <%# App identity comes from config/initializers/pwa.rb (pwa module) %>
     <% pwa = Rails.application.config.x.pwa %>
-    <title data-inertia><%= content_for(:title) || pwa.name %></title>
+    <title data-inertia><%= content_for(:title) || pwa.title %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="<%= pwa.description %>">
+    <% og_image = URI.join(pwa.site_url, pwa.og_image).to_s %>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="<%= pwa.name %>">
+    <meta property="og:title" content="<%= pwa.title %>">
+    <meta property="og:description" content="<%= pwa.description %>">
+    <meta property="og:url" content="<%= pwa.site_url %>">
+    <meta property="og:image" content="<%= og_image %>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="The happyhappy sun above a row of watercolor customers in different moods">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<%= pwa.title %>">
+    <meta name="twitter:description" content="<%= pwa.description %>">
+    <meta name="twitter:image" content="<%= og_image %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="application-name" content="<%= pwa.name %>">
     <meta name="mobile-web-app-capable" content="yes">

@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "channel": "C0CORASUPPORT",
+  "ts": "1727200000.123456",
+  "message": {
+    "type": "message",
+    "subtype": "bot_message",
+    "text": "Angry Cora customer",
+    "ts": "1727200000.123456",
+    "username": "happyhappy",
+    "bot_id": "B0HAPPYHAPPY",
+    "app_id": "A0HAPPYHAPPY"
+  },
+  "warning": "missing_charset",
+  "response_metadata": {
+    "warnings": [
+      "missing_charset"
+    ]
+  }
+}

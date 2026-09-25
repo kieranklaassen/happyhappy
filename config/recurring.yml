@@ -16,6 +16,24 @@ production: &recurring
     class: "GenevaDrive::HousekeepingJob"
     schedule: "*/30 * * * *"
 
+  # X recent search polling (U8). Each poll stops before the source's monthly spend limit.
+  x_poll:
+    class: "XPollJob"
+    schedule: "*/15 * * * *"
+  # Slack daily digests (U13): posts each product's digest once its digest hour arrives.
+  digest_dispatch:
+    class: "DigestDispatchJob"
+    schedule: "0 * * * *"
+  # Overdue agent claims (U11)
+  overdue_sweep:
+    class: "OverdueSweepJob"
+    schedule: every 5 minutes
+
+  # Outbound webhooks (U17): delivery log rows older than 30 days are deleted.
+  webhook_delivery_prune:
+    class: "WebhookDeliveryPruneJob"
+    schedule: every day at 4:20am
+
 development:
   <<: *recurring
 

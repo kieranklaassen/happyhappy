@@ -1,0 +1,27 @@
+{
+  "type": 0,
+  "tts": false,
+  "timestamp": "2026-09-23T14:06:00.000000+00:00",
+  "pinned": false,
+  "mentions": [],
+  "mention_roles": [],
+  "mention_everyone": false,
+  "id": "1287654500098765313",
+  "flags": 0,
+  "embeds": [],
+  "edited_timestamp": null,
+  "content": "Welcome to the Spiral server! Read #rules before posting.",
+  "components": [],
+  "channel_id": "1100000000000000001",
+  "author": {
+    "username": "Carl-bot",
+    "public_flags": 65536,
+    "id": "235148962103951360",
+    "global_name": null,
+    "discriminator": "1536",
+    "bot": true,
+    "avatar": "ef2cf3f5ed1b1e1e3a2b1c8d8e0f3a4b"
+  },
+  "attachments": [],
+  "guild_id": "1000000000000000007"
+}
