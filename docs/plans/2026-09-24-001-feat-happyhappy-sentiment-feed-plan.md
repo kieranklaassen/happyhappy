@@ -1261,6 +1261,33 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 ---
 
+### U25. Feed search with truffler
+
+**Goal:** Anyone on the feed, and any agent, can search items and their messages in plain language ("angry Cora billing this week", "needs action now") and get ranked results as they type, with Jev reranking the best candidates on Enter.
+
+**Requirements:** Kieran's request (below); R3 (every signed-in person has full access), U21 (tools shared by /mcp and WebMCP), U22 (queues).
+
+**Dependencies:** U1 (items, messages), U2 and U3 (classification answers), U21 (`app/tools`), U22 (`realtime` queue, TypeSafe limiter).
+
+**Decisions:**
+- `decided (brief)`: adopt truffler 0.1.0 for feed search over items and messages: keystroke search on SQLite FTS5 (keyword over plaintext bodies and author columns) plus stored labels; Jev reads the query into chips; Smart search on Enter streams Strong, Possible, and Unlikely buckets over Solid Cable through `TrufflerChannel`, cancelled by any query or chip change; lenses are open to every signed-in user.
+- `decided (brief)`: labels classification already answers are supplied (`from:`) so Jev is never asked twice; asked labels stay minimal; a backfill is documented with a spend cap and never run paid against production; truffler's recurring jobs are scheduled off the `realtime` queue.
+- `decided (brief)`: agents get a `search_items` tool with the same untrusted-content marking as the other tools, for /mcp and WebMCP alike.
+- `decided (brief)`: keystroke p50 and p95 under 100 ms and the first Smart bucket in about a second, measured on production-sized data.
+- `decided (brief)`: truffler bugs are worked around in the app, never patched in the gem, and reported.
+- `assumed default`: Item is the only searchable model; message bodies reach it through the FTS document and the conversation Jev reads, so a message hit returns its item.
+- `assumed default`: supplied labels are sentiment, product, category, anger, needs_action, status, source, team_replied, and needs_review; the one asked label is churn_risk. The derived dashboard mood is not a label.
+- `assumed default`: time phrases ("this week", "last 3 days") become the feed's own time filter with a chip, because truffler's query encoding has no notion of time.
+- `assumed default`: truffler keeps half the TypeSafe budget free for classification (headroom 0.5) and runs on the `default` queue.
+
+**Files:**
+- Create: `db/migrate/*_create_truffler_tables.rb`, `db/migrate/*_create_item_search_documents.rb`, `config/initializers/truffler.rb`, `app/models/item/searchable.rb`, `app/services/feed_search.rb`, `app/services/feed_search/{text_index,time_phrase,encoding_client}.rb`, `app/controllers/item_searches_controller.rb`, `app/channels/truffler_channel.rb`, `app/tools/search_items_tool.rb`, `app/frontend/components/search/*`, `app/frontend/types/search.ts`, `lib/tasks/search.rake`, `script/latency/search.{sh,rb}`, `docs/search.md`
+- Modify: `Gemfile`, `app/models/{item,message}.rb`, `app/controllers/items_controller.rb`, `app/tools/tool_registry.rb`, `config/routes.rb`, `config/recurring.yml`, `app/frontend/pages/items/index.tsx`, `db/schema.rb`
+
+**Verification:** All gates pass; `script/latency/search.sh` reports keystroke and first-bucket latency; the example queries return the expected demo items live; a feed screenshot shows chips and Smart results.
+
+---
+
 ## Verification Contract
 
 | Gate | Command | Applies to |
