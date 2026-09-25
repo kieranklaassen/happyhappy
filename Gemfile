@@ -42,8 +42,9 @@ gem "ruby_llm", "~> 2.0"
 # TypeSafe Jev provider for RubyLLM: calibrated probabilities per question
 gem "ruby_llm-typesafe"
 
-# Model Context Protocol server for agents over Streamable HTTP
-gem "mcp"
+# Official Ruby MCP SDK: app/tools/ subclass MCP::Tool, and ToolRegistry serves
+# them to MCP clients and to WebMCP browser agents (docs/modules/webmcp.md)
+gem "mcp", "~> 1.6"
 
 # Discord gateway bot; required only by the bin/discord process
 gem "discordrb", require: false
