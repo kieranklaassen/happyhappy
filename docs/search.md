@@ -2,7 +2,7 @@
 
 The search box on the feed and the `search_items` agent tool search items and
 their messages in plain language, through the [truffler](https://github.com/kieranklaassen/truffler)
-gem (0.1.2). Both go through `FeedSearch`, so people and agents get the same
+gem (0.1.3). Both go through `FeedSearch`, so people and agents get the same
 results for the same query and filters.
 
 ## How a search runs
@@ -113,7 +113,7 @@ the feed search is full-text only.
 
 Measure with `script/latency/search.sh` (see `script/latency/README.md`).
 
-## Notes on truffler 0.1.2
+## Notes on truffler 0.1.3
 
 - **`none` and `other`.** `product_options` and `category_options` always
   offer them: they are answers `from:` gives, and the option set is part of
