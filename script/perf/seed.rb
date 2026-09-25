@@ -5,7 +5,8 @@
 #   bin/rails runner script/perf/seed.rb
 #
 # Replaces every item, message, and timeline event with ~4,000 items and 20,000+ messages across
-# nine products and 90 days, every mood, and a few very long threads. Deterministic, so runs compare.
+# nine products and 90 days, every mood, and a few very long threads where the team replies every
+# third message. Deterministic, so runs compare.
 # Rows are bulk-inserted, so no callbacks, classifications, or broadcasts run.
 abort "script/perf/seed.rb only runs in development" unless Rails.env.development?
 
@@ -29,7 +30,7 @@ PHRASES = [
 ].freeze
 MOODS = [ # sentiment, sentiment probability, anger, weight
   [ "praise", 0.92, 0.02, 22 ], [ "praise", 0.62, 0.05, 12 ], [ "question", 0.8, 0.08, 16 ],
-  [ "neutral", 0.7, 0.12, 12 ], [ "complaint", 0.8, 0.5, 16 ], [ "complaint", 0.9, 0.93, 8 ],
+  [ "neutral", 0.7, 0.12, 12 ], [ "relieved", 0.85, 0.05, 6 ], [ "complaint", 0.8, 0.5, 16 ], [ "complaint", 0.9, 0.93, 8 ],
   [ nil, nil, nil, 5 ]
 ].freeze
 MOOD_BAG = MOODS.flat_map { |mood| [ mood ] * mood.last }
@@ -96,6 +97,7 @@ ActiveRecord::Base.transaction do
     count.times do |position|
       at = seen - ((count - position - 1) * random.rand(5..90)).minutes
       message_rows << { item_id: id, source_id: source_id, external_id: "perf-#{id}-#{position}", body: body(random),
+        author_role: (position % 3 == 2 ? "team" : "customer"),
         occurred_at: at, anger_probability: anger, classified_at: anger && at, backfilled: at < now - 7.days,
         raw_payload: {}, created_at: at, updated_at: at }
       event_rows << { item_id: id, kind: "arrived", data: {}, created_at: at }
