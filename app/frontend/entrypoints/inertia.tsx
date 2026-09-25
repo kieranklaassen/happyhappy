@@ -1,7 +1,8 @@
-import { createInertiaApp } from '@inertiajs/react'
+import { createInertiaApp, router } from '@inertiajs/react'
 import { StrictMode } from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import RiffrecProvider, { type RiffrecConfig } from '../lib/riffrec_provider'
+import { startWebMcp, type WebMcpConfig } from '../lib/webmcp'
 
 void createInertiaApp({
   title: (title) => (title ? `${title} · happyhappy` : 'happyhappy: how your customers feel'),
@@ -32,7 +33,9 @@ void createInertiaApp({
     const shared = props.initialPage.props as {
       feedback_capture_enabled?: boolean
       riffrec?: RiffrecConfig | null
+      webmcp?: WebMcpConfig | null
     }
+    startWebMcp(shared.webmcp, router)
 
     const app = (
       <StrictMode>

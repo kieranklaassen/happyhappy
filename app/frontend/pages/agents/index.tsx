@@ -170,6 +170,18 @@ export default function AgentsIndex({ agents, new_token }: AgentsPageProps) {
             </tbody>
           </table>
         )}
+
+        <section aria-labelledby="webmcp-heading" className="flex flex-col gap-1 text-sm text-gray-600">
+          <h2 id="webmcp-heading" className="font-semibold text-gray-900">
+            WebMCP in your browser
+          </h2>
+          <p>
+            While you are signed in, happyhappy offers these same tools to agents built into your browser through
+            WebMCP, where the browser supports it. They need no token: they act with your browser session, so claims
+            and reports show up under your name. Your claims are held by an agent named after you with (WebMCP);
+            revoking it stops your browser's agent from claiming and reporting.
+          </p>
+        </section>
       </main>
     </>
   )

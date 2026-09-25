@@ -88,6 +88,13 @@ describe('Agents page', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Name has already been taken')
   })
 
+  it('explains that WebMCP uses your browser session', () => {
+    render(<AgentsIndex agents={agents} new_token={null} />)
+
+    const section = screen.getByRole('region', { name: 'WebMCP in your browser' })
+    expect(section).toHaveTextContent(/act with your browser session/)
+  })
+
   it('revokes after confirmation', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<AgentsIndex agents={agents} new_token={null} />)
