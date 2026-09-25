@@ -91,7 +91,9 @@ module Classification
 
       assign_product(item, labels["product"]) unless item.product_human_set?
       assign_category(item, labels["category"]) unless item.category_human_set?
-      assign_sentiment(item, stance.classification_answers["sentiment"]) unless item.sentiment_human_set?
+      unless item.sentiment_human_set?
+        assign_sentiment(item, stance.classification_answers["sentiment"], classified.take_while { |message| message != stance })
+      end
 
       item.needs_review = item.relevant? && low_confidence?(item)
     end
