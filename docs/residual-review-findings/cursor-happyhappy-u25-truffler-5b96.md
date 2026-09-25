@@ -22,6 +22,9 @@ No tracker sink was used; this file is the durable record.
   Remove it once truffler shows Jev the labels when it asks word roles or stops requiring keyword
   hits when label filters apply. A word naming a label Jev did not apply stays a required keyword
   ("cora" when Jev skipped the product filter).
+- P3 `app/models/item/searchable.rb`: the product option for "not about any Every product" is
+  `none`, the same key truffler 0.1.0 uses for "the query names no option", so a search cannot
+  filter on it (the feed's Product filter "No product" still can). The stored label is written.
 - P3 `script/latency/run.sh` (U22 harness), same machine, 50 live messages: truffler's after-commit
   work (labeling queue row, job enqueue, FTS refresh) moves "apply" from p50 5 / p95 22 to 26 ms to
   p50 11 / p95 49 to 79 ms and "ingest" p50 by about 5 ms. End-to-end dashboard p50 stayed at about
