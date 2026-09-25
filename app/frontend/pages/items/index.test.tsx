@@ -9,7 +9,7 @@ const get = vi.fn()
 
 vi.mock('@inertiajs/react', () => ({
   Head: () => null,
-  usePage: () => ({ url: '/items', props: {} }),
+  usePage: () => ({ url: '/items' }),
   router: { get: (...args: unknown[]) => get(...args) },
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>

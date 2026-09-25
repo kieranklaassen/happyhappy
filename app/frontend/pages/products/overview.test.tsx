@@ -6,7 +6,7 @@ import ProductOverview, { type ProductOverviewProps } from './overview'
 
 vi.mock('@inertiajs/react', () => ({
   Head: () => null,
-  usePage: () => ({ url: '/products/cora/overview', props: {} }),
+  usePage: () => ({ url: '/products/cora/overview' }),
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>
       {children}

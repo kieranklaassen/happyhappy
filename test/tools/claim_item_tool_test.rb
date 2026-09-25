@@ -1,8 +1,8 @@
 require "test_helper"
 
-class Mcp::Tools::ClaimItemTest < ActiveSupport::TestCase
+class ClaimItemToolTest < ActiveSupport::TestCase
   def call(item, agent)
-    Mcp::Tools::ClaimItem.call(item_id: item.id, server_context: { agent: agent })
+    ClaimItemTool.call(item_id: item.id, server_context: { agent: agent })
   end
 
   test "claims a new item for the calling agent" do

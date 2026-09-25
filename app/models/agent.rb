@@ -1,7 +1,7 @@
 class Agent < ApplicationRecord
   BROWSER_SUFFIX = "(WebMCP)"
 
-  # A browser agent holds the claims a signed-in person makes over WebMCP (see Mcp::ToolRegistry).
+  # A browser agent holds the claims a signed-in person makes over WebMCP (see ApplicationTool#agent).
   belongs_to :user, optional: true, inverse_of: :browser_agent
   has_many :claimed_items, class_name: "Item", foreign_key: :claimed_by_agent_id,
     inverse_of: :claimed_by_agent, dependent: :nullify

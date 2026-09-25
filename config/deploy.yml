@@ -87,7 +87,7 @@ env:
     # Riffrec endpoint (public, non-secret). Empty by default → feedback capture no-ops.
     RIFFREC_ENDPOINT: "<%= ENV.fetch("RIFFREC_ENDPOINT", "") %>"
     RIFFREC_PUBLIC_KEY: "<%= ENV.fetch("RIFFREC_PUBLIC_KEY", "") %>"
-    # WebMCP (U21): public Chrome origin-trial tokens, one per origin. Empty → no origin-trial <meta>.
+    # WebMCP Chrome origin-trial tokens (public, origin-bound). Empty → no meta tag.
     WEBMCP_ORIGIN_TRIAL_TOKEN: "<%= ENV.fetch("WEBMCP_ORIGIN_TRIAL_TOKEN", "") %>"
 
 # Aliases are triggered with "bin/kamal <alias>".

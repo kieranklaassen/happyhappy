@@ -1,8 +1,8 @@
 require "test_helper"
 
-class Mcp::Tools::ListItemsTest < ActiveSupport::TestCase
+class ListItemsToolTest < ActiveSupport::TestCase
   def call(**arguments)
-    Mcp::Tools::ListItems.call(server_context: { agent: agents(:cursor) }, **arguments)
+    ListItemsTool.call(server_context: { agent: agents(:cursor) }, **arguments)
   end
 
   test "defaults to relevant items, most recent first" do

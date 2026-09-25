@@ -10,7 +10,6 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "jsdom": "^29.1.1",
-    "playwright": "^1.63.0",
     "typescript": "^5.7",
     "vite": "^8.2.1",
     "vite-plugin-ruby": "^5.2.2",
@@ -20,8 +19,7 @@
     "build:ssr": "vite build --ssr app/frontend/ssr/ssr.tsx --outDir public/vite-ssr",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit && vitest run",
-    "check:webmcp": "node script/webmcp_check.mjs"
+    "check": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit && vitest run"
   },
   "dependencies": {
     "@fontsource/caveat": "^5.3.0",

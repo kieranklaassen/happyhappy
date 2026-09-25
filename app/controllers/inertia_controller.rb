@@ -24,8 +24,8 @@ class InertiaController < ApplicationController
   inertia_share feedback_capture_enabled: -> { Riffrec.configured? }
   inertia_share riffrec: -> { Riffrec.client_config }
 
-  # WebMCP manifest (Mcp::ToolRegistry.webmcp_tools): present only while signed in, so AppNav registers
-  # the MCP tools with the browser and drops them on sign-out (app/frontend/lib/use_webmcp_tools.ts).
-  # A lambda, so partial reloads that do not ask for it skip building it.
-  inertia_share webmcp: -> { Mcp::ToolRegistry.webmcp_tools(request.base_url) if authenticated? }
+  # WebMCP tool definitions (docs/modules/webmcp.md), signed-in pages only:
+  # WebmcpProvider registers them on the browser's model context while this is
+  # non-null and unregisters them when it turns null (sign-out).
+  inertia_share webmcp: -> { ToolRegistry.manifest if authenticated? }
 end

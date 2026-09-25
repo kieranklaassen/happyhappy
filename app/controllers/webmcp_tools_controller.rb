@@ -1,42 +1,49 @@
-# WebMCP for signed-in people: the browser registers the manifest from the `webmcp` shared prop with
-# document.modelContext and runs each tool here. Like /mcp this is an agent protocol surface, not a page data
-# API. It authenticates with the session cookie and Rails' CSRF token, never an agent token.
+# frozen_string_literal: true
+
+# Executes one ToolRegistry tool for a WebMCP browser agent (docs/modules/webmcp.md).
 #
-# Responses are plain JSON the page interpreter wraps into WebMCP results (app/frontend/lib/webmcp_execute.ts):
-# 200 with the tool's structured payload, or an error status with { error: }.
+# This is the one sanctioned JSON endpoint beside Inertia pages: tool
+# definitions still travel as the `webmcp` shared prop, but the browser's model
+# context calls a tool long after the page rendered. It acts as the signed-in
+# user through the session cookie, so it is CSRF-protected like any form POST,
+# and answers JSON (never a redirect) when either check fails.
+#
+#   POST /webmcp/tools/:name  { "arguments": { ... } }
+#   200 { "result": <MCP CallToolResult> }  — including tool errors (isError)
+#   400 malformed body · 401 no session · 404 unknown tool · 422 bad CSRF token
 class WebmcpToolsController < ApplicationController
   include Authentication
-  # Declared after the session check so a signed-out caller hears 401 before any CSRF refusal.
-  protect_from_forgery with: :exception
 
-  wrap_parameters false
+  protect_from_forgery with: :exception
   rescue_from ActionController::InvalidAuthenticityToken do
-    render json: { error: "The CSRF token is missing or invalid. Reload the page and try again." },
-      status: :unprocessable_content
+    render json: { error: "Invalid CSRF token. Reload the page and try again." }, status: :unprocessable_content
   end
 
-  def create
-    response.headers["Cache-Control"] = "no-store"
-    arguments = JSON.parse(request.raw_post.presence || "{}", symbolize_names: true)
-    raise JSON::ParserError unless arguments.is_a?(Hash)
+  RATE_LIMIT_STORE = ActiveSupport::Cache::MemoryStore.new
+  rate_limit to: 60, within: 1.minute, store: RATE_LIMIT_STORE,
+             by: -> { Current.session.user_id },
+             with: -> { render json: { error: "Too many tool calls. Try again in a minute." }, status: :too_many_requests }
 
-    result = Mcp::ToolRegistry.call(params[:name], arguments, user: Current.user)
-    if result[:isError]
-      render json: { error: result[:content].first[:text] }, status: :unprocessable_content
-    else
-      render json: result[:structuredContent]
-    end
-  rescue JSON::ParserError
-    render json: { error: "The request body must be a JSON object of tool arguments." }, status: :bad_request
-  rescue Mcp::ToolRegistry::UnknownTool => error
-    render json: { error: error.message }, status: :not_found
-  rescue Mcp::ToolRegistry::Failed => error
-    render json: { error: error.message }, status: :internal_server_error
+  def create
+    arguments = parsed_arguments
+    return render json: { error: "Send a JSON body of the form {\"arguments\": {...}}." }, status: :bad_request unless arguments
+
+    result = ToolRegistry.call(params[:name], arguments:, user: Current.session.user)
+    return render json: { error: "Unknown tool: #{params[:name]}" }, status: :not_found unless result
+
+    render json: { result: }
   end
 
   private
+    def request_authentication
+      render json: { error: "Sign in to use this app's tools." }, status: :unauthorized
+    end
 
-  def request_authentication
-    render json: { error: "Sign in to happyhappy to use its tools." }, status: :unauthorized
-  end
+    def parsed_arguments
+      body = JSON.parse(request.raw_post.presence || "{}")
+      arguments = body.fetch("arguments", {}) if body.is_a?(Hash)
+      arguments if arguments.is_a?(Hash)
+    rescue JSON::ParserError
+      nil
+    end
 end

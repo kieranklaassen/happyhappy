@@ -12,7 +12,7 @@ vi.mock('@inertiajs/react', () => ({
       {children}
     </a>
   ),
-  usePage: () => ({ url: '/', props: {} }),
+  usePage: () => ({ url: '/' }),
   usePoll: vi.fn(),
   router: { reload: vi.fn() },
 }))
