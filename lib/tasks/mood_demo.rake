@@ -58,27 +58,37 @@ module MoodDemo
 
   BUG_REPORTERS = %w[ana_customer mx_rage grumbles].freeze
   QUIET_CORA = %w[bo@example.com cy@example.com priya_writes hotmailhenry dana@example.com].freeze
+  FANS = %w[writerbee novelnate copycathy].freeze
+  QUIET_SPIRAL = %w[ed_edits fran@example.com loremipsum].freeze
 
-  # A steady trickle of Cora messages over the past half day, then a burst of bug reports in the last
-  # hour, so hourly anomaly detection has something to find.
+  # A steady trickle of messages over the past half day, then a burst in the last hour, so hourly
+  # anomaly detection has something to find: bug reports on Cora (bad news) and praise on Spiral
+  # (good news).
   def seed_anomaly!
-    bug = Category.find_or_create_by!(name: "bug") { |category| category.description = "Something is broken." }
-    reporters = BUG_REPORTERS.map { |author| Item.find_by!(thread_key: "demo-#{author}") }
-    reporters.each { |item| item.update!(category: bug) }
-    quiet = QUIET_CORA.map { |author| Item.find_by!(thread_key: "demo-#{author}") }
+    seed_burst!(category: "bug", description: "Something is broken.", quiet: QUIET_CORA, loud: BUG_REPORTERS,
+      tag: "anomaly", body: "Cora archived important mail again. This is broken.", anger: 0.75)
+    seed_burst!(category: "praise", description: "Thanks, compliments, and happy stories.", quiet: QUIET_SPIRAL,
+      loud: FANS, tag: "praise", body: "Spiral just saved my deadline again. Thank you!", anger: 0.02)
+    Anomalies::Detect.call(granularity: "hour")
+  end
+
+  def seed_burst!(category:, description:, quiet:, loud:, tag:, body:, anger:)
+    category = Category.find_or_create_by!(name: category) { |record| record.description = description }
+    loud = loud.map { |author| Item.find_by!(thread_key: "demo-#{author}") }
+    loud.each { |item| item.update!(category: category) }
+    quiet = quiet.map { |author| Item.find_by!(thread_key: "demo-#{author}") }
     last_window_start, last_window_end = Anomalies::Detect.windows("hour").last
 
     (2..13).each do |hours|
       (hours.even? ? 1 : 2).times do |index|
-        demo_message!(quiet[(hours + index) % quiet.size], "demo-anomaly-baseline-#{hours}-#{index}",
-          last_window_end - hours.hours + (index * 20 + 5).minutes, "Quick question about my brief settings.")
+        demo_message!(quiet[(hours + index) % quiet.size], "demo-#{tag}-baseline-#{hours}-#{index}",
+          last_window_end - hours.hours + (index * 20 + 5).minutes, "Quick question about my settings.")
       end
     end
     8.times do |index|
-      demo_message!(reporters[index % reporters.size], "demo-anomaly-burst-#{index}",
-        last_window_start + (index * 6 + 3).minutes, "Cora archived important mail again. This is broken.", anger: 0.75)
+      demo_message!(loud[index % loud.size], "demo-#{tag}-burst-#{index}",
+        last_window_start + (index * 6 + 3).minutes, body, anger: anger)
     end
-    Anomalies::Detect.call(granularity: "hour")
   end
 
   def demo_message!(item, external_id, at, body, anger: 0.1)
@@ -108,7 +118,7 @@ namespace :mood do
     end
     puts "#{MoodDemo::PEOPLE.size} demo customers are on the dashboard."
     anomalies = MoodDemo.seed_anomaly!
-    puts "#{anomalies.size} anomalies detected from a burst of Cora bug reports."
+    puts "#{anomalies.size} anomalies detected from a burst of Cora bug reports and Spiral praise."
   end
 
   desc "Keep demo customers arriving and changing mood (development only)"
