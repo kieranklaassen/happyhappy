@@ -33,7 +33,7 @@ class Classification::ClassifierTest < ActiveSupport::TestCase
     assert_equal "jev-latest", request_body["model"]
     assert_equal(
       {
-        "source" => { "kind" => "slack", "name" => "Every community Slack" },
+        "source" => { "kind" => "slack", "name" => "Every community Slack", "usually_about" => "Cora" },
         "earlier_in_thread" => [ { "author" => "Ana Customer", "text" => messages(:angry_slack_first).body } ],
         "message" => { "author" => "Ana Customer", "text" => "Still nothing. Anyone from Every here?" }
       },

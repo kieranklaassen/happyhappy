@@ -22,6 +22,21 @@ module Classification
         "they are satisfied now."
     }.freeze
 
+    # Where the stored category descriptions leave room for doubt, these say
+    # what else belongs and what goes elsewhere. Categories are keyed by name.
+    CATEGORY_RULES = {
+      "bug" => { not_for: "Slowness or lag (performance), or a missing capability (feature request)." },
+      "performance" => { includes: "Delays before capture, lag, unresponsive taps, or timeouts." },
+      "how-to" => { includes: "Asking where to find something (a link, a setting, a community, an event) or " \
+        "whether a feature exists.", not_for: "Something that is broken (bug)." },
+      "feature request" => { includes: "Asking for access to an unreleased product, or support for another " \
+        "platform, even when later thanked." },
+      "pricing and plans" => { includes: "Discounts for students, educators, nonprofits, or people between jobs." },
+      "content feedback" => { includes: "Newsletter delivery and how often emails arrive." },
+      "cancellation" => { includes: "Saying they are close to turning it off or reconsidering paying." },
+      "other" => { not_for: "Anything a more specific category covers; pick other last." }
+    }.freeze
+
     def self.call(...)
       new(...).call
     end
@@ -77,6 +92,17 @@ module Classification
             false => "Calm, polite, disappointed, mildly annoyed, neutral, or happy. Asking for a refund or to " \
               "cancel is not anger by itself, and anger earlier in the thread does not count once they are satisfied."
           }
+        s.noul :actionable,
+          instructions: {
+            question: "Does this thread need someone at Every to act or reply now?",
+            context: "Judge the thread as it stands at `message`, the latest message; `earlier_in_thread` holds what came before."
+          },
+          criteria: {
+            true => "A customer is blocked by a bug, was charged wrongly, wants to cancel or get a refund, is angry, " \
+              "or is still waiting on an answer to a real question or request.",
+            false => "Nothing for Every to do: spam, pitches, automated mail, small talk, praise, plain thanks, " \
+              "an opinion with no ask, or a thread the customer says is resolved."
+          }
         author_role_question(s) if @ask_author_role
       end
     end
@@ -102,7 +128,10 @@ module Classification
     end
 
     def category_criteria
-      criteria = @categories.to_h { |category| [ category.name, category.description.presence ] }
+      criteria = @categories.to_h do |category|
+        rules = CATEGORY_RULES[category.name]
+        [ category.name, rules ? { what: category.description.presence, **rules }.compact : category.description.presence ]
+      end
       criteria[OTHER_CATEGORY] ||= "Fits none of the categories above."
       criteria
     end

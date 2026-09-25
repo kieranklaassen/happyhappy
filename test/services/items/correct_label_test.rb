@@ -1,6 +1,17 @@
 require "test_helper"
 
 class Items::CorrectLabelTest < ActiveSupport::TestCase
+  test "correcting relevance re-bands actionability" do
+    item = items(:not_relevant_slack)
+    item.update!(actionability: 0.6, actionability_band: "noise")
+
+    Items::CorrectLabel.call(item: item, label: "relevant", value: "true", actor: users(:one))
+    assert_equal "should_reply", item.reload.actionability_band
+
+    Items::CorrectLabel.call(item: item, label: "relevant", value: "false", actor: users(:one))
+    assert_equal "noise", item.reload.actionability_band
+  end
+
   setup do
     @item = items(:needs_review_x)
     @user = users(:every_ana)

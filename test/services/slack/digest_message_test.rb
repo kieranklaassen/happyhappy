@@ -60,6 +60,28 @@ class Slack::DigestMessageTest < ActiveSupport::TestCase
     assert_not_includes rendered, "old_thread"
   end
 
+  test "lists the items that most need someone at Every under needs attention" do
+    urgent = add_item(sentiment: "complaint", handle: "locked_out", body: "Cannot log in, paid yesterday")
+    urgent.update!(actionability: 0.97, actionability_band: "act_now")
+    reply = add_item(sentiment: "question", handle: "curious_one", body: "How do I export drafts?")
+    reply.update!(actionability: 0.6, actionability_band: "should_reply")
+    fyi = add_item(sentiment: "praise", handle: "happy_fan", body: "Love it")
+    fyi.update!(actionability: 0.05, actionability_band: "fyi")
+
+    rendered = Slack::DigestMessage.new(products(:cora), @day).to_h[:blocks].to_json
+    attention = rendered[/Needs attention.*?"}/m]
+
+    assert_operator attention.index("locked_out"), :<, attention.index("curious_one")
+    assert_includes attention, "act now, 97%"
+    assert_not_includes attention, "happy_fan"
+  end
+
+  test "needs attention says so when nothing is waiting" do
+    add_item(sentiment: "praise", handle: "happy_fan").update!(actionability: 0.05, actionability_band: "fyi")
+
+    assert_includes Slack::DigestMessage.new(products(:cora), @day).to_h[:blocks].to_json, "Nothing waiting on us."
+  end
+
   test "covers AE8: a product with no items that day gets a quiet-day digest" do
     message = Slack::DigestMessage.new(products(:sparkle), Date.current - 10)
 

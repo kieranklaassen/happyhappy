@@ -1,4 +1,4 @@
-import type { ItemStatus, Sentiment, SourceKind } from '../types/items'
+import type { ActionabilityBand, ItemStatus, Sentiment, SourceKind } from '../types/items'
 
 export const SENTIMENTS: readonly Sentiment[] = ['complaint', 'praise', 'relieved', 'question', 'neutral']
 
@@ -72,4 +72,28 @@ export const SENTIMENT_BADGES: Record<Sentiment, string> = {
   question: 'bg-sky-50 text-sky-700 ring-sky-200',
   neutral: 'bg-gray-50 text-gray-700 ring-gray-200',
   relieved: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
+}
+
+export function actionabilityLabel(band: ActionabilityBand): string {
+  switch (band) {
+    case 'act_now':
+      return 'Act now'
+    case 'should_reply':
+      return 'Should reply'
+    case 'fyi':
+      return 'FYI'
+    case 'noise':
+      return 'Noise'
+    default: {
+      const unhandled: never = band
+      return unhandled
+    }
+  }
+}
+
+export const ACTIONABILITY_BADGES: Record<ActionabilityBand, string> = {
+  act_now: 'bg-orange-50 text-orange-800 ring-orange-300',
+  should_reply: 'bg-blue-50 text-blue-700 ring-blue-200',
+  fyi: 'bg-gray-50 text-gray-600 ring-gray-200',
+  noise: 'bg-gray-50 text-gray-400 ring-gray-200',
 }

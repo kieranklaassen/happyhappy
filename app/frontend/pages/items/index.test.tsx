@@ -32,6 +32,8 @@ const row: ItemRowData = {
   overdue: true,
   claimed_by: 'Cursor',
   anger_probability: 0.86,
+  actionability: 0.91,
+  actionability_band: 'act_now',
   last_message_at: '2026-09-24T10:00:00Z',
 }
 
@@ -50,6 +52,8 @@ function props(overrides: Partial<FeedProps> = {}): FeedProps {
       sentiments: ['complaint', 'praise', 'question', 'neutral'],
       statuses: ['new', 'claimed', 'in_progress', 'handled', 'dismissed'],
       ranges: ['24h', '7d', '30d', '90d'],
+      actionability: ['act_now', 'should_reply', 'fyi', 'noise'],
+      sorts: ['recent', 'actionability'],
     },
     anomalies: [],
     error: null,
@@ -58,6 +62,14 @@ function props(overrides: Partial<FeedProps> = {}): FeedProps {
 }
 
 describe('Feed page', () => {
+  it('shows each item\'s actionability and offers the band filter and sort', () => {
+    render(<ItemsIndex {...props()} />)
+
+    expect(screen.getByText('Act now 91%')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Any (noise hidden)' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Most actionable first' })).toBeInTheDocument()
+  })
+
   beforeEach(() => get.mockClear())
 
   it('renders a heading, labeled filters, and item rows linking to the item', () => {
@@ -174,7 +186,28 @@ describe('toQuery', () => {
         needs_review: false,
         overdue: true,
         anomaly: '',
+        actionability: '',
+        sort: 'recent',
       }),
     ).toEqual({ sentiment: 'praise', range: '7d', overdue: '1' })
+  })
+
+  it('keeps an actionability band and a non-default sort', () => {
+    expect(
+      toQuery({
+        product: '',
+        sentiment: '',
+        category: '',
+        status: '',
+        source: '',
+        range: '',
+        relevance: 'relevant',
+        needs_review: false,
+        overdue: false,
+        anomaly: '',
+        actionability: 'act_now',
+        sort: 'actionability',
+      }),
+    ).toEqual({ actionability: 'act_now', sort: 'actionability' })
   })
 })

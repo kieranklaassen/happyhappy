@@ -51,7 +51,9 @@ class ItemsController < InertiaController
       sources: Source.ordered.map { |source| source_props(source) },
       sentiments: Item.sentiments.values,
       statuses: Item.statuses.values,
-      ranges: ItemsQuery::RANGES.keys
+      ranges: ItemsQuery::RANGES.keys,
+      actionability: Actionability::BANDS,
+      sorts: ItemsQuery::SORTS
     }
   end
 
@@ -75,6 +77,8 @@ class ItemsController < InertiaController
       last_reported_at: item.last_reported_at,
       last_message_at: item.last_message_at,
       anger_probability: item.anger_probability,
+      actionability: item.actionability,
+      actionability_band: item.actionability_band,
       labels: {
         product: label(product_props(item.product), item.product_probability, item.product_human_set),
         category: label(category_props(item.category), item.category_probability, item.category_human_set),

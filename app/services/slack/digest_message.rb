@@ -43,6 +43,7 @@ module Slack
         section("*#{escape(title)}*\n#{pluralize(items.count, "item")} with new messages"),
         section("*Sentiment mix*\n#{sentiment_text}"),
         section("*Top categories*\n#{top_categories_text}"),
+        section("*Needs attention*\n#{attention_text}"),
         section("*Standout complaints*\n#{standouts_text(standout_complaints, :anger_probability, "anger")}"),
         section("*Standout praise*\n#{standouts_text(standout_praise, :sentiment_probability, "praise")}"),
         context(handled_text)
@@ -65,6 +66,20 @@ module Slack
 
       names = Category.where(id: counts.map(&:first)).pluck(:id, :name).to_h
       counts.map { |id, count| "#{escape(names[id])} (#{count})" }.join(", ")
+    end
+
+    # The customers who most need someone at Every, by actionability.
+    def needs_attention
+      items.where(actionability_band: Actionability::ACTIONABLE_BANDS).by_actionability.limit(STANDOUT_COUNT)
+    end
+
+    def attention_text
+      lines = needs_attention.map do |item|
+        body = item.messages.from_customers.where(occurred_at: @window).last&.body
+        band = item.actionability_band == "act_now" ? "act now" : "should reply"
+        "#{link(item_url(item), customer_handle(item))} (#{band}, #{percent(item.actionability)})\n#{quote(body)}"
+      end
+      lines.presence&.join("\n") || "Nothing waiting on us."
     end
 
     def standout_complaints

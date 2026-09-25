@@ -34,6 +34,8 @@ function props(): ItemShowProps {
       last_reported_at: null,
       last_message_at: '2026-09-24T10:00:00Z',
       anger_probability: 0.1,
+      actionability: 0.2,
+      actionability_band: 'fyi',
       labels: {
         product: { value: { id: 5, name: 'Sparkle', slug: 'sparkle', retired: false }, probability: 0.45, human_set: false },
         category: { value: { id: 6, name: 'other', retired: false }, probability: 0.5, human_set: true },

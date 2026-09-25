@@ -83,6 +83,8 @@ class ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Item.sentiments.values, options[:sentiments]
     assert_equal Item.statuses.values, options[:statuses]
     assert_equal ItemsQuery::RANGES.keys, options[:ranges]
+    assert_equal Actionability::BANDS, options[:actionability]
+    assert_equal ItemsQuery::SORTS, options[:sorts]
   end
 
   test "paginates" do

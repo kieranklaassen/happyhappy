@@ -22,7 +22,7 @@ module Webhooks
           product: { id: 0, slug: "sample", name: "Sample product", probability: 0.9 },
           category: { id: 0, name: "bug", probability: 0.8 },
           sentiment: { value: "complaint", probability: 0.85 },
-          anger_probability: 0.3, claimed_by: nil, permalink: nil,
+          anger_probability: 0.3, actionability: { score: 0.8, band: "act_now" }, claimed_by: nil, permalink: nil,
           source: { id: 0, kind: "slack", name: "Sample source" },
           author: { name: "Sample Customer", handle: "sample_customer", email: nil },
           last_message_at: now.iso8601
@@ -90,6 +90,7 @@ module Webhooks
         },
         sentiment: @item.sentiment && { value: @item.sentiment, probability: @item.sentiment_probability },
         anger_probability: @item.anger_probability,
+        actionability: { score: @item.actionability, band: @item.actionability_band },
         claimed_by: @item.claimed_by_agent&.name,
         permalink: @item.permalink,
         source: { id: @item.source.id, kind: @item.source.kind, name: @item.source.name },
