@@ -4,7 +4,7 @@ source "https://rubygems.org"
 ruby file: ".ruby-version"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.3", ">= 8.1.3.1"
+gem "rails", "~> 8.1.4"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -31,7 +31,8 @@ gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 2.1"
-gem "ruby-vips", "~> 2.0"
+# image_processing 2.x no longer pulls in its backend; Active Storage variants use libvips
+gem "ruby-vips", "~> 2.2"
 
 # Inertia.js adapter for Rails — server-driven SPA without a parallel JSON API
 gem "inertia_rails"
