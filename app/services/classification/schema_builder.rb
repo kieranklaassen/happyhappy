@@ -8,6 +8,8 @@ module Classification
     NO_PRODUCT = "none"
     OTHER_CATEGORY = "other"
 
+    CONTEXT = "Answer about `message`, the latest message. `earlier_in_thread` is only context for reading it."
+
     SENTIMENTS = {
       "complaint" => "Unhappy about something: a problem, a failure, a charge, or a letdown.",
       "praise" => "Happy about something: thanks, compliments, or a success story.",
@@ -31,6 +33,7 @@ module Classification
         s.noul :relevant,
           instructions: {
             question: "Is this message about one of these products?",
+            context: CONTEXT,
             products: @products.map { |product| product_description(product) }
           },
           criteria: {
@@ -38,19 +41,20 @@ module Classification
             false => "Off topic, such as small talk, or about something else entirely."
           }
         s.choice :product,
-          instructions: "Which product is this message about?",
+          instructions: { question: "Which product is this message about?", context: CONTEXT },
           criteria: product_criteria
         s.choice :category,
           instructions: {
             question: "Which category fits the customer's main point best?",
-            focus: "Classify the primary request, not every topic mentioned."
+            focus: "Classify the primary request, not every topic mentioned.",
+            context: CONTEXT
           },
           criteria: category_criteria
         s.choice :sentiment,
-          instructions: "What is the customer's sentiment in this message?",
+          instructions: { question: "What is the customer's sentiment in this message?", context: CONTEXT },
           criteria: SENTIMENTS
         s.noul :anger,
-          instructions: "Is the customer angry?",
+          instructions: { question: "Is the customer angry?", context: CONTEXT },
           criteria: {
             true => "Clearly angry, furious, or fed up.",
             false => "Calm, mildly annoyed, neutral, or happy."
