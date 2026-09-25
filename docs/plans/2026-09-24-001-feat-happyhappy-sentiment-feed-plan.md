@@ -1172,6 +1172,47 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 ---
 
+### U22. Real-time processing
+
+**Goal:** A live customer message reaches the feed, the mood dashboard, Slack escalations, and outbound webhooks as fast as the classifier allows, and a burst or a backfill never makes live messages wait in line.
+
+**Requirements:** Kieran's request (below); R28 (escalations), KTD19 (outbound webhooks), U18 live dashboard.
+
+**Dependencies:** U1 (ingest and `ClassifyMessageJob`), U4 to U7 and U16 (connectors), U13 (escalations), U17 (outbound webhooks), U18 and PR #40 (dashboard stream and its backfill throttle).
+
+**Decisions:**
+- `decided (brief)`: "Can we make this processing as real time as we can? Use Geneva Drive if we need better flows."
+- `decided (brief)`: measure first with a repeatable harness, then cut latency, then measure again with the same harness; report p50 and p95 per stage.
+- `decided (brief)`: classifier prompts, schema questions, and the `Classification::Apply` roll-up are out of scope (another unit owns them); this unit changes orchestration, queues, jobs, Action Cable, and connector request handling only.
+- `assumed default`: live work runs on a dedicated `realtime` Solid Queue queue served by its own worker pool (`REALTIME_JOB_THREADS`, default 8, polling every 50 ms): live classification, Slack event lookups, escalation posts, and first webhook delivery attempts. Backfilled messages classify on a `backfill` queue behind `default`, and webhook retries move to `default`, so neither can occupy a realtime thread.
+- `assumed default`: every TypeSafe call made by the production classifier passes a shared per-second limiter (`TYPESAFE_REQUESTS_PER_MINUTE`, default 1,200, counted in `Rails.cache` so all processes share it).
+- `assumed default`: Action Cable pings say whether they come from a backfill or rerun; the dashboard keeps PR #40's 3-second gap for those and reloads live changes after a short coalesce. The feed page subscribes to the same stream.
+- `assumed default`: no "classifying..." placeholder: the feed and dashboard show relevant items only, relevance is unknown until the classifier answers, and the shared `ItemsQuery` also feeds MCP agents.
+- `assumed default`: Geneva Drive is adopted only if the harness shows the ad-hoc jobs lose work or cost latency a workflow would save; the PR body records the measured decision.
+- `assumed default`: webhook endpoints keep ingesting inside the request when the harness shows they already answer well under 100 ms, because the custom webhook contract returns the item id and storing before the ack means a provider retry is never needed.
+
+**Files:**
+- Create: `script/latency/{run.sh,run.rb,README.md}`, `app/services/classification/rate_limiter.rb`
+- Modify: `config/queue.yml`, `config/database.yml` (pool size), `app/jobs/{classify_message,slack_event,post_escalation,webhook_delivery}_job.rb`, `app/services/items/ingest.rb`, `app/services/classification.rb` (limiter around the default classifier only), `app/services/classification/rerun.rb` (marks its changes as backfill), `app/models/{item,current}.rb`, `app/channels/mood_channel.rb`, `app/frontend/components/mood/use-mood-stream.ts`, `app/frontend/pages/items/index.tsx`, `DEPLOYING.md`, `.env.example`
+- Test: queue routing, limiter, cable payload, fast-ack, and stream throttle additions to the existing job, service, channel, controller, and `use-mood-stream` tests
+
+**Approach:**
+1. Harness: boots the production environment against throwaway SQLite files under `tmp/latency/`, forks the real Solid Queue supervisor from `config/queue.yml`, subscribes to the Solid Cable `mood` stream, and fires a burst of fixture payloads (Slack, Intercom, Discord gateway, Postmark, custom) through the real controllers and gateway handler, optionally while a backfill is classifying. TypeSafe, Slack posts, and webhook endpoints are stubs with sampled latency. Every process appends stage timestamps to one file; the report prints p50 and p95 per stage.
+2. Route jobs by queue as above and size the database pool to the realtime threads.
+3. Limit TypeSafe calls per second across processes.
+4. Tag pings as backfill and let the client throttle only those.
+
+**Test scenarios:**
+- Happy path: live ingest enqueues classification on `realtime`; backfill ingest on `backfill`; escalation posts, Slack events, and first webhook attempts on `realtime`; webhook retries on `default`.
+- Happy path: the limiter lets the budget through in one second and makes the next call wait for the next second; a store without counters never blocks.
+- Happy path: a live item change pings without the backfill flag; ingest with `backfill: true` and a rerun ping with it.
+- Happy path: the dashboard reloads a live change within the short coalesce even right after a reload, and still spaces backfill reloads 3 seconds apart.
+- Integration: Slack, Intercom, Postmark, and custom webhooks answer without waiting for classification.
+
+**Verification:** All gates pass, and `script/latency/run.sh` prints a before and after table in the PR body.
+
+---
+
 ## Verification Contract
 
 | Gate | Command | Applies to |

@@ -27,7 +27,7 @@ class MoodDashboardFlowTest < ActionDispatch::IntegrationTest
     assert_broadcasts(MoodChannel::STREAM, 1) do
       perform_enqueued_jobs(only: ClassifyMessageJob)
     end
-    assert_equal %w[changed_at], ActiveSupport::JSON.decode(broadcasts(MoodChannel::STREAM).last).keys
+    assert_equal({ "backfill" => false }, ActiveSupport::JSON.decode(broadcasts(MoodChannel::STREAM).last).except("changed_at"))
 
     get root_path
     assert_response :success

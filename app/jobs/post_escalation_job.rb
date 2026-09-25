@@ -1,5 +1,5 @@
 class PostEscalationJob < ApplicationJob
-  queue_as :default
+  queue_as :realtime
 
   retry_on Slack::Client::RetryableError, wait: :polynomially_longer, attempts: 10
 

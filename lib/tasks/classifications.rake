@@ -5,7 +5,7 @@ namespace :classifications do
     items = Item.order(:id)
     items = items.where(id: ENV["ITEM_IDS"].split(",")) if ENV["ITEM_IDS"].present?
     logger = ActiveSupport::Logger.new($stdout)
-    stats = Classification::Rerun.new(items: items, logger: logger).call
+    stats = Current.set(backfill: true) { Classification::Rerun.new(items: items, logger: logger).call }
     puts "rerun finished: #{stats}"
   end
 end

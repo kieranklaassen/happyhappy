@@ -133,6 +133,9 @@ That hostname is `KAMAL_PROXY_HOST`, and `https://<hostname>` is
 | `POSTMARK_INBOUND_USER`, `POSTMARK_INBOUND_PASSWORD` | secret | Postmark inbound webhook | every Postmark request gets 401 |
 | `X_BEARER_TOKEN` | secret | X polling | X sources record an error and never poll |
 | `TYPESAFE_API_KEY` | secret | Jev classification | messages stay unclassified |
+| `TYPESAFE_REQUESTS_PER_MINUTE` | clear, default `1200` | TypeSafe budget shared by every process (`Classification::RateLimiter`) | 1,200 a minute, spread as 20 a second |
+| `REALTIME_JOB_THREADS` | clear, default `12` | threads of the `realtime` Solid Queue worker (live classification, Slack events, escalation posts); also sizes the database pool to threads + 2 | 12 |
+| `JOB_THREADS` | clear, default `3` | threads of the shared worker (`webhooks`, `default`, `solid_queue_recurring`, `backfill`) | 3 |
 | `WEBMCP_ORIGIN_TRIAL_TOKEN` | clear, default empty | WebMCP origin-trial `<meta>` tags, one public token per origin | browsers without WebMCP enabled get no tools |
 | `ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY` | secret | Active Record encryption for custom webhook and outbound endpoint secrets; generate once with `bin/rails db:encryption:init` and never change | creating webhook sources or endpoints fails |
 | `ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY` | secret | Active Record encryption for custom webhook and outbound endpoint secrets; generate once with `bin/rails db:encryption:init` and never change | creating webhook sources or endpoints fails |
@@ -246,6 +249,30 @@ queries inside it.
 - Post in a Slack source channel, reply in a Discord source channel, and send a
   test mail; each shows up in the feed and gets classified.
 
+## Real-time processing
+
+Live messages never wait behind other work. `config/queue.yml` runs two Solid
+Queue workers inside Puma:
+
+- `realtime` (`REALTIME_JOB_THREADS`, default 12, polling every 50 ms): live
+  classification, Slack event lookups, and escalation posts. Twelve threads keep
+  about 20 TypeSafe calls a second in flight, which is the 1,200 a minute limit.
+- the shared worker (`JOB_THREADS`, default 3, `JOB_CONCURRENCY` processes):
+  outbound webhooks first, then default jobs (digests, sweeps, polling), the
+  recurring prune, and backfilled classification last.
+
+Every TypeSafe call (jobs, sync custom webhooks, `classifications:rerun`) goes
+through one per-second budget counted in Solid Cache, so raising the thread
+count cannot exceed `TYPESAFE_REQUESTS_PER_MINUTE`; a call that waits more than
+30 seconds for a slot is retried by its job. If TypeSafe raises your limit, raise
+both variables together (threads of about limit per second times 0.6 seconds).
+The database pool follows `REALTIME_JOB_THREADS` automatically.
+
+Dashboards and the feed reload within about 150 ms of a live change; pings
+caused by a backfill or rerun still reload at most every 3 seconds.
+`script/latency/run.sh` measures the whole live path locally (see
+`script/latency/README.md`).
+
 ## Backfilling history
 
 Live connectors only see messages sent after a source exists. To import older
@@ -260,8 +287,8 @@ bin/kamal app exec --roles web --reuse "bin/rails backfill:status"
 
 The argument is days (default 90). Each run prints per-source counts; a rerun
 dedupes on message ids and creates nothing new. Backfilled messages are
-classified at a lower job priority than live ones (one TypeSafe call each),
-never escalate, never reopen a handled item, and send no outbound webhooks.
+classified on the `backfill` queue behind all live work (one TypeSafe call
+each, inside the shared TypeSafe budget), never escalate, never reopen a handled item, and send no outbound webhooks.
 Digests are unaffected: they count messages by the day they were written.
 `backfill:status` shows classification progress per source.
 

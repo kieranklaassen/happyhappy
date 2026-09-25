@@ -6,7 +6,9 @@
 #
 default: &default
   adapter: sqlite3
-  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  # A realtime Solid Queue worker holds one connection per thread plus its
+  # poller and heartbeat (config/queue.yml).
+  max_connections: <%= [ (ENV["RAILS_MAX_THREADS"].presence || 5).to_i, (ENV["REALTIME_JOB_THREADS"].presence || 12).to_i + 2 ].max %>
   timeout: 5000
 
 development:

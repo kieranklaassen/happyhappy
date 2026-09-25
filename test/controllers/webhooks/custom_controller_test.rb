@@ -240,6 +240,15 @@ class Webhooks::CustomControllerTest < ActionDispatch::IntegrationTest
     assert_equal Time.utc(2026, 9, 1, 10), message.occurred_at
   end
 
+  test "answers once the message is stored, leaving classification to the realtime queue" do
+    fake = use_fake_classifier
+
+    assert_enqueued_with(job: ClassifyMessageJob, queue: "realtime") { deliver({ text: "Cora is slow today" }.to_json) }
+
+    assert_response :accepted
+    assert_empty fake.calls
+  end
+
   private
 
   def deliver(body, sync: false, signature: Webhooks::Signature.sign(SECRET, body))

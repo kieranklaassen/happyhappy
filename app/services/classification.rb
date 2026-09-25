@@ -8,7 +8,8 @@
 #   "anger"     => { "type" => "noul", "noul" => 0.85 }
 #   "team_author" => { "type" => "noul", "noul" => 0.1 }  # only when the author is unknown
 #
-# Production resolves Classification::Classifier; tests swap in FakeClassifier.
+# Production resolves Classification::Classifier behind Classification::RateLimiter;
+# tests swap in FakeClassifier.
 module Classification
   DEFAULT_CLASSIFIER = "Classification::Classifier"
   # Stamped on each message it classifies; bump it when the questions or the
@@ -19,7 +20,7 @@ module Classification
     attr_writer :classifier
 
     def classifier
-      @classifier || DEFAULT_CLASSIFIER.constantize.new
+      @classifier || RateLimiter.new(DEFAULT_CLASSIFIER.constantize.new)
     end
   end
 end

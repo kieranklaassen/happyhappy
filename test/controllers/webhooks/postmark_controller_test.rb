@@ -107,6 +107,15 @@ class Webhooks::PostmarkControllerTest < ActionDispatch::IntegrationTest
     assert_no_match(/action_mailbox/, Rails.root.join("db/schema.rb").read)
   end
 
+  test "answers once the message is stored, leaving classification to the realtime queue" do
+    fake = use_fake_classifier
+
+    assert_enqueued_with(job: ClassifyMessageJob, queue: "realtime") { deliver file_fixture("postmark/inbound_first.json").read }
+
+    assert_response :ok
+    assert_empty fake.calls
+  end
+
   private
 
   def deliver(body, user: USER, password: PASSWORD)

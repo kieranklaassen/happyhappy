@@ -6,16 +6,25 @@ import type { ItemRowData } from '../../types/items'
 import ItemsIndex, { type FeedProps, toQuery } from './index'
 
 const get = vi.fn()
+const usePoll = vi.fn()
 
 vi.mock('@inertiajs/react', () => ({
   Head: () => null,
   usePage: () => ({ url: '/items' }),
-  router: { get: (...args: unknown[]) => get(...args) },
+  usePoll: (...args: unknown[]) => usePoll(...args),
+  router: { get: (...args: unknown[]) => get(...args), reload: vi.fn() },
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>
       {children}
     </a>
   ),
+}))
+
+vi.mock('@rails/actioncable', () => ({
+  createConsumer: () => ({
+    subscriptions: { create: () => ({ unsubscribe: vi.fn() }) },
+    disconnect: vi.fn(),
+  }),
 }))
 
 const row: ItemRowData = {
@@ -84,6 +93,12 @@ describe('Feed page', () => {
     expect(within(link).getByText('Overdue')).toBeInTheDocument()
     expect(within(link).getByText('Claimed by Cursor')).toBeInTheDocument()
     expect(within(link).getByText('Anger 86%')).toBeInTheDocument()
+  })
+
+  it('reloads its items and anomalies when the mood stream pings', () => {
+    render(<ItemsIndex {...props()} />)
+
+    expect(usePoll).toHaveBeenCalledWith(30_000, { only: ['items', 'anomalies'] })
   })
 
   it('marks retired products in the product filter', () => {

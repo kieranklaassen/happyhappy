@@ -30,6 +30,6 @@ class ClassificationTest < ActiveSupport::TestCase
       assert_same fake, Classification.classifier
     end
 
-    assert_instance_of Classification::Classifier, Classification.classifier
+    assert_instance_of Classification::RateLimiter, Classification.classifier
   end
 end

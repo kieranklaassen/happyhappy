@@ -1,5 +1,5 @@
 class WebhookDeliveryJob < ApplicationJob
-  queue_as :default
+  queue_as :webhooks
 
   discard_on ActiveJob::DeserializationError
 

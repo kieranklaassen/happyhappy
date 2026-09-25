@@ -207,13 +207,12 @@ class Items::IngestTest < ActiveSupport::TestCase
     end
   end
 
-  test "a backfilled message is flagged, marks its events, and classifies at the backfill priority" do
+  test "a backfilled message is flagged, marks its events, and classifies on the backfill queue" do
     result = ingest(external_id: "m-1", thread_key: "t-1", occurred_at: 30.days.ago, backfill: true)
 
     assert result.message.backfilled?
     assert_equal true, result.item.events.sole.data["backfill"]
-    assert_enqueued_with job: ClassifyMessageJob, args: [ result.message ],
-      priority: Items::Ingest::BACKFILL_CLASSIFY_PRIORITY
+    assert_enqueued_with job: ClassifyMessageJob, args: [ result.message ], queue: "backfill"
 
     use_fake_classifier(product: "spiral")
     perform_enqueued_jobs(only: ClassifyMessageJob)
@@ -225,6 +224,7 @@ class Items::IngestTest < ActiveSupport::TestCase
 
     refute result.message.backfilled?
     refute result.item.events.sole.data.key?("backfill")
+    assert_enqueued_with job: ClassifyMessageJob, args: [ result.message ], queue: "realtime"
   end
 
   test "a backfilled message never reopens a handled item" do
