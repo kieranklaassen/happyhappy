@@ -8,7 +8,7 @@ No tracker sink was used; this file is the durable record.
 ## Residual Review Findings
 
 - P2 `app/models/item/searchable.rb`: every new item and every new message (it moves
-  `last_message_at`, a `reads` field) asks Jev `churn_risk` at live priority, including items that a
+  `last_message_at`, which `churn_risk` watches) asks Jev `churn_risk` at live priority, including items that a
   history backfill (DEPLOYING.md, "Backfilling history") creates. Truffler cannot be told a record is
   backfilled from the model callback. Cost is small (10 items per call, about a dollar per 20,000
   long threads at truffler's default price) and bounded by `config.headroom = 0.5`, but it spends
@@ -17,14 +17,6 @@ No tracker sink was used; this file is the durable record.
   separately. Truffler keeps to half of `TYPESAFE_REQUESTS_PER_MINUTE`, and the classifier limiter
   allows the full limit, so a classification burst during heavy search could exceed the account
   limit. TypeSafe would then answer 429, which both sides retry.
-- P2 `app/services/feed_search/encoding_client.rb`: it reconciles truffler 0.1.0's word roles by
-  string matching (same word or a shared three-letter start, only against labels Jev applied).
-  Remove it once truffler shows Jev the labels when it asks word roles or stops requiring keyword
-  hits when label filters apply. A word naming a label Jev did not apply stays a required keyword
-  ("cora" when Jev skipped the product filter).
-- P3 `app/models/item/searchable.rb`: the product option for "not about any Every product" is
-  `none`, the same key truffler 0.1.0 uses for "the query names no option", so a search cannot
-  filter on it (the feed's Product filter "No product" still can). The stored label is written.
 - P3 `script/latency/run.sh` (U22 harness), same machine, 50 live messages: truffler's after-commit
   work (labeling queue row, job enqueue, FTS refresh) moves "apply" from p50 5 / p95 22 to 26 ms to
   p50 11 / p95 49 to 79 ms and "ingest" p50 by about 5 ms. End-to-end dashboard p50 stayed at about
@@ -38,3 +30,10 @@ No tracker sink was used; this file is the durable record.
   for up to 2 seconds while the encoding lands (polling the cache every 100 ms).
 - P3 `app/frontend/components/search/smart-results.tsx`: bucket rows do not show the rerank score.
 - P3 lenses are enabled for every signed-in user, but nothing in the UI creates or manages them yet.
+
+## Resolved by truffler 0.1.1
+
+- `FeedSearch::EncodingClient` is gone: truffler 0.1.1 sends the label vocabulary with the word-role
+  questions, turns a keyword naming an applied label into a label term and a stopword into filler,
+  and stops requiring keyword hits when a label filter applies.
+- The `none` product option is filterable: truffler's "no option" answer is now `truffler:none`.
