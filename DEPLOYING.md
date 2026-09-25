@@ -136,7 +136,6 @@ That hostname is `KAMAL_PROXY_HOST`, and `https://<hostname>` is
 | `TYPESAFE_REQUESTS_PER_MINUTE` | clear, default `1200` | TypeSafe budget shared by every process (`Classification::RateLimiter`) | 1,200 a minute, spread as 20 a second |
 | `REALTIME_JOB_THREADS` | clear, default `12` | threads of the `realtime` Solid Queue worker (live classification, Slack events, escalation posts); also sizes the database pool to threads + 2 | 12 |
 | `JOB_THREADS` | clear, default `3` | threads of the shared worker (`webhooks`, `default`, `solid_queue_recurring`, `backfill`) | 3 |
-
 | `WEBMCP_ORIGIN_TRIAL_TOKEN` | clear, default empty | WebMCP origin-trial `<meta>` tags, one public token per origin | browsers without WebMCP enabled get no tools |
 | `ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY` | secret | Active Record encryption for custom webhook and outbound endpoint secrets; generate once with `bin/rails db:encryption:init` and never change | creating webhook sources or endpoints fails |
 | `ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY` | secret | Active Record encryption for custom webhook and outbound endpoint secrets; generate once with `bin/rails db:encryption:init` and never change | creating webhook sources or endpoints fails |
