@@ -49,6 +49,19 @@ class FeedSearchTest < ActiveSupport::TestCase
     assert_equal [ "anger", "category:billing", "product:cora", "time" ], result.chips.pluck(:key).sort
   end
 
+  test "words that only share a prefix with a product or category description stay search words" do
+    Truffler.config.client.answer("intent__product", "filter").answer("option__product", "cora")
+      .answer("intent__category", "filter").answer("option__category", "billing")
+    query = "cora billing emailing change"
+    encode_query!(query, user: @user)
+
+    encoding = Item.truffler(query, scope: ItemsQuery.new.call, user: @user, surface: FeedSearch::SURFACE).encoding
+
+    assert_equal %w[category:billing product:cora], encoding.filters.keys.sort
+    assert_equal %w[cora billing], encoding.label_term_tokens
+    assert_equal %w[emailing change], encoding.keywords(Truffler::Search::Query.new(query))
+  end
+
   test "needs action now filters on needs_action, with no word required in the text" do
     Truffler.config.client.answer("intent__needs_action", "filter")
     item = items(:handled_email)
