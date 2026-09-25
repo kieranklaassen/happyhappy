@@ -19,7 +19,7 @@ const RANGE_LABELS: Record<string, string> = {
 }
 
 // Hills drawn on first paint; the rest draw as they scroll near.
-const EAGER_MEADOWS = 2
+const EAGER_MEADOWS = 1
 
 const BAR_MOODS: readonly SettledMood[] = ['beaming', 'content', 'relieved', 'meh', 'grumpy', 'furious']
 
