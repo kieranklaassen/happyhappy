@@ -10,7 +10,8 @@
 # TypeSafe; EVAL_EXPORT picks another export of the same items, such as one
 # taken after a production rerun. Responses are cached by request payload under
 # EVAL_DIR/cache, so an unchanged request is never paid for twice. Prints one
-# JSON line of metrics.
+# JSON line of metrics for the full gold set, plus `holdout` metrics for the fifth
+# of items (by a hash of the item id) kept out of prompt tuning.
 require "digest"
 
 dir = Pathname(ENV.fetch("EVAL_DIR"))
@@ -21,7 +22,10 @@ abort "refusing to run outside a scratch database (#{database})" unless database
 
 export = JSON.parse(dir.join(ENV.fetch("EVAL_EXPORT", "gold_export.json")).read)
 gold = Dir[dir.join("judge/labels_*.json")].flat_map { |path| JSON.parse(File.read(path)) }.index_by { |label| label["item_id"] }
-taxonomy = JSON.parse(dir.join("taxonomy.json").read)
+Dir[dir.join("judge/action_*.json")].flat_map { |path| JSON.parse(File.read(path)) }.each do |label|
+  gold[label["item_id"]]&.merge!("action_band" => label["band"], "actionability" => label["actionability"])
+end
+taxonomy = JSON.parse(dir.join(ENV.fetch("EVAL_TAXONOMY", "taxonomy.json")).read)
 team_role_ids = ENV.fetch("EVAL_TEAM_ROLE_IDS", "").split(",")
 discord_roles = dir.join("discord_member_roles.json").exist? ? JSON.parse(dir.join("discord_member_roles.json").read) : {}
 
@@ -128,50 +132,71 @@ predictions =
       end
       [ item["id"], { relevant: record.relevant, product: record.product&.slug || "none",
         category: record.category&.name || "other", sentiment: record.sentiment,
-        sentiment_probability: record.sentiment_probability, anger: record.anger_probability, author_roles: roles } ]
+        sentiment_probability: record.sentiment_probability, anger: record.anger_probability, author_roles: roles,
+        actionability: record.has_attribute?(:actionability) ? record.actionability : nil,
+        actionability_band: record.has_attribute?(:actionability_band) ? record.actionability_band : nil } ]
     end
   end
 
-scored = export.select { |item| gold.key?(item["id"]) }
-relevant = scored.select { |item| gold[item["id"]]["relevant"] }
+holdout = ->(item) { Digest::MD5.hexdigest(item["id"].to_s).to_i(16) % 5 == 0 }
+actionable = ->(band) { %w[act_now should_reply].include?(band) ? "actionable" : "not_actionable" }
 fields = {
-  "relevance" => [ scored, ->(p, g) { [ p[:relevant] ? "relevant" : "irrelevant", g["relevant"] ? "relevant" : "irrelevant" ] } ],
-  "product" => [ relevant, ->(p, g) { [ p[:product], g["product"] ] } ],
-  "category" => [ relevant, ->(p, g) { [ p[:category], g["category"] ] } ],
-  "sentiment" => [ relevant, ->(p, g) { [ p[:sentiment].to_s, g["sentiment"] ] } ],
-  "anger" => [ scored, ->(p, g) { [ p[:anger].to_f >= 0.5 ? "angry" : "calm", g["angry"] ? "angry" : "calm" ] } ],
-  "mood" => [ relevant, ->(p, g) { [ predicted_mood.call(p), gold_mood.call(g) ] } ]
+  "relevance" => [ :all, ->(p, g) { [ p[:relevant] ? "relevant" : "irrelevant", g["relevant"] ? "relevant" : "irrelevant" ] } ],
+  "product" => [ :relevant, ->(p, g) { [ p[:product], g["product"] ] } ],
+  "category" => [ :relevant, ->(p, g) { [ p[:category], g["category"] ] } ],
+  "sentiment" => [ :relevant, ->(p, g) { [ p[:sentiment].to_s, g["sentiment"] ] } ],
+  "anger" => [ :all, ->(p, g) { [ p[:anger].to_f >= 0.5 ? "angry" : "calm", g["angry"] ? "angry" : "calm" ] } ],
+  "mood" => [ :relevant, ->(p, g) { [ predicted_mood.call(p), gold_mood.call(g) ] } ],
+  "actionability" => [ :actioned, ->(p, g) { [ p[:actionability_band].to_s, g["action_band"] ] } ],
+  "actionable" => [ :actioned, ->(p, g) { [ actionable.call(p[:actionability_band]), actionable.call(g["action_band"]) ] } ]
 }
-
-metrics = {}
-details = {}
-fields.each do |field, (items, pair)|
-  pairs = items.map { |item| pair.call(predictions.fetch(item["id"]), gold[item["id"]]) }
-  metrics["#{field}_accuracy"] = (pairs.count { |predicted, expected| predicted == expected }.to_f / pairs.size).round(4)
-  details[field] = {
-    n: pairs.size,
-    confusions: pairs.reject { |predicted, expected| predicted == expected }.tally
-      .sort_by { |_, count| -count }.first(12).map { |(predicted, expected), count| "#{expected} -> #{predicted}: #{count}" },
-    predicted_minus_gold: (pairs.map(&:first).tally.to_a + pairs.map(&:last).tally.map { |key, count| [ key, -count ] })
-      .group_by(&:first).transform_values { |entries| entries.sum(&:last) }.reject { |_, delta| delta.zero? }
-  }
-end
-
-role_pairs = scored.flat_map do |item|
-  gold[item["id"]]["author_roles"].map { |id, role| [ predictions.fetch(item["id"])[:author_roles][id.to_s] || "missing", role ] }
-end
-metrics["author_role_accuracy"] = (role_pairs.count { |predicted, expected| predicted == expected }.to_f / role_pairs.size).round(4)
-details["author_role"] = { n: role_pairs.size, confusions: role_pairs.reject { |a, b| a == b }.tally.map { |(p, g), c| "#{g} -> #{p}: #{c}" } }
-
-multi = relevant.select { |item| item["messages"].size > 1 }
-%w[category sentiment mood].each do |field|
-  pair = fields[field].last
-  hits = multi.count { |item| predicted, expected = pair.call(predictions.fetch(item["id"]), gold[item["id"]]); predicted == expected }
-  metrics["#{field}_multi_message_accuracy"] = (hits.to_f / [ multi.size, 1 ].max).round(4)
-end
 headline = %w[relevance product category sentiment anger mood author_role]
-metrics["macro_accuracy"] = (headline.sum { |field| metrics["#{field}_accuracy"] } / headline.size).round(4)
-metrics["items_scored"] = scored.size
+
+score = lambda do |items, with_details: false|
+  subsets = { all: items, relevant: items.select { |item| gold[item["id"]]["relevant"] },
+              actioned: items.select { |item| gold[item["id"]]["action_band"] } }
+  metrics = {}
+  details = {}
+  fields.each do |field, (subset, pair)|
+    pairs = subsets.fetch(subset).map { |item| pair.call(predictions.fetch(item["id"]), gold[item["id"]]) }
+    next if pairs.empty?
+
+    metrics["#{field}_accuracy"] = (pairs.count { |predicted, expected| predicted == expected }.to_f / pairs.size).round(4)
+    next unless with_details
+
+    details[field] = {
+      n: pairs.size,
+      confusions: pairs.reject { |predicted, expected| predicted == expected }.tally
+        .sort_by { |_, count| -count }.first(12).map { |(predicted, expected), count| "#{expected} -> #{predicted}: #{count}" },
+      predicted_minus_gold: (pairs.map(&:first).tally.to_a + pairs.map(&:last).tally.map { |key, count| [ key, -count ] })
+        .group_by(&:first).transform_values { |entries| entries.sum(&:last) }.reject { |_, delta| delta.zero? }
+    }
+  end
+
+  role_pairs = items.flat_map do |item|
+    gold[item["id"]]["author_roles"].map { |id, role| [ predictions.fetch(item["id"])[:author_roles][id.to_s] || "missing", role ] }
+  end
+  metrics["author_role_accuracy"] = (role_pairs.count { |predicted, expected| predicted == expected }.to_f / role_pairs.size).round(4)
+  details["author_role"] = { n: role_pairs.size, confusions: role_pairs.reject { |a, b| a == b }.tally.map { |(p, g), c| "#{g} -> #{p}: #{c}" } } if with_details
+
+  multi = subsets[:relevant].select { |item| item["messages"].size > 1 }
+  %w[category sentiment mood].each do |field|
+    pair = fields[field].last
+    hits = multi.count { |item| predicted, expected = pair.call(predictions.fetch(item["id"]), gold[item["id"]]); predicted == expected }
+    metrics["#{field}_multi_message_accuracy"] = (hits.to_f / [ multi.size, 1 ].max).round(4)
+  end
+  metrics["macro_accuracy"] = (headline.sum { |field| metrics["#{field}_accuracy"] } / headline.size).round(4)
+  if metrics["actionability_accuracy"]
+    metrics["macro_with_actionability"] = ((headline + [ "actionability" ]).sum { |field| metrics["#{field}_accuracy"] } / (headline.size + 1)).round(4)
+  end
+  metrics["items_scored"] = items.size
+  [ metrics, details ]
+end
+
+scored = export.select { |item| gold.key?(item["id"]) }
+metrics, details = score.call(scored, with_details: true)
+metrics["holdout"] = score.call(scored.select(&holdout)).first
+metrics["train"] = score.call(scored.reject(&holdout)).first
 metrics["typesafe_requests"] = usage[:requests]
 metrics["typesafe_cached"] = usage[:cached]
 metrics["typesafe_input_tokens"] = usage[:input_tokens]

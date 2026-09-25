@@ -10,6 +10,9 @@ module Classification
   #   messages only inform how the classifier read it
   # - needs review when a relevant item has a machine label below the
   #   low-confidence threshold
+  # - actionability from the current message's actionable answer, banded by
+  #   Actionability; an item that is not relevant is noise and scores no higher
+  #   than its relevance
   #
   # Team messages never set labels, and an item with no customer message is not
   # relevant. A message whose author was unknown takes the classifier's
@@ -92,6 +95,7 @@ module Classification
       item.relevant = relevant.any? unless item.relevant_human_set?
       item.anger_probability = (stance.anger_probability if relevant.any?)
 
+      assign_actionability(item, labels)
       assign_product(item, labels["product"]) unless item.product_human_set?
       assign_category(item, labels["category"]) unless item.category_human_set?
       unless item.sentiment_human_set?
@@ -123,6 +127,14 @@ module Classification
       item.relevance_probability = nil
       item.anger_probability = nil
       item.needs_review = false
+      assign_actionability(item, {})
+    end
+
+    def assign_actionability(item, answers)
+      score = noul(answers, "actionable")
+      score = [ score, item.relevance_probability.to_f ].min if score && !item.relevant?
+      item.actionability = score
+      item.actionability_band = Actionability.band(score: score, relevant: item.relevant?)
     end
 
     def assign_product(item, answer)
@@ -187,6 +199,8 @@ module Classification
         category_id: item.category_id,
         sentiment: item.sentiment,
         anger_probability: item.anger_probability,
+        actionability: item.actionability,
+        actionability_band: item.actionability_band,
         mood: item.mood,
         author_role: @message.author_role,
         needs_review: item.needs_review,

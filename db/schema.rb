@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_034449) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_041000) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -146,6 +146,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_034449) do
   end
 
   create_table "items", force: :cascade do |t|
+    t.float "actionability"
+    t.string "actionability_band"
     t.float "anger_probability"
     t.string "author_email"
     t.string "author_handle"
@@ -176,6 +178,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_034449) do
     t.datetime "status_changed_at", null: false
     t.string "thread_key", null: false
     t.datetime "updated_at", null: false
+    t.index ["actionability_band", "actionability"], name: "index_items_on_actionability_band_and_actionability"
     t.index ["category_id"], name: "index_items_on_category_id"
     t.index ["claimed_by_agent_id"], name: "index_items_on_claimed_by_agent_id"
     t.index ["last_message_at"], name: "index_items_on_last_message_at"

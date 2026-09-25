@@ -21,7 +21,8 @@ module Classification
 
     def state_for(message)
       {
-        source: { kind: message.source.kind, name: message.source.name },
+        source: { kind: message.source.kind, name: message.source.name,
+                  usually_about: message.source.default_product&.name }.compact,
         earlier_in_thread: earlier(message).map { |earlier| entry(earlier) }.presence,
         message: entry(message, limit: nil)
       }.compact

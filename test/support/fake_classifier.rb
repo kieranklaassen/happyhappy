@@ -12,13 +12,14 @@ class FakeClassifier
   attr_reader :calls
 
   def self.answers(relevant: 0.95, product: "cora", product_probability: 0.9, category: "bug",
-    category_probability: 0.85, sentiment: "complaint", sentiment_probability: 0.8, anger: 0.2, team_author: nil)
+    category_probability: 0.85, sentiment: "complaint", sentiment_probability: 0.8, anger: 0.2, team_author: nil, actionable: 0.6)
     {
       "relevant" => noul(relevant),
       "product" => choice(product, product_probability, fallback: "none"),
       "category" => choice(category, category_probability, fallback: "other"),
       "sentiment" => choice(sentiment, sentiment_probability, others: SENTIMENTS),
       "anger" => noul(anger),
+      "actionable" => noul(actionable),
       **(team_author ? { "team_author" => noul(team_author) } : {})
     }
   end
