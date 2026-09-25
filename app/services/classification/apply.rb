@@ -26,6 +26,7 @@ module Classification
   class Apply
     RELEVANCE_THRESHOLD = 0.5
     TEAM_AUTHOR_THRESHOLD = 0.5
+    ACKNOWLEDGEMENT_LENGTH = 40
 
     def self.call(...)
       new(...).call
@@ -82,16 +83,31 @@ module Classification
 
       current = relevant.last || classified.last
       labels = current.classification_answers
+      stance = stance_for(current, relevant.presence || classified)
 
       item.relevance_probability = open.map { |message| noul(message.classification_answers, "relevant") }.max
       item.relevant = relevant.any? unless item.relevant_human_set?
-      item.anger_probability = current.anger_probability
+      item.anger_probability = stance.anger_probability
 
       assign_product(item, labels["product"]) unless item.product_human_set?
       assign_category(item, labels["category"]) unless item.category_human_set?
-      assign_sentiment(item, labels["sentiment"]) unless item.sentiment_human_set?
+      assign_sentiment(item, stance.classification_answers["sentiment"]) unless item.sentiment_human_set?
 
       item.needs_review = item.relevant? && low_confidence?(item)
+    end
+
+    # A bare acknowledgement ("ok", "thanks") read as neutral says nothing new
+    # about how the customer feels, so the mood stays with the customer's last
+    # substantive message.
+    def stance_for(current, candidates)
+      return current unless acknowledgement?(current)
+
+      candidates.take_while { |message| message != current }.reverse.find { |message| !acknowledgement?(message) } || current
+    end
+
+    def acknowledgement?(message)
+      message.body.to_s.squish.length <= ACKNOWLEDGEMENT_LENGTH && !message.body.include?("?") &&
+        message.classification_answers.dig("sentiment", "choice") == "neutral"
     end
 
     # Only Every's team has spoken: nothing for the feed or the mood dashboard.
