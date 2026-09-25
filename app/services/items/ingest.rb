@@ -51,7 +51,7 @@ module Items
 
     def store
       ApplicationRecord.transaction do
-        if (existing = @source.messages.find_by(external_id: @inbound.external_id))
+        if (existing = @source.messages.find_by(external_id: @inbound.external_id) || existing_on_thread)
           @source.record_message_received!
           next Result.new(item: existing.item, message: existing, duplicate: true)
         end
@@ -73,6 +73,14 @@ module Items
 
         Result.new(item: item, message: message, duplicate: false)
       end
+    end
+
+    # The same provider message can reach a thread through another source of its
+    # kind, such as an Intercom conversation first caught by the catch-all and
+    # later routed to its team's source.
+    def existing_on_thread
+      Message.joins(:item).where(items: { source_kind: @source.kind, thread_key: @inbound.thread_key })
+        .find_by(external_id: @inbound.external_id)
     end
 
     def backfill_data

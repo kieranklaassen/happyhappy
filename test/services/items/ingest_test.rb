@@ -212,6 +212,19 @@ class Items::IngestTest < ActiveSupport::TestCase
     assert_equal 2, item.messages.count
   end
 
+  test "a message already on its thread through another source of the same kind is a duplicate" do
+    catch_all = Source.create!(kind: "discord", name: "Other channel", selector: "2200000000000000002",
+      default_product: products(:spiral), status: "active")
+    first = ingest(source: catch_all, external_id: "m-1", thread_key: "t-1")
+
+    second = nil
+    assert_no_difference [ -> { Message.count }, -> { ItemEvent.count } ] do
+      second = ingest(external_id: "m-1", thread_key: "t-1", backfill: true)
+    end
+    assert second.duplicate?
+    assert_equal first.message, second.message
+  end
+
   test "rerunning a backfill dedupes on the external id" do
     ingest(external_id: "m-1", thread_key: "t-1", backfill: true)
 
