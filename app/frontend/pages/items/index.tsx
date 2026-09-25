@@ -3,7 +3,7 @@ import { type FormEvent, useState } from 'react'
 import AppNav from '../../components/app-nav'
 import ItemRow from '../../components/item-row'
 import { useMoodStream } from '../../components/mood/use-mood-stream'
-import { anomalyValue, anomalyWindow } from '../../lib/anomaly-format'
+import { anomalySummary, anomalyTag } from '../../lib/anomaly-format'
 import { actionabilityLabel, sentimentLabel, sourceKindLabel, statusLabel } from '../../lib/feed-format'
 import type { AnomalyProps } from '../../types/anomalies'
 import type {
@@ -109,8 +109,7 @@ export function toQuery(state: FormState): Record<string, string> {
 }
 
 function describe(anomaly: AnomalyProps): string {
-  const where = anomaly.source ? `${anomaly.product.name} on ${anomaly.source.name}` : anomaly.product.name
-  return `${anomaly.label} for ${where}: ${anomalyValue(anomaly, anomaly.actual)} ${anomalyWindow(anomaly)}, usually ${anomalyValue(anomaly, anomaly.expected)}`
+  return `${anomalyTag(anomaly)}: ${anomalySummary(anomaly)}`
 }
 
 export function AnomalyBanner({ anomalies, filter }: { anomalies: AnomalyProps[]; filter?: string }) {
@@ -122,7 +121,7 @@ export function AnomalyBanner({ anomalies, filter }: { anomalies: AnomalyProps[]
           {filter === 'active'
             ? 'Showing items behind the active anomalies.'
             : selected
-              ? `Showing items behind: ${describe(selected)}.`
+              ? `Showing items behind: ${describe(selected)}`
               : `Showing items behind anomaly ${filter}.`}
         </span>
         <Link href="/items" className="font-medium underline">
@@ -132,9 +131,10 @@ export function AnomalyBanner({ anomalies, filter }: { anomalies: AnomalyProps[]
     )
   }
   if (anomalies.length === 0) return null
+  const tone = anomalies.some((anomaly) => anomaly.polarity === 'negative') ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-900'
 
   return (
-    <section aria-label="Active anomalies" className="rounded bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    <section aria-label="Active anomalies" className={`rounded px-4 py-3 text-sm ${tone}`}>
       <p className="flex flex-wrap items-center justify-between gap-2">
         <strong className="font-semibold">
           {anomalies.length === 1 ? '1 anomaly is active' : `${anomalies.length} anomalies are active`}

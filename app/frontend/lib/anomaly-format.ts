@@ -1,6 +1,4 @@
-import type { AnomalyProps } from '../types/anomalies'
-
-const HAPPY_MOODS = new Set(['beaming', 'content', 'relieved'])
+import type { AnomalyHighlight, AnomalyProps, AnomalySeverity } from '../types/anomalies'
 
 export function anomalyValue(anomaly: Pick<AnomalyProps, 'share'>, value: number): string {
   if (anomaly.share) return `${Math.round(value * 100)}%`
@@ -20,9 +18,42 @@ export function anomalyWindow(anomaly: Pick<AnomalyProps, 'granularity'>): strin
   }
 }
 
-// A surge of happy customers is good news, so it gets sunshine instead of a storm.
-export function isGoodNews(anomaly: Pick<AnomalyProps, 'metric' | 'dimension'>): boolean {
-  return anomaly.metric === 'mood_share' && HAPPY_MOODS.has(anomaly.dimension ?? '')
+const MORE: Record<AnomalyHighlight, string> = {
+  notable: 'More',
+  big: 'Way more',
+  huge: 'So much more',
+}
+
+const SEVERITY: Record<AnomalySeverity, string> = {
+  low: 'Low severity',
+  medium: 'Medium severity',
+  high: 'High severity',
+}
+
+// A short tag for lists: good news never reads as a warning, and severity is for bad news only.
+export function anomalyTag(anomaly: Pick<AnomalyProps, 'polarity' | 'severity'>): string {
+  switch (anomaly.polarity) {
+    case 'positive':
+      return 'Good news'
+    case 'negative':
+      return SEVERITY[anomaly.severity ?? 'low']
+    case 'neutral':
+      return 'Busier than usual'
+    default: {
+      const unhandled: never = anomaly.polarity
+      return unhandled
+    }
+  }
+}
+
+// "Way more praise messages for Thesis: 12 in a day, usually 2." or "Bug messages: 9 in the last hour, usually 0.4."
+export function anomalySummary(anomaly: AnomalyProps, { withProduct = true }: { withProduct?: boolean } = {}): string {
+  const where = [withProduct ? ` for ${anomaly.product.name}` : '', anomaly.source ? ` on ${anomaly.source.name}` : ''].join('')
+  const subject =
+    anomaly.polarity === 'positive' && anomaly.highlight
+      ? `${MORE[anomaly.highlight]} ${anomaly.metric === 'volume' ? 'messages' : anomaly.label.toLowerCase()}`
+      : anomaly.label
+  return `${subject}${where}: ${anomalyValue(anomaly, anomaly.actual)} ${anomalyWindow(anomaly)}, usually ${anomalyValue(anomaly, anomaly.expected)}.`
 }
 
 export function anomalyItemsHref(anomaly: Pick<AnomalyProps, 'id'>): string {
