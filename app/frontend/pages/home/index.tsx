@@ -18,6 +18,9 @@ const RANGE_LABELS: Record<string, string> = {
   '7d': 'the last 7 days',
 }
 
+// Hills drawn on first paint; the rest draw as they scroll near.
+const EAGER_MEADOWS = 1
+
 const BAR_MOODS: readonly SettledMood[] = ['beaming', 'content', 'relieved', 'meh', 'grumpy', 'furious']
 
 export function headline(mood: SettledMood | null): string {
@@ -156,13 +159,14 @@ export default function Home({ scene, today, filters, options, anomalies }: Mood
             </section>
           ) : (
             <div className="mt-6 flex flex-wrap gap-6">
-              {scene.map((group) => (
+              {scene.map((group, index) => (
                 <Meadow
                   key={group.product?.slug ?? 'none'}
                   group={group}
                   history={previous}
                   productHref={query(filters.range, group.product?.slug ?? null)}
                   aside={group.product && anomalies?.[group.product.slug] && <AnomalyCallout anomalies={anomalies[group.product.slug]} />}
+                  eager={index < EAGER_MEADOWS}
                 />
               ))}
             </div>
