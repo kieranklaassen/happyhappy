@@ -64,6 +64,39 @@ class Backfill::IntercomTest < ActiveSupport::TestCase
     assert_equal [ 7.0 ], @sleeps
   end
 
+  test "a request that times out or gets a 5xx is retried" do
+    stub_request(:get, "#{API}/conversations/c1").to_timeout
+      .then.to_return(status: 502)
+      .then.to_return(status: 200, body: conversation("c1", created_at: 2.days.ago, parts_at: [ 1.day.ago, 20.hours.ago ]).to_json)
+
+    stats = Backfill::Intercom.call(since: @since, token: "test-token", sleeper: ->(seconds) { @sleeps << seconds }).sole
+
+    assert_equal 3, stats.created
+    assert_equal [ 1.0, 2.0 ], @sleeps
+  end
+
+  test "a request that keeps timing out fails the run instead of hanging" do
+    stub_request(:get, "#{API}/me").to_timeout
+
+    error = assert_raises(Backfill::HttpClient::Error) do
+      Backfill::Intercom.call(since: @since, token: "test-token", sleeper: ->(seconds) { @sleeps << seconds })
+    end
+    assert_match "after 6 attempts", error.message
+    assert_equal 5, @sleeps.size
+  end
+
+  test "reports progress every hundred conversations" do
+    ids = 150.times.map { |index| { "id" => "bulk-#{index}" } }
+    stub_search(nil, { "conversations" => ids, "pages" => { "next" => nil } })
+    stub_request(:get, %r{#{API}/conversations/bulk-\d+})
+      .to_return(status: 200, body: conversation("bulk", created_at: 200.days.ago, parts_at: [ 200.days.ago, 200.days.ago ]).to_json)
+
+    reported = []
+    Backfill::Intercom.call(since: @since, token: "test-token", progress: ->(count) { reported << count })
+
+    assert_equal [ 100 ], reported
+  end
+
   test "refuses to run without an access token" do
     assert_raises(ArgumentError) { Backfill::Intercom.new(since: @since, token: nil) }
   end

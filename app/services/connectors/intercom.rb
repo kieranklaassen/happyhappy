@@ -10,6 +10,9 @@ module Connectors
     CREATED = "conversation.user.created"
     REPLIED = "conversation.user.replied"
     CUSTOMER_AUTHOR_TYPES = %w[user lead contact].freeze
+    # A customer writing into a closed conversation reopens it, and Intercom
+    # records that message as an "open" part rather than a "comment".
+    CUSTOMER_PART_TYPES = %w[comment open].freeze
     CATCH_ALL_SELECTOR = "*"
     BLOCK_ELEMENTS = "p, div, li, blockquote, pre, h1, h2, h3, h4, h5, h6, tr"
 
@@ -96,7 +99,7 @@ module Connectors
         when REPLIED then Array(@conversation.dig("conversation_parts", "conversation_parts")).last
         end
       return unless part.is_a?(Hash)
-      return if topic == REPLIED && part["part_type"] != "comment"
+      return if topic == REPLIED && !CUSTOMER_PART_TYPES.include?(part["part_type"])
 
       part if CUSTOMER_AUTHOR_TYPES.include?(part.dig("author", "type"))
     end
