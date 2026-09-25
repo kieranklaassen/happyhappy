@@ -48,9 +48,12 @@ module Classification
           criteria: product_criteria
         s.choice :category,
           instructions: {
-            question: "Which category fits the customer's main point best?",
-            focus: "Classify the primary request, not every topic mentioned.",
-            context: CONTEXT
+            question: "Which category fits the customer's main point in this thread best?",
+            focus: "Classify the primary request, not every topic mentioned. A thank-you, a follow-up, or " \
+              "\"any update?\" takes the category of the request it follows up on; praise is only for a " \
+              "thread with no problem or request. A question about how to do something is how-to, not other.",
+            context: "`message` is the latest message and `earlier_in_thread` holds the thread before it; " \
+              "together they are the thread."
           },
           criteria: category_criteria
         s.choice :sentiment,
