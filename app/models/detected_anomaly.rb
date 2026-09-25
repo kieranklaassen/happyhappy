@@ -21,10 +21,6 @@ class DetectedAnomaly < ApplicationRecord
 
   scope :recent_first, -> { order(window_end: :desc, id: :desc) }
 
-  def self.for_series(series)
-    where(product_id: series.product_id, source_id: series.source_id, granularity: series.granularity)
-  end
-
   def category
     Category.find_by(id: dimension) if metric == "category_volume"
   end

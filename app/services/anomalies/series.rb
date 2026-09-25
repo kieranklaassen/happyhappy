@@ -22,7 +22,6 @@ module Anomalies
     Point = Data.define(:window_start, :window_end, :value, :count, :item_ids)
 
     COUNT_METRICS = %w[volume category_volume].freeze
-    RATIO_METRICS = %w[complaint_share mean_anger mood_share].freeze
     CUSTOMER_ROLE = "customer".freeze
 
     Bucket = Struct.new(:messages, :items, :complaints, :sentiments, :complaint_items, :angers, :angry_items,

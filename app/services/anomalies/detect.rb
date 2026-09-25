@@ -70,7 +70,7 @@ module Anomalies
     end
 
     def process(line, rows)
-      open = rows.select(&:active?).max_by(&:window_end)
+      open_row = rows.select(&:active?).max_by(&:window_end)
 
       (@scan_from...line.points.size).each do |index|
         point = line.points[index]
@@ -79,17 +79,17 @@ module Anomalies
 
         if verdict
           overlapping = rows.find { |row| row.window_start < point.window_end && row.window_end > point.window_start }
-          target = overlapping || open
-          if target && (target == open || target.active?)
+          target = overlapping || open_row
+          if target && (target == open_row || target.active?)
             extend_row(target, point, verdict)
-            open = target
+            open_row = target
           elsif overlapping.nil?
-            open = create_row(line, point, verdict)
-            rows << open
+            open_row = create_row(line, point, verdict)
+            rows << open_row
           end
-        elsif open && point.window_end > open.window_end
-          open.end!(at: @now)
-          open = nil
+        elsif open_row && point.window_end > open_row.window_end
+          open_row.end!(at: @now)
+          open_row = nil
         end
       end
     end
