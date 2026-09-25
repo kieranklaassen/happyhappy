@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react'
-import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Character from './character'
 import Flora from './flora'
 import { MOOD_COLORS, plural, timeAgo } from './format'
@@ -76,7 +76,19 @@ function shorten(text: string): string {
   return text.length > SHOUT_LENGTH ? `${text.slice(0, SHOUT_LENGTH).trimEnd()}…` : text
 }
 
-function Person({ character, productName, history, shout }: { character: MoodCharacter; productName: string; history: MoodHistory; shout: boolean }) {
+function Person({
+  character,
+  productName,
+  history,
+  shout,
+  drawn,
+}: {
+  character: MoodCharacter
+  productName: string
+  history: MoodHistory
+  shout: boolean
+  drawn: boolean
+}) {
   const previous = history?.get(character.key)
   const arrived = history !== null && previous === undefined
   const changed = previous !== undefined && previous !== character.mood
@@ -99,7 +111,11 @@ function Person({ character, productName, history, shout }: { character: MoodCha
         )}
         <span key={`${character.key}:${character.mood}`} className={`relative block ${event}`}>
           {changed && <span className="hh-splash" style={{ background: MOOD_COLORS[character.mood] }} aria-hidden="true" />}
-          <Character seed={character.seed} mood={character.mood} bandage={character.mended} idle />
+          {drawn ? (
+            <Character seed={character.seed} mood={character.mood} bandage={character.mended} idle />
+          ) : (
+            <span className="hh-unpainted block" aria-hidden="true" />
+          )}
         </span>
         <span className="hh-hand -mt-1 block truncate text-center text-[15px] leading-tight text-[#3E3542]/80" aria-hidden="true">
           {character.name}
@@ -157,20 +173,20 @@ function useRowBottoms(count: number) {
   return { listRef, bottoms }
 }
 
-// Off-screen meadows pause their animations; SVG animation repaints on the main thread.
-function useOnScreen<T extends HTMLElement>() {
-  const ref = useRef<T>(null)
-  const [onScreen, setOnScreen] = useState(true)
+// Whether the element is within `margin` of the viewport. Meadows pause their animations when just off
+// screen (SVG animation repaints on the main thread) and stop drawing characters when far off screen.
+function useNearViewport(ref: RefObject<HTMLElement | null>, margin: string, initial: boolean) {
+  const [near, setNear] = useState(initial)
 
   useEffect(() => {
     const element = ref.current
     if (!element || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { rootMargin: '120px' })
+    const observer = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), { rootMargin: margin })
     observer.observe(element)
     return () => observer.disconnect()
-  }, [])
+  }, [ref, margin])
 
-  return { ref, onScreen }
+  return typeof IntersectionObserver === 'undefined' ? true : near
 }
 
 function Hill({ wash, seed, rowBottom }: { wash: string; seed: string; rowBottom?: number }) {
@@ -185,14 +201,28 @@ function Hill({ wash, seed, rowBottom }: { wash: string; seed: string; rowBottom
   )
 }
 
-export default function Meadow({ group, history, productHref, aside }: { group: MoodGroup; history: MoodHistory; productHref: string; aside?: ReactNode }) {
+export default function Meadow({
+  group,
+  history,
+  productHref,
+  aside,
+  eager = true,
+}: {
+  group: MoodGroup
+  history: MoodHistory
+  productHref: string
+  aside?: ReactNode
+  eager?: boolean
+}) {
   const name = group.product?.name ?? ''
   const title = group.product ? group.product.name : 'Not sure which product'
   const wash = GROUND_WASHES[hashSeed(group.product?.slug ?? 'none') % GROUND_WASHES.length]
   const characters = [...group.characters].sort((a, b) => hashSeed(a.seed) - hashSeed(b.seed))
   const shouter = loudest(group.characters)
   const { listRef, bottoms } = useRowBottoms(characters.length)
-  const { ref: meadowRef, onScreen } = useOnScreen<HTMLElement>()
+  const meadowRef = useRef<HTMLElement>(null)
+  const onScreen = useNearViewport(meadowRef, '120px', true)
+  const drawn = useNearViewport(meadowRef, '800px', eager)
   const headingId = `meadow-${group.product?.slug ?? 'none'}`
   const smiling = group.counts.beaming + group.counts.content + group.counts.relieved
   const grumpy = group.counts.grumpy + group.counts.furious
@@ -229,7 +259,7 @@ export default function Meadow({ group, history, productHref, aside }: { group: 
         )}
         <ul ref={listRef} className="relative flex flex-wrap items-end justify-center gap-x-1 gap-y-3 pb-1 sm:gap-x-3">
           {characters.map((character) => (
-            <Person key={character.key} character={character} productName={name} history={history} shout={character.key === shouter?.key} />
+            <Person key={character.key} character={character} productName={name} history={history} shout={character.key === shouter?.key} drawn={drawn} />
           ))}
         </ul>
       </div>
