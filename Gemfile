@@ -12,9 +12,6 @@ gem "sqlite3", ">= 2.1"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
 
-# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-gem "bcrypt", "~> 3.1.7"
-
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
@@ -39,7 +36,25 @@ gem "image_processing", "~> 1.2"
 gem "inertia_rails"
 
 # First-class LLM access (OpenAI / Anthropic / Gemini) with a unified API.
-gem "ruby_llm", "~> 1.16"
+gem "ruby_llm", "~> 2.0"
+# TypeSafe Jev provider for RubyLLM: calibrated probabilities per question
+gem "ruby_llm-typesafe"
+
+# Model Context Protocol server for agents over Streamable HTTP
+gem "mcp"
+
+# Discord gateway bot; required only by the bin/discord process
+gem "discordrb", require: false
+
+# Sign in with Every
+gem "omniauth"
+gem "omniauth-oauth2"
+
+# Slack Web API and Events API signature verification
+gem "slack-ruby-client"
+
+# HTTP client for provider APIs (Intercom, X)
+gem "faraday"
 
 # Durable, resumable workflows backed by Active Record
 gem "geneva_drive", "~> 0.5.0"
@@ -73,4 +88,7 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+
+  # Blocks real HTTP in tests and stubs provider APIs
+  gem "webmock"
 end

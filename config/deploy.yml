@@ -19,6 +19,14 @@ image: <%= ENV.fetch("KAMAL_IMAGE") %>
 servers:
   web:
     - <%= ENV.fetch("KAMAL_WEB_HOST") %>
+  # Discord gateway bot (bin/discord). Exactly one container: Discord delivers
+  # each message to every connected session, so never add a second host. Same
+  # host as web so it shares the SQLite storage volume below.
+  discord:
+    hosts:
+      - <%= ENV.fetch("KAMAL_WEB_HOST") %>
+    cmd: bin/discord
+    proxy: false
   # Scale job processing onto a dedicated machine by uncommenting this role and
   # dropping SOLID_QUEUE_IN_PUMA below:
   # job:
@@ -46,7 +54,30 @@ registry:
 env:
   secret:
     - RAILS_MASTER_KEY
+    # Sign in with Every
+    - EVERY_OAUTH_CLIENT_ID
+    - EVERY_OAUTH_CLIENT_SECRET
+    # Connectors
+    - SLACK_SIGNING_SECRET
+    - SLACK_BOT_TOKEN
+    - DISCORD_BOT_TOKEN
+    - INTERCOM_CLIENT_SECRET
+    - POSTMARK_INBOUND_USER
+    - POSTMARK_INBOUND_PASSWORD
+    - X_BEARER_TOKEN
+    # Jev classification
+    - TYPESAFE_API_KEY
+    - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
+    - ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
+    - ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
   clear:
+    # Public https origin of the app: the Every OAuth redirect URI and the item
+    # links in Slack posts are built from it. Required, no default.
+    PUBLIC_BASE_URL: "<%= ENV.fetch("PUBLIC_BASE_URL") %>"
+    EVERY_OAUTH_BASE_URL: "<%= ENV.fetch("EVERY_OAUTH_BASE_URL") %>"
+    # Digest hours and digest days use this zone. An empty value would fail boot,
+    # so it defaults here rather than in .kamal/secrets.
+    APP_TIME_ZONE: "<%= ENV["APP_TIME_ZONE"].to_s.empty? ? "UTC" : ENV["APP_TIME_ZONE"] %>"
     # Run Solid Queue inside Puma (single web role default). Split to a job role
     # for scale — see the commented job role above.
     SOLID_QUEUE_IN_PUMA: true
