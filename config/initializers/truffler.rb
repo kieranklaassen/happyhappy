@@ -8,6 +8,10 @@ Truffler.configure do |config|
   # live classification, so search keeps to half of it.
   config.headroom = 0.5
 
+  # Dollars per backfill run, automatic or `truffler:backfill` without SPEND_CAP;
+  # truffler's default is no cap.
+  config.backfill_spend_cap = 5.0
+
   # Smart search waits on these jobs, so they stay off the backfill queue, and
   # off realtime, which belongs to live classification (config/queue.yml).
   config.queue_name = :default
