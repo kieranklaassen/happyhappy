@@ -16,15 +16,16 @@ module Items
       new(...).call
     end
 
-    # Backfilled classification yields to live messages on the shared worker.
-    BACKFILL_CLASSIFY_PRIORITY = 10
+    # Backfilled classification runs on its own queue, behind everything live
+    # (config/queue.yml).
+    BACKFILL_QUEUE = "backfill"
 
     # classify_wait delays the classification job, for callers that classify
     # inline first and keep the job as the fallback.
     #
-    # backfill marks history imported after the fact: it is classified at a lower
-    # priority, never reopens a handled item, and its events neither escalate nor
-    # fan out to outbound webhooks.
+    # backfill marks history imported after the fact: it is classified on the
+    # backfill queue, never reopens a handled item, its events neither escalate
+    # nor fan out to outbound webhooks, and its dashboard pings are throttled.
     def initialize(source:, inbound:, classify_wait: nil, backfill: false)
       @source = source
       @inbound = inbound
@@ -35,7 +36,7 @@ module Items
     def call
       @inbound.validate!
 
-      result = with_unique_retry { store }
+      result = Current.set(backfill: @backfill || Current.backfill) { with_unique_retry { store } }
       enqueue_classification(result.message) unless result.duplicate?
       result
     end
@@ -45,7 +46,7 @@ module Items
     def enqueue_classification(message)
       options = {}
       options[:wait] = @classify_wait if @classify_wait
-      options[:priority] = BACKFILL_CLASSIFY_PRIORITY if @backfill
+      options[:queue] = BACKFILL_QUEUE if @backfill
       ClassifyMessageJob.set(options).perform_later(message)
     end
 

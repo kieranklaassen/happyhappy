@@ -1,8 +1,11 @@
 class ClassifyMessageJob < ApplicationJob
   ATTEMPTS = 5
-  PROVIDER_ERRORS = [ RubyLLM::Error, RubyLLM::ConfigurationError, Faraday::Error ].freeze
+  PROVIDER_ERRORS = [
+    RubyLLM::Error, RubyLLM::ConfigurationError, Faraday::Error, Classification::RateLimiter::Exhausted
+  ].freeze
 
-  queue_as :default
+  # Items::Ingest moves backfilled messages to its backfill queue.
+  queue_as :realtime
 
   retry_on(*PROVIDER_ERRORS, attempts: ATTEMPTS, wait: :polynomially_longer) do |job, error|
     job.record_failure(error)
@@ -11,7 +14,9 @@ class ClassifyMessageJob < ApplicationJob
   def perform(message)
     return if message.classified?
 
-    Classification::Apply.call(message: message, answers: Classification.classifier.call(message))
+    Current.set(backfill: message.backfilled?) do
+      Classification::Apply.call(message: message, answers: Classification.classifier.call(message))
+    end
   end
 
   # The item keeps its current labels and status, so it stays in the feed.

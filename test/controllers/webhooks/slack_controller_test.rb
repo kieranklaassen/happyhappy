@@ -128,6 +128,18 @@ class Webhooks::SlackControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_request
   end
 
+  test "answers before any Slack lookup or classification and leaves both to the realtime queue" do
+    fake = use_fake_classifier
+
+    assert_no_difference -> { Message.count } do
+      assert_enqueued_with(job: SlackEventJob, queue: "realtime") { post_event slack_payload("message_event") }
+    end
+
+    assert_response :ok
+    assert_empty fake.calls
+    assert_not_requested :post, %r{slack.com/api}
+  end
+
   private
 
   def post_event(payload, headers: {})

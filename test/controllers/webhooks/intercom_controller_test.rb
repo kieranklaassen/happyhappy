@@ -93,6 +93,15 @@ class Webhooks::IntercomControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_request
   end
 
+  test "answers once the message is stored, leaving classification to the realtime queue" do
+    fake = use_fake_classifier
+
+    assert_enqueued_with(job: ClassifyMessageJob, queue: "realtime") { deliver intercom_created.to_json }
+
+    assert_response :ok
+    assert_empty fake.calls
+  end
+
   private
 
   def deliver(body, signature: sign(body))

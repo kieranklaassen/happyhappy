@@ -1,5 +1,5 @@
 class SlackEventJob < ApplicationJob
-  queue_as :default
+  queue_as :realtime
   # The envelope carries the customer's message text.
   self.log_arguments = false
 

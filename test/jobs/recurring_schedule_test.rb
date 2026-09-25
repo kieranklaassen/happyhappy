@@ -72,7 +72,7 @@ class RecurringScheduleTest < ActiveSupport::TestCase
   end
 
   test "JOB_CONCURRENCY defaults processes to 1 when unset" do
-    worker = QUEUE.fetch("production").fetch("workers").first
+    worker = QUEUE.fetch("production").fetch("workers").find { |candidate| Array(candidate["queues"]).include?("default") }
     assert_equal 1, worker.fetch("processes")
     assert_equal 3, worker.fetch("threads")
     assert_in_delta 0.1, worker.fetch("polling_interval"), 0.0001
