@@ -32,13 +32,16 @@ module Classification
       RubyLLM::Providers::TypeSafe::Schema.new do |s|
         s.noul :relevant,
           instructions: {
-            question: "Is this message about one of these products?",
+            question: "Is this a customer writing about one of these products or their Every account?",
             context: CONTEXT,
             products: @products.map { |product| product_description(product) }
           },
           criteria: {
-            true => "Feedback, a problem, a question, or praise about one of the products.",
-            false => "Off topic, such as small talk, or about something else entirely."
+            true => "Feedback, a problem, a question, a request (billing, refunds, discounts, cancelling, " \
+              "or account changes), or praise about one of the products or the customer's Every subscription.",
+            false => "Not a customer talking about the products: spam; sales, partnership, press, sponsorship, " \
+              "or job pitches; automated notifications or newsletters (Notion, Google Docs, calendar invites, " \
+              "auto-replies); or general AI and community chat that is not about one of the products."
           }
         s.choice :product,
           instructions: { question: "Which product is this message about?", context: CONTEXT },
