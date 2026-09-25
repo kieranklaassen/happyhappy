@@ -117,7 +117,8 @@ module Classification
         category_id: item.category_id,
         sentiment: item.sentiment,
         anger_probability: item.anger_probability,
-        needs_review: item.needs_review
+        needs_review: item.needs_review,
+        **(@message.backfilled? ? { backfill: true } : {})
       }
     end
   end

@@ -16,12 +16,20 @@ module Items
       new(...).call
     end
 
+    # Backfilled classification yields to live messages on the shared worker.
+    BACKFILL_CLASSIFY_PRIORITY = 10
+
     # classify_wait delays the classification job, for callers that classify
     # inline first and keep the job as the fallback.
-    def initialize(source:, inbound:, classify_wait: nil)
+    #
+    # backfill marks history imported after the fact: it is classified at a lower
+    # priority, never reopens a handled item, and its events neither escalate nor
+    # fan out to outbound webhooks.
+    def initialize(source:, inbound:, classify_wait: nil, backfill: false)
       @source = source
       @inbound = inbound
       @classify_wait = classify_wait
+      @backfill = backfill
     end
 
     def call
@@ -35,8 +43,10 @@ module Items
     private
 
     def enqueue_classification(message)
-      job = @classify_wait ? ClassifyMessageJob.set(wait: @classify_wait) : ClassifyMessageJob
-      job.perform_later(message)
+      options = {}
+      options[:wait] = @classify_wait if @classify_wait
+      options[:priority] = BACKFILL_CLASSIFY_PRIORITY if @backfill
+      ClassifyMessageJob.set(options).perform_later(message)
     end
 
     def store
@@ -52,16 +62,21 @@ module Items
           external_id: @inbound.external_id,
           body: @inbound.body,
           occurred_at: @inbound.occurred_at,
-          raw_payload: @inbound.raw_payload
+          raw_payload: @inbound.raw_payload,
+          backfilled: @backfill
         )
-        item.record_event!(:arrived, message_id: message.id, source_id: @source.id)
-        if REOPENING_STATUSES.include?(item.status)
+        item.record_event!(:arrived, message_id: message.id, source_id: @source.id, **backfill_data)
+        if !@backfill && REOPENING_STATUSES.include?(item.status)
           item.change_status!(:new, at: message.created_at, reason: "customer_wrote_again", message_id: message.id)
         end
         @source.record_message_received!
 
         Result.new(item: item, message: message, duplicate: false)
       end
+    end
+
+    def backfill_data
+      @backfill ? { backfill: true } : {}
     end
 
     def upsert_item

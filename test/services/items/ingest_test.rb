@@ -182,10 +182,50 @@ class Items::IngestTest < ActiveSupport::TestCase
     end
   end
 
+  test "a backfilled message is flagged, marks its events, and classifies at the backfill priority" do
+    result = ingest(external_id: "m-1", thread_key: "t-1", occurred_at: 30.days.ago, backfill: true)
+
+    assert result.message.backfilled?
+    assert_equal true, result.item.events.sole.data["backfill"]
+    assert_enqueued_with job: ClassifyMessageJob, args: [ result.message ],
+      priority: Items::Ingest::BACKFILL_CLASSIFY_PRIORITY
+
+    use_fake_classifier(product: "spiral")
+    perform_enqueued_jobs(only: ClassifyMessageJob)
+    assert_equal true, result.item.events.reload.find_by(kind: "classified").data["backfill"]
+  end
+
+  test "a live message is not flagged and its events carry no backfill marker" do
+    result = ingest(external_id: "m-1", thread_key: "t-1")
+
+    refute result.message.backfilled?
+    refute result.item.events.sole.data.key?("backfill")
+  end
+
+  test "a backfilled message never reopens a handled item" do
+    item = ingest(external_id: "m-1", thread_key: "t-1").item
+    item.change_status!(:handled)
+
+    ingest(external_id: "m-0", thread_key: "t-1", occurred_at: 20.days.ago, backfill: true)
+
+    assert item.reload.status_handled?
+    assert_equal 2, item.messages.count
+  end
+
+  test "rerunning a backfill dedupes on the external id" do
+    ingest(external_id: "m-1", thread_key: "t-1", backfill: true)
+
+    rerun = nil
+    assert_no_difference [ -> { Message.count }, -> { ItemEvent.count } ] do
+      rerun = ingest(external_id: "m-1", thread_key: "t-1", backfill: true)
+    end
+    assert rerun.duplicate?
+  end
+
   private
 
-  def ingest(source: @source, **attributes)
-    Items::Ingest.call(source: source, inbound: inbound_message(**attributes))
+  def ingest(source: @source, backfill: false, **attributes)
+    Items::Ingest.call(source: source, inbound: inbound_message(**attributes), backfill: backfill)
   end
 
   def inbound_message(external_id:, thread_key:, body: "Spiral is great", occurred_at: Time.current)

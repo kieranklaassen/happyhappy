@@ -34,7 +34,7 @@ module Connectors
       )
     end
 
-    def ingest(payload, parent_channel_id: nil)
+    def ingest(payload, parent_channel_id: nil, backfill: false)
       source = Source.active.for(:discord, parent_channel_id || payload["channel_id"])
       return unless source
 
@@ -42,7 +42,7 @@ module Connectors
       return unless inbound
 
       inbound.thread_key = reply_chain_thread_key(payload) || inbound.thread_key
-      Items::Ingest.call(source: source, inbound: inbound)
+      Items::Ingest.call(source: source, inbound: inbound, backfill: backfill)
     end
 
     def record_gateway_error!(reason)
