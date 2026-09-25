@@ -165,6 +165,19 @@ class Anomalies::DetectTest < ActiveSupport::TestCase
     assert_enqueued_jobs WebhookDelivery.count, only: WebhookDeliveryJob
   end
 
+  test "a spike that already ended within the scanned hours is recorded without a webhook" do
+    hourly_baseline!
+    endpoint = create_webhook_endpoint(events: [ DetectedAnomaly::WEBHOOK_EVENT ])
+    burst!(8)
+    customer_message!(at: @now + 30.minutes, category: categories(:other))
+
+    detect(now: @now + 1.hour)
+
+    assert bug_anomalies.all?(&:ended?)
+    assert_predicate bug_anomalies, :exists?
+    assert_equal 0, endpoint.deliveries.count
+  end
+
   test "thresholds come from the settings record" do
     hourly_baseline!
     Setting.current.update!(anomaly_min_count: 10)

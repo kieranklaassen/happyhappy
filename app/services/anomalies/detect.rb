@@ -10,7 +10,7 @@ module Anomalies
   #   already recorded for an overlapping window are reused, so rescans never duplicate.
   # - A spike whose window ended before the active window (default 7 days, typically backfilled
   #   history) is recorded as ended history and never alerts.
-  # - A new active row sends the anomaly.detected webhook.
+  # - A row that is new and still active after the scan sends the anomaly.detected webhook.
   #
   #   Anomalies::Detect.call(granularity: "hour")  # every 15 minutes, trailing hour windows
   #   Anomalies::Detect.call(granularity: "day")   # daily, calendar days
@@ -43,7 +43,10 @@ module Anomalies
         process(line, rows.fetch([ line.product_id, line.source_id, line.metric, line.dimension ], []))
       end
       end_stale
-      @created.each { |anomaly| Rails.error.handle(context: { anomaly_id: anomaly.id }) { Webhooks::FanOut.anomaly(anomaly) } }
+      # A spike found and ended within one scan (say, on the first run) is history by the time we alert.
+      @created.select(&:active?).each do |anomaly|
+        Rails.error.handle(context: { anomaly_id: anomaly.id }) { Webhooks::FanOut.anomaly(anomaly) }
+      end
       @created
     end
 
