@@ -40,6 +40,24 @@ class MoodSceneTest < ActiveSupport::TestCase
     assert_equal "meh", character_for(scene, items(:needs_review_x))[:mood]
   end
 
+  test "a character's excerpt is the customer's latest message, never a team reply" do
+    item = items(:angry_slack)
+    item.messages.create!(source: item.source, external_id: "team-reply", body: "Every here, looking into it now",
+      occurred_at: 1.minute.ago, author_role: "team")
+
+    assert_equal "Still nothing. Anyone from Every here?", character_for(scene, item)[:excerpt]
+  end
+
+  test "relieved customers count as smiling and on their own" do
+    items(:angry_slack).update!(sentiment: "relieved", anger_probability: 0.05)
+
+    today = scene[:today]
+    assert_equal "relieved", character_for(scene, items(:angry_slack))[:mood]
+    assert_equal 1, today[:relieved]
+    assert_equal 1, today[:counts]["relieved"]
+    assert_operator today[:smiling], :>=, 1
+  end
+
   test "the seed is stable per author and never exposes the address" do
     first = character_for(scene, items(:claimed_intercom))[:seed]
 
@@ -88,7 +106,7 @@ class MoodSceneTest < ActiveSupport::TestCase
 
     assert_equal "24h", today[:range]
     assert_equal 3, today[:people]
-    assert_equal({ "beaming" => 0, "content" => 0, "meh" => 1, "grumpy" => 1, "furious" => 1, "pending" => 0 }, today[:counts])
+    assert_equal({ "beaming" => 0, "content" => 0, "relieved" => 0, "meh" => 1, "grumpy" => 1, "furious" => 1, "pending" => 0 }, today[:counts])
     assert_equal 0, today[:smiling]
     assert_equal 2, today[:grumpy]
     assert_equal "grumpy", today[:mood]

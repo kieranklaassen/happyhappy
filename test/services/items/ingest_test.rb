@@ -83,6 +83,31 @@ class Items::IngestTest < ActiveSupport::TestCase
     assert_equal [ result.message ], item.open_messages.to_a
   end
 
+  test "a team reply on a handled item keeps it handled, keeps its author, and is not the customer's latest activity" do
+    item = items(:handled_email)
+    last_message_at = item.last_message_at
+
+    result = ingest(source: sources(:support_email), external_id: "<team-1@every.to>", thread_key: item.thread_key,
+      body: "Glad that worked!", author_handle: "kieran@every.to", author_email: "kieran@every.to")
+
+    assert result.message.author_team?
+    item.reload
+    assert item.status_handled?
+    assert_equal "cy@example.com", item.author_email
+    assert_equal last_message_at, item.last_message_at
+    assert_equal "team", item.events.last.data["author_role"]
+  end
+
+  test "a thread a team member opens takes its author from the first customer who replies" do
+    ingest(source: sources(:support_email), external_id: "<t-1@every.to>", thread_key: "<t-1@every.to>",
+      body: "New release is out", author_handle: "kieran@every.to", author_email: "kieran@every.to")
+    result = ingest(source: sources(:support_email), external_id: "<t-2@example.com>", thread_key: "<t-1@every.to>",
+      body: "It broke my drafts", author_handle: "ana@example.com", author_email: "ana@example.com")
+
+    assert result.message.author_customer?
+    assert_equal "ana@example.com", result.item.reload.author_email
+  end
+
   test "a new message on a dismissed item sets it back to new" do
     item = items(:retired_product_slack)
 
@@ -241,13 +266,15 @@ class Items::IngestTest < ActiveSupport::TestCase
     Items::Ingest.call(source: source, inbound: inbound_message(**attributes), backfill: backfill)
   end
 
-  def inbound_message(external_id:, thread_key:, body: "Spiral is great", occurred_at: Time.current)
+  def inbound_message(external_id:, thread_key:, body: "Spiral is great", occurred_at: Time.current,
+    author_handle: "writer", author_email: nil)
     Items::InboundMessage.new(
       external_id: external_id,
       thread_key: thread_key,
       body: body,
       occurred_at: occurred_at,
-      author_handle: "writer",
+      author_handle: author_handle,
+      author_email: author_email,
       permalink: "https://discord.com/channels/1/2/#{external_id}",
       raw_payload: { "id" => external_id }
     )

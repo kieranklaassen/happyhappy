@@ -33,6 +33,7 @@ module Escalations
         product&.slack_channel_id.present? &&
         angry?(@item.anger_probability) &&
         trigger.present? &&
+        !trigger.author_team? &&
         !trigger.backfilled? &&
         !off_topic?(trigger) &&
         angry?(trigger.anger_probability) &&
@@ -55,9 +56,10 @@ module Escalations
       relevance.present? && relevance.to_f < Classification::Apply::RELEVANCE_THRESHOLD
     end
 
-    # The message whose classification fired the event, else the angriest open message.
+    # The message whose classification fired the event, else the latest open
+    # customer message: the item's anger is the customer's current anger.
     def trigger
-      @trigger ||= @message || @item.open_messages.where.not(anger_probability: nil).reorder(anger_probability: :desc).first
+      @trigger ||= @message || @item.open_messages.from_customers.where.not(anger_probability: nil).last
     end
 
     def escalated_since_status_change?

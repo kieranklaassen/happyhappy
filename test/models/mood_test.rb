@@ -34,6 +34,13 @@ class MoodTest < ActiveSupport::TestCase
     assert_equal "content", Mood.for(sentiment: "praise", anger: 0.01, sentiment_probability: 0.6, furious_at: 0.8)
   end
 
+  test "relieved is its own mood unless the customer is still furious" do
+    assert_equal "relieved", Mood.for(sentiment: "relieved", anger: 0.1, furious_at: 0.8)
+    assert_equal "relieved", Mood.for(sentiment: "relieved", anger: 0.5, furious_at: 0.8)
+    assert_equal "furious", Mood.for(sentiment: "relieved", anger: 0.85, furious_at: 0.8)
+    assert_equal "content", Mood.overall(%w[relieved relieved])
+  end
+
   test "overall mood averages classified moods and ignores pending ones" do
     assert_equal "beaming", Mood.overall(%w[beaming beaming content])
     assert_equal "meh", Mood.overall(%w[beaming furious meh pending])

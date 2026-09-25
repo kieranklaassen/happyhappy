@@ -129,6 +129,18 @@ class ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal ItemsController::HUMAN_STATUSES, props[:options][:statuses]
   end
 
+  test "the item page labels each message with its author and role" do
+    item = items(:needs_review_x)
+    item.messages.create!(source: item.source, external_id: "team-reply", body: "Kate from Every here.",
+      occurred_at: Time.current, author_role: "team")
+
+    get item_path(item)
+
+    roles = inertia.props[:messages].map { |message| message.symbolize_keys.slice(:author_role, :body) }
+    assert_equal({ author_role: "team", body: "Kate from Every here." }, roles.last)
+    assert inertia.props[:messages].all? { |message| message.key?(:author) && message.key?(:sentiment) }
+  end
+
   test "the item page lists a retired product only when it is the item's label" do
     get item_path(items(:angry_slack))
     assert_not_includes inertia.props[:options][:products].map { |product| product[:name] }, "Lex"

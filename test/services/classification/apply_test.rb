@@ -222,6 +222,99 @@ class Classification::ApplyTest < ActiveSupport::TestCase
     assert_in_delta 0.7, item.anger_probability
   end
 
+  test "the item takes the customer's latest message, not the angriest one: angry then happy is happy now" do
+    item = new_item
+    classify(add_message(item, body: "This charged me twice. Unacceptable!", at: 10.minutes.ago),
+      sentiment: "complaint", anger: 0.9)
+    classify(add_message(item, body: "Refund came through, thank you so much!"), sentiment: "relieved",
+      sentiment_probability: 0.8, anger: 0.02)
+
+    item.reload
+    assert item.relieved?
+    assert_in_delta 0.02, item.anger_probability
+    assert_equal "relieved", item.mood
+    assert_equal %w[furious relieved], item.events.classified.map { |event| event.data["mood"] }
+  end
+
+  test "relief without an earlier upset in the thread is praise" do
+    item = new_item
+    classify(add_message(item, body: "Love the new Brief!"), sentiment: "relieved", sentiment_probability: 0.5, anger: 0.0)
+
+    item.reload
+    assert item.praise?
+    assert_in_delta 0.625, item.sentiment_probability
+  end
+
+  test "a bare acknowledgement keeps the customer's last substantive stance" do
+    item = new_item
+    classify(add_message(item, body: "Drafts keep disappearing and nobody answers.", at: 5.minutes.ago),
+      sentiment: "complaint", anger: 0.5)
+    classify(add_message(item, body: "ok"), sentiment: "neutral", anger: 0.0)
+
+    item.reload
+    assert item.complaint?
+    assert_in_delta 0.5, item.anger_probability
+  end
+
+  test "team messages never set labels or anger" do
+    item = new_item
+    classify(add_message(item, body: "Brief is late again", at: 5.minutes.ago), sentiment: "complaint", anger: 0.3)
+    reply = add_message(item, body: "Kieran from Every: we are furious at ourselves, fix is coming", author_role: "team")
+    classify(reply, sentiment: "praise", anger: 0.95, category: "praise")
+
+    item.reload
+    assert item.complaint?
+    assert_in_delta 0.3, item.anger_probability
+    assert_equal categories(:bug), item.category
+    assert_equal "team", item.events.last.data["author_role"]
+  end
+
+  test "an item where only the team has spoken is not relevant" do
+    item = new_item
+    classify(add_message(item, body: "Monologue 2.0 is out today!", author_role: "team"), relevant: 0.97, sentiment: "praise")
+
+    item.reload
+    refute item.relevant?
+    assert_nil item.anger_probability
+    refute_includes Item.relevant, item
+  end
+
+  test "an unknown author takes the classifier's team_author answer" do
+    item = new_item
+    staff = add_message(item, body: "Thanks all, shipping a fix tonight. — Kieran from Every", author_role: "unknown")
+    customer = add_message(item, body: "Brief never arrives", author_role: "unknown")
+
+    classify(staff, team_author: 0.93)
+    classify(customer, team_author: 0.04)
+
+    assert staff.reload.author_team?
+    assert customer.reload.author_customer?
+    assert_equal Classification::VERSION, customer.classifier_version
+  end
+
+  test "a known author keeps its role whatever the classifier says" do
+    message = add_message(new_item, author_role: "customer")
+
+    classify(message, team_author: 0.99)
+
+    assert message.reload.author_customer?
+  end
+
+  test "quiet applies record backfill events and publish nothing" do
+    item = new_item
+    message = add_message(item)
+    published = []
+    subscriber = ActiveSupport::Notifications.subscribe(Item::CLASSIFIED_EVENT) { |event| published << event }
+
+    Classification::Apply.call(message: message, answers: FakeClassifier.answers(anger: 0.99), quiet: true)
+
+    assert_empty published
+    assert_equal({ "backfill" => true, "reclassified" => true },
+      item.events.last.data.slice("backfill", "reclassified"))
+  ensure
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+  end
+
   private
 
   def new_item(source: sources(:slack_community), status_changed_at: 1.hour.ago, **attributes)
@@ -229,9 +322,9 @@ class Classification::ApplyTest < ActiveSupport::TestCase
       last_message_at: Time.current, product: source.default_product, **attributes)
   end
 
-  def add_message(item, body: "Cora lost my drafts again.", at: Time.current)
+  def add_message(item, body: "Cora lost my drafts again.", at: Time.current, author_role: "customer")
     item.messages.create!(source: item.source, external_id: SecureRandom.hex(6), body: body, occurred_at: at,
-      created_at: at)
+      created_at: at, author_role: author_role)
   end
 
   def classify(message, **answers)

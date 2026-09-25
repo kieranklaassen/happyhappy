@@ -87,7 +87,7 @@ module Classification
 
       item.relevance_probability = open.map { |message| noul(message.classification_answers, "relevant") }.max
       item.relevant = relevant.any? unless item.relevant_human_set?
-      item.anger_probability = stance.anger_probability
+      item.anger_probability = (stance.anger_probability if relevant.any?)
 
       assign_product(item, labels["product"]) unless item.product_human_set?
       assign_category(item, labels["category"]) unless item.category_human_set?

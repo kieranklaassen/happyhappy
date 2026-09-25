@@ -13,7 +13,7 @@ class ClassificationTest < ActiveSupport::TestCase
     assert_equal "spiral", answers.dig("product", "choice")
     assert_equal({ "spiral" => 0.45, "none" => 0.55 }, answers.dig("product", "probabilities"))
     assert_equal "complaint", answers.dig("sentiment", "choice")
-    assert_equal %w[complaint praise question neutral].sort, answers.dig("sentiment", "probabilities").keys.sort
+    assert_equal %w[complaint praise question neutral relieved].sort, answers.dig("sentiment", "probabilities").keys.sort
     assert_equal %w[relevant product category sentiment anger], answers.keys
   end
 
