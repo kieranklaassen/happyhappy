@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_202919) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_212533) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -303,7 +303,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_202919) do
     t.integer "requests", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["record_type", "vocabulary_version"], name: "index_truffler_backfill_spends_on_ledger", unique: true
+    t.string "tenant_key"
+    t.index ["record_type", "tenant_key", "vocabulary_version"], name: "index_truffler_backfill_spends_on_tenant_ledger", unique: true
+    t.index ["record_type", "vocabulary_version"], name: "index_truffler_backfill_spends_on_app_ledger", unique: true, where: "tenant_key IS NULL"
   end
 
   create_table "truffler_embeddings", force: :cascade do |t|
