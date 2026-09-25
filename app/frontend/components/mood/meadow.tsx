@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react'
-import { type CSSProperties, memo, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, memo, type ReactNode, type RefObject, startTransition, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Character from './character'
 import Flora from './flora'
 import { MOOD_COLORS, plural, timeAgo } from './format'
@@ -206,7 +206,10 @@ function useNearViewport(ref: RefObject<HTMLElement | null>, margin: string, ini
   useEffect(() => {
     const element = ref.current
     if (!element || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), { rootMargin: margin })
+    // A transition lets React draw a hill's characters in slices between frames instead of one long task.
+    const observer = new IntersectionObserver(([entry]) => startTransition(() => setNear(entry.isIntersecting)), {
+      rootMargin: margin,
+    })
     observer.observe(element)
     return () => observer.disconnect()
   }, [ref, margin])
