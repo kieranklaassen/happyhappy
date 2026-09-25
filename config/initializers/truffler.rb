@@ -24,3 +24,7 @@ Truffler.configure do |config|
     config.cache_store = ActiveSupport::Cache::MemoryStore.new
   end
 end
+
+Rails.application.config.to_prepare do
+  Truffler.config.client = FeedSearch::EncodingClient.new unless Rails.env.test?
+end

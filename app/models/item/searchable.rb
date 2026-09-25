@@ -7,6 +7,10 @@
 # `version:` when its `from:` logic changes, then run the free backfill
 # (docs/search.md).
 #
+# The dashboard mood is not a label: it is derived from sentiment and anger,
+# and Jev reading "angry" as both the anger label and a mood filtered on two
+# answers that contradict each other.
+#
 # The one asked label, churn_risk, is something classification does not
 # answer: a customer about to leave hides as easily in a bug report or a
 # billing question as under the cancellation category.
@@ -19,11 +23,6 @@ module Item::Searchable
     "question" => "Asking how something works or for something to be done",
     "neutral" => "An observation, announcement, or small talk",
     "relieved" => "Was upset earlier and is satisfied now"
-  }.freeze
-
-  MOODS = {
-    "beaming" => "Delighted", "content" => "Pleased", "relieved" => "Satisfied after being upset",
-    "meh" => "Indifferent, neutral, or just asking", "grumpy" => "Annoyed or complaining", "furious" => "Furious, escalated"
   }.freeze
 
   STATUSES = {
@@ -66,9 +65,6 @@ module Item::Searchable
           filter_at: 0.5
         label :anger, :noul, description: "the customer is angry",
           from: ->(item) { item.anger_probability }, watch: %i[anger_probability], filter_at: 0.5, boost: 2.0
-        label :mood, :choice, options: MOODS, description: "the customer's mood on the dashboard",
-          from: ->(item) { item.mood.presence_in(Mood::ALL) }, watch: %i[sentiment sentiment_probability anger_probability product_id],
-          filter_at: 0.5
         label :needs_action, :noul, description: "someone at Every needs to act or reply",
           from: ->(item) { item.actionability }, watch: %i[actionability], filter_at: Actionability::SHOULD_REPLY, boost: 2.0
         label :status, :choice, options: STATUSES, description: "where the team is with it",

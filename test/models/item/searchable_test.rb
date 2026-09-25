@@ -32,7 +32,6 @@ class Item::SearchableTest < ActiveSupport::TestCase
     assert_equal 1.0, written.fetch("sentiment:complaint")
     assert_equal 1.0, written.fetch("status:claimed")
     assert_equal 1.0, written.fetch("source:slack")
-    assert_equal 1.0, written.fetch("mood:#{item.mood}")
     assert_equal 0.0, written.fetch("team_replied")
     assert_not written.key?("churn_risk")
   end
