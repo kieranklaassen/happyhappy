@@ -33,6 +33,7 @@ module Escalations
         product&.slack_channel_id.present? &&
         angry?(@item.anger_probability) &&
         trigger.present? &&
+        !trigger.backfilled? &&
         !off_topic?(trigger) &&
         angry?(trigger.anger_probability) &&
         trigger.occurred_at >= MAX_MESSAGE_AGE.ago &&

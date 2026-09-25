@@ -32,6 +32,17 @@ class Webhooks::FanOutTest < ActiveSupport::TestCase
     end
   end
 
+  test "backfilled arrived and classified events are not delivered" do
+    create_webhook_endpoint
+
+    assert_no_difference -> { WebhookDelivery.count } do
+      assert_no_enqueued_jobs(only: WebhookDeliveryJob) do
+        @item.record_event!(:arrived, backfill: true)
+        @item.record_event!(:classified, backfill: true)
+      end
+    end
+  end
+
   test "an inactive endpoint receives nothing" do
     create_webhook_endpoint(active: false)
 

@@ -192,6 +192,36 @@ class Classification::ApplyTest < ActiveSupport::TestCase
     refute item.reload.relevant?
   end
 
+  test "backfilled history does not change the labels or anger of an item live messages reached" do
+    item = new_item(status_changed_at: 2.hours.ago)
+    classify(add_message(item, at: 1.hour.ago), product: "cora", category: "bug", sentiment: "question", anger: 0.2)
+    item.update!(status: "handled", status_changed_at: 30.minutes.ago)
+
+    old = add_message(item, body: "Spiral billing is a scam", at: 40.days.ago)
+    old.update!(backfilled: true, created_at: Time.current)
+    classify(old, product: "spiral", category: "billing", sentiment: "complaint", anger: 0.97)
+
+    item.reload
+    assert_equal products(:cora), item.product
+    assert_equal categories(:bug), item.category
+    assert item.question?
+    assert_in_delta 0.2, item.anger_probability
+    assert old.reload.classified?
+  end
+
+  test "an item reached only by backfilled history takes its labels from that history" do
+    item = new_item(status_changed_at: Time.current)
+    old = add_message(item, at: 40.days.ago)
+    old.update!(backfilled: true, created_at: Time.current)
+
+    classify(old, product: "spiral", sentiment: "complaint", anger: 0.7)
+
+    item.reload
+    assert_equal products(:spiral), item.product
+    assert item.complaint?
+    assert_in_delta 0.7, item.anger_probability
+  end
+
   private
 
   def new_item(source: sources(:slack_community), status_changed_at: 1.hour.ago, **attributes)

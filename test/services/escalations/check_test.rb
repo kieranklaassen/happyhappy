@@ -94,6 +94,17 @@ class Escalations::CheckTest < ActiveSupport::TestCase
     assert_empty item.escalations
   end
 
+  test "a backfilled message never escalates, even when recent and angry" do
+    item, message = classified_item(anger: 0.95)
+    message.update!(backfilled: true)
+
+    assert_no_enqueued_jobs(only: PostEscalationJob) do
+      item.publish_classified(message)
+      item.publish_classified
+    end
+    assert_empty item.escalations
+  end
+
   test "an event without a message uses the angriest open message" do
     item, message = classified_item(anger: 0.9)
     add_message(item, anger: 0.1, body: "ok")
