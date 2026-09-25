@@ -11,11 +11,15 @@ module Classification
     CONTEXT = "Answer about `message`, the latest message. `earlier_in_thread` is only context for reading it."
 
     SENTIMENTS = {
-      "complaint" => "Unhappy about something: a problem, a failure, a charge, or a letdown.",
-      "praise" => "Happy about something: thanks, compliments, or a success story.",
-      "question" => "Asking how something works or for help, without clear frustration.",
-      "neutral" => "None of the above, such as an observation, an announcement, or small talk.",
-      "relieved" => "Was upset earlier in this thread and the latest message shows the problem is resolved and they are satisfied now."
+      "complaint" => "Unhappy about something: a problem, a failure, a charge, or a letdown. Sarcastic praise " \
+        "(\"great, charged twice\") is a complaint. A polite request alone is not.",
+      "praise" => "Happy about something: thanks, compliments, or a success story, with no earlier upset in the thread.",
+      "question" => "Asking how something works, for help, or for something to be done (a refund, a cancellation, " \
+        "a discount, an account change), without clear frustration.",
+      "neutral" => "None of the above, such as an observation, an announcement, small talk, or an acknowledgement " \
+        "with no ask.",
+      "relieved" => "Was upset earlier in this thread and the latest message shows the problem is resolved and " \
+        "they are satisfied now."
     }.freeze
 
     def self.call(...)
@@ -57,13 +61,21 @@ module Classification
           },
           criteria: category_criteria
         s.choice :sentiment,
-          instructions: { question: "What is the customer's sentiment in this message?", context: CONTEXT },
+          instructions: {
+            question: "What is the customer's current sentiment, as of this message?",
+            focus: "When a message mixes tones, pick the one that drives it: a bug report wrapped in compliments " \
+              "is a complaint or a question. A bare \"ok\" or \"any update?\" keeps the stance of the " \
+              "customer's last substantive message.",
+            context: CONTEXT
+          },
           criteria: SENTIMENTS
         s.noul :anger,
-          instructions: { question: "Is the customer angry?", context: CONTEXT },
+          instructions: { question: "Is the customer angry right now, as of this message?", context: CONTEXT },
           criteria: {
-            true => "Clearly angry, furious, or fed up.",
-            false => "Calm, mildly annoyed, neutral, or happy."
+            true => "Clearly angry, furious, or fed up: hostile words, threats to dispute a charge or leave in " \
+              "anger, \"scam\", \"ridiculous\", or exasperated repeated chasing.",
+            false => "Calm, polite, disappointed, mildly annoyed, neutral, or happy. Asking for a refund or to " \
+              "cancel is not anger by itself, and anger earlier in the thread does not count once they are satisfied."
           }
         author_role_question(s) if @ask_author_role
       end
