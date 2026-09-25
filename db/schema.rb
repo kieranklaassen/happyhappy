@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_030000) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -160,11 +160,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
 
   create_table "messages", force: :cascade do |t|
     t.float "anger_probability"
+    t.string "author_role", default: "unknown", null: false
     t.boolean "backfilled", default: false, null: false
     t.text "body", default: "", null: false
     t.json "classification_answers"
     t.text "classification_error"
     t.datetime "classified_at"
+    t.string "classifier_version"
     t.datetime "created_at", null: false
     t.string "external_id", null: false
     t.integer "item_id", null: false
@@ -172,6 +174,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
     t.json "raw_payload", default: {}, null: false
     t.integer "source_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["item_id", "author_role"], name: "index_messages_on_item_id_and_author_role"
     t.index ["item_id", "created_at"], name: "index_messages_on_item_id_and_created_at"
     t.index ["item_id"], name: "index_messages_on_item_id"
     t.index ["source_id", "external_id"], name: "index_messages_on_source_id_and_external_id", unique: true
@@ -207,6 +210,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
     t.float "escalation_threshold", default: 0.8, null: false
     t.float "low_confidence_threshold", default: 0.6, null: false
     t.integer "report_back_window_minutes", default: 240, null: false
+    t.json "team_discord_role_ids", default: [], null: false
+    t.json "team_discord_user_ids", default: [], null: false
+    t.json "team_email_domains", default: ["every.to"], null: false
     t.datetime "updated_at", null: false
   end
 

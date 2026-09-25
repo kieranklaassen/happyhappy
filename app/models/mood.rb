@@ -4,10 +4,10 @@
 # draws one face per mood, so these rules are the single source of truth for
 # what "furious" or "meh" means.
 module Mood
-  ALL = %w[beaming content meh grumpy furious].freeze
+  ALL = %w[beaming content relieved meh grumpy furious].freeze
   PENDING = "pending"
 
-  SCORES = { "beaming" => 2, "content" => 1, "meh" => 0, "grumpy" => -1, "furious" => -2 }.freeze
+  SCORES = { "beaming" => 2, "content" => 1, "relieved" => 1, "meh" => 0, "grumpy" => -1, "furious" => -2 }.freeze
 
   GRUMPY_ANGER = 0.45
   BEAMING_PRAISE = 0.75
@@ -15,12 +15,14 @@ module Mood
   module_function
 
   # Furious means the item would escalate, so the storm cloud and the Slack
-  # escalation always agree.
+  # escalation always agree. Relieved is a customer who was upset earlier in the
+  # thread and is satisfied now.
   def for(sentiment:, anger:, sentiment_probability: nil, furious_at: Setting.current.escalation_threshold)
     return PENDING if sentiment.nil? && anger.nil?
 
     anger = anger.to_f
     return "furious" if anger >= furious_at
+    return "relieved" if sentiment == "relieved"
     return "grumpy" if sentiment == "complaint" || anger >= GRUMPY_ANGER
     return "meh" unless sentiment == "praise"
 

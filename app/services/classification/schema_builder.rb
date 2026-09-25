@@ -1,7 +1,8 @@
 module Classification
   # Builds the one TypeSafe request that classifies a message (KTD7): a Noul for
   # relevance, a Choice for product with a none option, a Choice for category
-  # with an other option, a Choice for sentiment, and a Noul for anger.
+  # with an other option, a Choice for sentiment, and a Noul for anger. When the
+  # author is unknown it also asks a Noul for whether Every's team wrote it.
   # Products are keyed by slug and categories by name; retired ones are left out.
   class SchemaBuilder
     NO_PRODUCT = "none"
@@ -11,16 +12,18 @@ module Classification
       "complaint" => "Unhappy about something: a problem, a failure, a charge, or a letdown.",
       "praise" => "Happy about something: thanks, compliments, or a success story.",
       "question" => "Asking how something works or for help, without clear frustration.",
-      "neutral" => "None of the above, such as an observation, an announcement, or small talk."
+      "neutral" => "None of the above, such as an observation, an announcement, or small talk.",
+      "relieved" => "Was upset earlier in this thread and the latest message shows the problem is resolved and they are satisfied now."
     }.freeze
 
     def self.call(...)
       new(...).call
     end
 
-    def initialize(products: Product.active.ordered, categories: Category.active.ordered)
+    def initialize(products: Product.active.ordered, categories: Category.active.ordered, ask_author_role: false)
       @products = products.to_a
       @categories = categories.to_a
+      @ask_author_role = ask_author_role
     end
 
     def call
@@ -52,10 +55,20 @@ module Classification
             true => "Clearly angry, furious, or fed up.",
             false => "Calm, mildly annoyed, neutral, or happy."
           }
+        author_role_question(s) if @ask_author_role
       end
     end
 
     private
+
+    def author_role_question(schema)
+      schema.noul :team_author,
+        instructions: "Is this message written by the company's own staff or support team rather than a customer?",
+        criteria: {
+          true => "Speaks for Every: announces or explains its products as the maker, answers customers, or signs off as staff (for example, \"— Kieran from Every\").",
+          false => "A customer, reader, or community member writing to or about Every."
+        }
+    end
 
     def product_criteria
       @products.to_h { |product| [ product.slug, product_description(product) ] }

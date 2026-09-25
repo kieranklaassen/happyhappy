@@ -6,7 +6,7 @@ module Classification
 
     def call(message)
       RubyLLM.chat(model: MODEL, provider: :typesafe)
-        .with_schema(SchemaBuilder.call)
+        .with_schema(SchemaBuilder.call(ask_author_role: message.author_unknown?))
         .ask(state_for(message).to_json)
         .parsed
     end

@@ -56,17 +56,20 @@ module Items
           next Result.new(item: existing.item, message: existing, duplicate: true)
         end
 
-        item = upsert_item
+        author_role = Messages::AuthorRole.call(source_kind: @source.kind, raw_payload: @inbound.raw_payload,
+          author_email: @inbound.author_email)
+        item = upsert_item(team: author_role == "team")
         message = item.messages.create!(
           source: @source,
           external_id: @inbound.external_id,
           body: @inbound.body,
           occurred_at: @inbound.occurred_at,
           raw_payload: @inbound.raw_payload,
-          backfilled: @backfill
+          backfilled: @backfill,
+          author_role: author_role
         )
-        item.record_event!(:arrived, message_id: message.id, source_id: @source.id, **backfill_data)
-        if !@backfill && REOPENING_STATUSES.include?(item.status)
+        item.record_event!(:arrived, message_id: message.id, source_id: @source.id, author_role: author_role, **backfill_data)
+        if !@backfill && author_role != "team" && REOPENING_STATUSES.include?(item.status)
           item.change_status!(:new, at: message.created_at, reason: "customer_wrote_again", message_id: message.id)
         end
         @source.record_message_received!
@@ -87,17 +90,23 @@ module Items
       @backfill ? { backfill: true } : {}
     end
 
-    def upsert_item
+    # The item's author is its first customer, and a team reply neither names the
+    # author nor counts as the customer's latest activity.
+    def upsert_item(team:)
       item = Item.find_or_initialize_by(source_kind: @source.kind, thread_key: @inbound.thread_key)
       if item.new_record?
         item.source = @source
         item.product = @source.default_product
       end
-      item.author_handle ||= @inbound.author_handle
-      item.author_name ||= @inbound.author_name
-      item.author_email ||= @inbound.author_email
+      unless team
+        item.author_handle ||= @inbound.author_handle
+        item.author_name ||= @inbound.author_name
+        item.author_email ||= @inbound.author_email
+      end
       item.permalink ||= @inbound.permalink
-      item.last_message_at = [ item.last_message_at, @inbound.occurred_at ].compact.max
+      if !team || item.last_message_at.nil?
+        item.last_message_at = [ item.last_message_at, @inbound.occurred_at ].compact.max
+      end
       item.save!
       item
     end
