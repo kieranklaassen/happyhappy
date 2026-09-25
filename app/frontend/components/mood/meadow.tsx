@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react'
-import { type CSSProperties, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, memo, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Character from './character'
 import Flora from './flora'
 import { MOOD_COLORS, plural, timeAgo } from './format'
@@ -76,23 +76,38 @@ function shorten(text: string): string {
   return text.length > SHOUT_LENGTH ? `${text.slice(0, SHOUT_LENGTH).trimEnd()}…` : text
 }
 
-function Person({
-  character,
-  productName,
-  history,
-  shout,
-  drawn,
-}: {
+type Change = 'none' | 'arrived' | 'changed'
+
+function changeFor(character: MoodCharacter, history: MoodHistory): Change {
+  if (history === null) return 'none'
+  const previous = history.get(character.key)
+  if (previous === undefined) return 'arrived'
+  return previous === character.mood ? 'none' : 'changed'
+}
+
+interface PersonProps {
   character: MoodCharacter
   productName: string
-  history: MoodHistory
+  change: Change
   shout: boolean
   drawn: boolean
-}) {
-  const previous = history?.get(character.key)
-  const arrived = history !== null && previous === undefined
-  const changed = previous !== undefined && previous !== character.mood
-  const event = arrived ? 'hh-arrive' : changed ? 'hh-changed' : ''
+}
+
+// A live reload hands every person a fresh object; compare the fields they draw instead.
+function samePerson(before: PersonProps, after: PersonProps): boolean {
+  const [a, b] = [before.character, after.character]
+  return (
+    before.productName === after.productName &&
+    before.change === after.change &&
+    before.shout === after.shout &&
+    before.drawn === after.drawn &&
+    (Object.keys(a) as (keyof MoodCharacter)[]).every((field) => a[field] === b[field])
+  )
+}
+
+const Person = memo(function Person({ character, productName, change, shout, drawn }: PersonProps) {
+  const changed = change === 'changed'
+  const event = change === 'arrived' ? 'hh-arrive' : changed ? 'hh-changed' : ''
   const offset = (hashSeed(character.seed) % 5) * 5
   const note = statusNote(character)
   const bubbleRef = useKeepInside<HTMLSpanElement>(shout)
@@ -149,7 +164,7 @@ function Person({
       )}
     </li>
   )
-}
+}, samePerson)
 
 export const WIDE_CROWD = 5
 const ROW_TOLERANCE = 6
@@ -269,7 +284,14 @@ export default function Meadow({
         )}
         <ul ref={listRef} className="relative flex flex-wrap items-end justify-center gap-x-1 gap-y-3 pb-1 sm:gap-x-3">
           {characters.map((character) => (
-            <Person key={character.key} character={character} productName={name} history={history} shout={character.key === shouter?.key} drawn={drawn} />
+            <Person
+              key={character.key}
+              character={character}
+              productName={name}
+              change={changeFor(character, history)}
+              shout={character.key === shouter?.key}
+              drawn={drawn}
+            />
           ))}
         </ul>
       </div>
