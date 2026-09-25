@@ -96,9 +96,17 @@ function Person({
   const offset = (hashSeed(character.seed) % 5) * 5
   const note = statusNote(character)
   const bubbleRef = useKeepInside<HTMLSpanElement>(shout)
+  const [open, setOpen] = useState(false)
 
   return (
-    <li className="hh-person group relative" style={{ marginTop: offset + (shout ? 64 : 0) } as CSSProperties}>
+    <li
+      className="hh-person group relative"
+      style={{ marginTop: offset + (shout ? 64 : 0) } as CSSProperties}
+      onPointerEnter={() => setOpen(true)}
+      onPointerLeave={(event) => setOpen(event.currentTarget.contains(document.activeElement))}
+      onFocus={() => setOpen(true)}
+      onBlur={(event) => setOpen(event.currentTarget.contains(event.relatedTarget as Node | null))}
+    >
       <button
         type="button"
         className="relative block w-[76px] rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[#3E3542]/60 sm:w-[104px]"
@@ -121,22 +129,24 @@ function Person({
           {character.name}
         </span>
       </button>
-      <div className="hh-card">
-        <p className="hh-hand text-xl leading-none text-[#3E3542]">
-          {character.name}
-          <span className="ml-2 text-base text-[#3E3542]/60">is {moodBlurb(character.mood)}</span>
-        </p>
-        <p className="mt-1 text-xs text-[#3E3542]/60">
-          {character.handle ? `${character.handle} · ` : ''}
-          {sourceKindLabel(character.source_kind)} · {timeAgo(character.last_message_at)}
-          {character.threads > 1 ? ` · ${plural(character.threads, 'thread')}` : ''}
-        </p>
-        {character.excerpt && <blockquote className="mt-2 text-sm leading-snug text-[#3E3542]">“{character.excerpt}”</blockquote>}
-        {note && <p className="mt-2 text-xs font-medium text-[#6E9F86]">{note}</p>}
-        <Link href={`/items/${character.item_id}`} className="mt-3 inline-block text-sm font-semibold text-[#3E3542] underline decoration-[#F28C8C] decoration-2 underline-offset-4">
-          Open in the feed
-        </Link>
-      </div>
+      {open && (
+        <div className="hh-card">
+          <p className="hh-hand text-xl leading-none text-[#3E3542]">
+            {character.name}
+            <span className="ml-2 text-base text-[#3E3542]/60">is {moodBlurb(character.mood)}</span>
+          </p>
+          <p className="mt-1 text-xs text-[#3E3542]/60">
+            {character.handle ? `${character.handle} · ` : ''}
+            {sourceKindLabel(character.source_kind)} · {timeAgo(character.last_message_at)}
+            {character.threads > 1 ? ` · ${plural(character.threads, 'thread')}` : ''}
+          </p>
+          {character.excerpt && <blockquote className="mt-2 text-sm leading-snug text-[#3E3542]">“{character.excerpt}”</blockquote>}
+          {note && <p className="mt-2 text-xs font-medium text-[#6E9F86]">{note}</p>}
+          <Link href={`/items/${character.item_id}`} className="mt-3 inline-block text-sm font-semibold text-[#3E3542] underline decoration-[#F28C8C] decoration-2 underline-offset-4">
+            Open in the feed
+          </Link>
+        </div>
+      )}
     </li>
   )
 }
