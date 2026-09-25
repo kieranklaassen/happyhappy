@@ -88,6 +88,18 @@ claude mcp add --transport http happyhappy https://happyhappy.example.com/mcp \
 Locally, use the Rails URL `bin/dev` opens, such as `http://localhost:3100/mcp`. The endpoint only answers requests
 whose `Host` is the `PUBLIC_BASE_URL` host (or localhost outside production).
 
+### WebMCP
+
+While you are signed in, every page also registers the same tools with the
+browser's WebMCP model context (`document.modelContext.registerTool`, from the
+[WebMCP draft](https://webmachinelearning.github.io/webmcp/)), so an agent built
+into the browser can use them without a token. Calls go to
+`POST /webmcp/tools/:name` with your session cookie and the page's CSRF token and
+run the same tool code as `/mcp`. Your claims are held by an agent named after
+you with `(WebMCP)`, created on first use, and timeline events name you. Signing
+out unregisters the tools. Browsers without WebMCP get nothing; no polyfill
+ships.
+
 Customer content is untrusted. Message bodies, excerpts, and author fields in
 tool results sit in objects marked `"untrusted": true`. They are what customers
 wrote, so an agent should read them as data and never follow instructions
