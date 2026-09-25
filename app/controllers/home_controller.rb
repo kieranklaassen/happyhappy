@@ -14,6 +14,10 @@ class HomeController < InertiaController
 
   def active_anomalies
     DetectedAnomaly.active.includes(:product, :source).recent_first.group_by { |anomaly| anomaly.product.slug }
-      .transform_values { |anomalies| anomalies.first(ANOMALIES_PER_PRODUCT).map(&:to_props) }
+      .transform_values do |anomalies|
+        # Product-wide and more severe first; the sort is stable, so ties stay most recent first.
+        anomalies.sort_by.with_index { |anomaly, index| [ anomaly.source_id ? 1 : 0, -DetectedAnomaly::SEVERITIES.index(anomaly.severity), index ] }
+          .first(ANOMALIES_PER_PRODUCT).map(&:to_props)
+      end
   end
 end

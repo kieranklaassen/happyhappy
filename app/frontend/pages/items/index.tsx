@@ -2,7 +2,9 @@ import { Head, Link, router } from '@inertiajs/react'
 import { type FormEvent, useState } from 'react'
 import AppNav from '../../components/app-nav'
 import ItemRow from '../../components/item-row'
+import { anomalyValue, anomalyWindow } from '../../lib/anomaly-format'
 import { sentimentLabel, sourceKindLabel, statusLabel } from '../../lib/feed-format'
+import type { AnomalyProps } from '../../types/anomalies'
 import type {
   CategoryOption,
   ItemRowData,
@@ -25,6 +27,7 @@ export interface FeedFilters {
   needs_review?: boolean
   overdue?: boolean
   relevance?: 'relevant' | 'not_relevant' | 'all'
+  anomaly?: string
 }
 
 export interface FeedProps {
@@ -39,6 +42,7 @@ export interface FeedProps {
     statuses: ItemStatus[]
     ranges: string[]
   }
+  anomalies: AnomalyProps[]
   error: string | null
 }
 
@@ -52,6 +56,7 @@ interface FormState {
   relevance: string
   needs_review: boolean
   overdue: boolean
+  anomaly: string
 }
 
 const RANGE_LABELS: Record<string, string> = {
@@ -75,6 +80,7 @@ function initialState(filters: FeedFilters, products: ProductOption[]): FormStat
     relevance: filters.relevance ?? 'relevant',
     needs_review: Boolean(filters.needs_review),
     overdue: Boolean(filters.overdue),
+    anomaly: filters.anomaly ?? '',
   }
 }
 
@@ -86,12 +92,61 @@ export function toQuery(state: FormState): Record<string, string> {
   if (state.relevance !== 'relevant') query.relevance = state.relevance
   if (state.needs_review) query.needs_review = '1'
   if (state.overdue) query.overdue = '1'
+  if (state.anomaly) query.anomaly = state.anomaly
   return query
+}
+
+function describe(anomaly: AnomalyProps): string {
+  const where = anomaly.source ? `${anomaly.product.name} on ${anomaly.source.name}` : anomaly.product.name
+  return `${anomaly.label} for ${where}: ${anomalyValue(anomaly, anomaly.actual)} ${anomalyWindow(anomaly)}, usually ${anomalyValue(anomaly, anomaly.expected)}`
+}
+
+export function AnomalyBanner({ anomalies, filter }: { anomalies: AnomalyProps[]; filter?: string }) {
+  const selected = filter && filter !== 'active' ? anomalies.find((anomaly) => String(anomaly.id) === filter) : undefined
+  if (filter) {
+    return (
+      <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <span>
+          {filter === 'active'
+            ? 'Showing items behind the active anomalies.'
+            : selected
+              ? `Showing items behind: ${describe(selected)}.`
+              : `Showing items behind anomaly ${filter}.`}
+        </span>
+        <Link href="/items" className="font-medium underline">
+          Show the whole feed
+        </Link>
+      </p>
+    )
+  }
+  if (anomalies.length === 0) return null
+
+  return (
+    <section aria-label="Active anomalies" className="rounded bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <p className="flex flex-wrap items-center justify-between gap-2">
+        <strong className="font-semibold">
+          {anomalies.length === 1 ? '1 anomaly is active' : `${anomalies.length} anomalies are active`}
+        </strong>
+        <Link href="/items?anomaly=active" className="font-medium underline">
+          Show their items
+        </Link>
+      </p>
+      <ul className="mt-1 list-disc pl-5">
+        {anomalies.slice(0, 3).map((anomaly) => (
+          <li key={anomaly.id}>
+            <Link href={`/items?anomaly=${anomaly.id}`} className="hover:underline">
+              {describe(anomaly)}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 const SELECT = 'rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm'
 
-export default function ItemsIndex({ items, filters, pagination, options, error }: FeedProps) {
+export default function ItemsIndex({ items, filters, pagination, options, anomalies, error }: FeedProps) {
   const [form, setForm] = useState<FormState>(() => initialState(filters, options.products))
   const query = toQuery(initialState(filters, options.products))
   const selectedProduct = options.products.find((product) => String(product.id) === form.product)
@@ -123,6 +178,8 @@ export default function ItemsIndex({ items, filters, pagination, options, error 
             </Link>
           )}
         </header>
+
+        <AnomalyBanner anomalies={anomalies} filter={filters.anomaly} />
 
         <form
           onSubmit={submit}
@@ -231,6 +288,16 @@ export default function ItemsIndex({ items, filters, pagination, options, error 
               className="rounded border-gray-300"
             />
             Overdue
+          </label>
+
+          <label className="flex items-center gap-2 py-1.5 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.anomaly !== ''}
+              onChange={(e) => update('anomaly', e.target.checked ? 'active' : '')}
+              className="rounded border-gray-300"
+            />
+            In an active anomaly
           </label>
 
           <div className="flex gap-2">

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { anomaly } from '../../test/anomaly-fixture'
 import type { ItemRowData } from '../../types/items'
 import ItemsIndex, { type FeedProps, toQuery } from './index'
 
@@ -50,6 +51,7 @@ function props(overrides: Partial<FeedProps> = {}): FeedProps {
       statuses: ['new', 'claimed', 'in_progress', 'handled', 'dismissed'],
       ranges: ['24h', '7d', '30d', '90d'],
     },
+    anomalies: [],
     error: null,
     ...overrides,
   }
@@ -122,6 +124,30 @@ describe('Feed page', () => {
     expect(screen.queryByRole('heading', { name: 'No items match these filters' })).not.toBeInTheDocument()
   })
 
+  it('shows a banner for active anomalies that links to their items', () => {
+    render(<ItemsIndex {...props({ anomalies: [anomaly()] })} />)
+
+    const banner = screen.getByRole('region', { name: 'Active anomalies' })
+    expect(banner).toHaveTextContent('1 anomaly is active')
+    expect(within(banner).getByRole('link', { name: 'Show their items' })).toHaveAttribute('href', '/items?anomaly=active')
+    expect(within(banner).getByRole('link', { name: /Bug messages for Cora: 9 in the last hour, usually 0\.4/ })).toHaveAttribute(
+      'href',
+      '/items?anomaly=12',
+    )
+  })
+
+  it('filters to items in an active anomaly and explains the filter', () => {
+    const { unmount } = render(<ItemsIndex {...props({ anomalies: [anomaly()] })} />)
+    fireEvent.click(screen.getByLabelText('In an active anomaly'))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(get).toHaveBeenCalledWith('/items', { anomaly: 'active' }, { preserveScroll: true })
+    unmount()
+
+    render(<ItemsIndex {...props({ anomalies: [anomaly()], filters: { anomaly: '12', relevance: 'relevant' } })} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Showing items behind: Bug messages for Cora')
+    expect(screen.getByLabelText('In an active anomaly')).toBeChecked()
+  })
+
   it('keeps the filters in pagination links', () => {
     render(
       <ItemsIndex
@@ -147,6 +173,7 @@ describe('toQuery', () => {
         relevance: 'relevant',
         needs_review: false,
         overdue: true,
+        anomaly: '',
       }),
     ).toEqual({ sentiment: 'praise', range: '7d', overdue: '1' })
   })
