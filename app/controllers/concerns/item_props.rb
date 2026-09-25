@@ -27,6 +27,8 @@ module ItemProps
         overdue: item.overdue,
         claimed_by: item.claimed_by_agent&.name,
         anger_probability: item.anger_probability,
+        actionability: item.actionability,
+        actionability_band: item.actionability_band,
         last_message_at: item.last_message_at
       }
     end

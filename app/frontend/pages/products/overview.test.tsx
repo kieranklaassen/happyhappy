@@ -39,6 +39,8 @@ function props(overrides: Partial<ProductOverviewProps> = {}): ProductOverviewPr
         overdue: false,
         claimed_by: null,
         anger_probability: 0.86,
+        actionability: 0.9,
+        actionability_band: 'act_now',
         last_message_at: '2026-09-24T10:00:00Z',
       },
     ],

@@ -19,8 +19,11 @@
 #   overdue       true for claimed items past the report-back window
 #   relevance     relevant (default), not_relevant, or all
 #   anomaly       "active" for items behind any active anomaly, or one anomaly id
+#   actionability act_now, should_reply, fyi, noise (list); asking for noise widens the default relevance
+#   min_actionability  items scoring at least this, from 0 to 1
+#   sort          recent (default, most recent message first) or actionability (most actionable first)
 #
-# Results are ordered most recent message first. Unknown filters and invalid values raise InvalidFilter
+# Results are ordered by `sort`. Unknown filters and invalid values raise InvalidFilter
 # at construction, so callers can report the problem instead of silently widening the feed.
 class ItemsQuery
   class InvalidFilter < ArgumentError
@@ -32,11 +35,12 @@ class ItemsQuery
     end
   end
 
-  LIST_FILTERS = %i[product sentiment category status source source_kind].freeze
-  SCALAR_FILTERS = %i[range since until needs_review overdue relevance anomaly].freeze
+  LIST_FILTERS = %i[product sentiment category status source source_kind actionability].freeze
+  SCALAR_FILTERS = %i[range since until needs_review overdue relevance anomaly min_actionability sort].freeze
   FILTERS = (LIST_FILTERS + SCALAR_FILTERS).freeze
   RANGES = { "24h" => 24.hours, "7d" => 7.days, "30d" => 30.days, "90d" => 90.days }.freeze
   RELEVANCE = %w[relevant not_relevant all].freeze
+  SORTS = %w[recent actionability].freeze
   NO_PRODUCT = "none"
   ACTIVE_ANOMALIES = "active"
   TRUE_VALUES = [ true, "true", "1" ].freeze
@@ -58,8 +62,10 @@ class ItemsQuery
   end
 
   def call
-    scope = Item.recent_first
+    scope = filters[:sort] == "actionability" ? Item.by_actionability : Item.recent_first
     scope = by_relevance(scope)
+    scope = scope.where(actionability_band: filters[:actionability]) if filters[:actionability]
+    scope = scope.where(actionability: filters[:min_actionability]..) if filters[:min_actionability]
     scope = by_product(scope, filters[:product]) if filters[:product]
     scope = by_category(scope, filters[:category]) if filters[:category]
     scope = scope.where(sentiment: filters[:sentiment]) if filters[:sentiment]
@@ -88,12 +94,16 @@ class ItemsQuery
     normalized[:needs_review] = true if flag(:needs_review, raw[:needs_review])
     normalized[:overdue] = true if flag(:overdue, raw[:overdue])
     normalized[:anomaly] = validate_anomaly(raw[:anomaly]) if raw[:anomaly].present?
-    normalized[:relevance] = validate_relevance(raw[:relevance].presence || "relevant")
+    normalized[:min_actionability] = parse_score(raw[:min_actionability]) if raw[:min_actionability].present?
+    normalized[:sort] = validate_sort(raw[:sort]) if raw[:sort].present?
+    normalized[:relevance] = validate_relevance(raw[:relevance].presence || default_relevance(normalized))
     normalized
   end
 
   def validate_list(name, values)
-    if (allowed = { sentiment: Item.sentiments, status: Item.statuses, source_kind: Source.kinds }[name]&.values)
+    allowed = { sentiment: Item.sentiments.values, status: Item.statuses.values, source_kind: Source.kinds.values,
+                actionability: Actionability::BANDS }[name]
+    if allowed
       invalid = values - allowed
       raise InvalidFilter.new(name, "#{invalid.first.inspect} is not one of #{allowed.join(', ')}") if invalid.any?
     elsif name == :source && (invalid = values.grep_v(/\A\d+\z/)).any?
@@ -105,6 +115,24 @@ class ItemsQuery
 
   def validate_range(value)
     RANGES.key?(value.to_s) ? value.to_s : raise(InvalidFilter.new(:range, "must be one of #{RANGES.keys.join(', ')}"))
+  end
+
+  # Noise is exactly the items that are not relevant, so asking for it looks at every item.
+  def default_relevance(normalized)
+    Array(normalized[:actionability]).include?("noise") ? "all" : "relevant"
+  end
+
+  def validate_sort(value)
+    SORTS.include?(value.to_s) ? value.to_s : raise(InvalidFilter.new(:sort, "must be one of #{SORTS.join(', ')}"))
+  end
+
+  def parse_score(value)
+    score = Float(value.to_s)
+    raise ArgumentError unless score.between?(0, 1)
+
+    score
+  rescue ArgumentError
+    raise InvalidFilter.new(:min_actionability, "must be a number from 0 to 1")
   end
 
   def validate_relevance(value)
