@@ -7,7 +7,8 @@
 # message the way a backfill would, classifies each one in order with the current
 # code, and scores the rolled-up item labels against the judge's gold labels.
 # EVAL_MODE=prod scores the exported production labels instead, without calling
-# TypeSafe. Responses are cached by request payload under EVAL_DIR/cache, so an
+# TypeSafe (EVAL_EXPORT picks another export of the same items, such as one
+# taken after a production rerun). Responses are cached by request payload under EVAL_DIR/cache, so an
 # unchanged request is never paid for twice. Prints one JSON line of metrics.
 require "digest"
 
@@ -17,7 +18,7 @@ mode = ENV.fetch("EVAL_MODE", "classify")
 database = ActiveRecord::Base.connection_db_config.database.to_s
 abort "refusing to run outside a scratch database (#{database})" unless database.start_with?("/tmp/")
 
-export = JSON.parse(dir.join("gold_export.json").read)
+export = JSON.parse(dir.join(ENV.fetch("EVAL_EXPORT", "gold_export.json")).read)
 gold = Dir[dir.join("judge/labels_*.json")].flat_map { |path| JSON.parse(File.read(path)) }.index_by { |label| label["item_id"] }
 taxonomy = JSON.parse(dir.join("taxonomy.json").read)
 team_role_ids = ENV.fetch("EVAL_TEAM_ROLE_IDS", "").split(",")
@@ -71,7 +72,7 @@ predictions =
       prod = item["prod"]
       [ item["id"], { relevant: prod["relevant"], product: prod["product"] || "none", category: prod["category"] || "other",
         sentiment: prod["sentiment"], sentiment_probability: prod["sentiment_probability"], anger: prod["anger_probability"],
-        author_roles: item["messages"].to_h { |message| [ message["id"].to_s, "customer" ] } } ]
+        author_roles: item["messages"].to_h { |message| [ message["id"].to_s, message["author_role"] || "customer" ] } } ]
     end
   else
     ActiveRecord::Schema.verbose = false
