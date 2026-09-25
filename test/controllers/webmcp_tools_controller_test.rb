@@ -4,6 +4,8 @@ require "test_helper"
 
 class WebmcpToolsControllerTest < ActionDispatch::IntegrationTest
   include McpHelper
+  include TrufflerHelper
+  include ActiveJob::TestHelper
 
   setup do
     host! "localhost"
@@ -51,6 +53,22 @@ class WebmcpToolsControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal mcp_tool("list_items", arguments), result
     assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ], tool_payload(result)["items"].pluck("id")
+  end
+
+  test "returns exactly what MCP returns for search_items, with customer text marked untrusted" do
+    sign_in_as @user
+    index_items_for_search!
+    truffler_fake(intents: { "product" => "filter" }, options: { "product" => "cora" }, tokens: { "cora" => "label_term" })
+    arguments = { query: "cora", status: [ "new", "claimed" ] }
+
+    result = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) { webmcp_tool("search_items", arguments) }
+    via_mcp = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) { mcp_tool("search_items", arguments) }
+
+    assert_equal via_mcp, result
+    payload = tool_payload(result)
+    assert_equal [ "product:cora" ], payload["chips"].pluck("key")
+    assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ].sort, payload["items"].pluck("id").sort
+    assert payload["items"].all? { |item| item.dig("excerpt", "untrusted") && item.dig("author", "untrusted") }
   end
 
   test "an invalid filter is the same isError result as MCP" do

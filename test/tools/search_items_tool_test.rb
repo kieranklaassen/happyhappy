@@ -1,0 +1,39 @@
+require "test_helper"
+
+class SearchItemsToolTest < ActiveSupport::TestCase
+  include TrufflerHelper
+  include ActiveJob::TestHelper
+
+  setup { index_items_for_search! }
+
+  def call(**arguments)
+    SearchItemsTool.call(server_context: { agent: agents(:cursor) }, **arguments)
+  end
+
+  test "waits for the query encoding, then returns chips and ranked items with customer text marked untrusted" do
+    truffler_fake(intents: { "anger" => "filter", "product" => "filter" }, options: { "product" => "cora" },
+      tokens: { "angry" => "label_term", "cora" => "label_term" })
+
+    payload = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) { call(query: "angry cora") }.structured_content
+
+    assert_equal "cached", payload["encoding"].to_s
+    assert_equal [ "anger", "product:cora" ], payload["chips"].pluck("key").sort
+    assert_equal [ items(:angry_slack).id ], payload["items"].pluck("id")
+    assert_equal true, payload["items"].first.dig("excerpt", "untrusted")
+  end
+
+  test "takes list_items filters, a time phrase, and removed chips" do
+    truffler_fake
+    payload = perform_enqueued_jobs(only: Truffler::Jobs::EncodeQueryJob) do
+      call(query: "cora last 3 hours", status: [ "new", "claimed" ], removed_chips: [ "time" ])
+    end.structured_content
+
+    assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ].sort, payload["items"].pluck("id").sort
+    assert_empty payload["chips"]
+  end
+
+  test "sort and invalid filters are tool errors" do
+    assert_equal "Invalid filter sort: search results are ranked by relevance", call(query: "cora", sort: "newest").content.first[:text]
+    assert_match "status", call(query: "cora", status: [ "lost" ]).content.first[:text]
+  end
+end
