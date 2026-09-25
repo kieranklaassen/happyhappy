@@ -53,7 +53,7 @@ the label after commit.
 | anger | supplied | `items.anger_probability` |
 | needs_action | supplied | `items.actionability` (filters at the should-reply threshold) |
 | status | supplied | `items.status` |
-| source | supplied | `items.source_kind` |
+| source | supplied | `items.source_kind`; options are the connected source kinds |
 | team_replied | supplied | a team member wrote in the thread |
 | needs_review | supplied | `items.needs_review` |
 | churn_risk | **asked** | Jev reads the conversation |
@@ -124,6 +124,14 @@ or deleting a product or category changes the option keys and
 restales every product or category label; `truffler:backfill[Item]` or
 `search:reindex` rewrites them without a Jev call.
 
+The `source` options are the kinds of connected sources (paused ones too), so
+Jev cannot pick a channel nobody has connected ("email" before an email
+source exists). Connecting the first source of a new kind makes it pickable
+right away: the option keys change, which re-keys cached query encodings and
+restales the stored `source` labels. Search keeps working on those rows; run
+`bin/rails "truffler:backfill[Item]"` to rewrite them (no Jev call for
+`source`). Pausing a source changes nothing.
+
 ### Upgrading to 0.1.4
 
 0.1.4 changed the supplied fingerprint formula, so every supplied label
@@ -176,6 +184,6 @@ Measure with `script/latency/search.sh` (see `script/latency/README.md`).
 - **`none` and `other`.** `product_options` and `category_options` always
   offer them: they are answers `from:` gives, and the option keys are part of
   every stored product and category label's fingerprint.
-- **Source channel.** "cora email inbox" may be read as the email source plus
-  Cora, which makes "email" a chip word. Removing the source chip makes it a
-  search word again.
+- **Source channel.** Once an email source is connected, "cora email inbox"
+  may be read as the email source plus Cora, which makes "email" a chip word.
+  Removing the source chip makes it a search word again.

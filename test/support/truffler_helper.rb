@@ -11,6 +11,14 @@ module TrufflerHelper
     Item.find_each(&:truffler_refresh_labels!)
   end
 
+  # Leaves only sources of these kinds, with their items (a source with items
+  # cannot be deleted).
+  def keep_only_sources!(*kinds)
+    others = Source.where.not(kind: kinds)
+    Item.where(source: others).find_each(&:destroy!)
+    others.find_each(&:destroy!)
+  end
+
   # Runs the keystroke search once so it enqueues the encoding, then runs that job.
   def encode_query!(query, user:)
     FeedSearch.keystroke(query, user: user)
