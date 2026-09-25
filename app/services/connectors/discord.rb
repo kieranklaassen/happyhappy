@@ -50,8 +50,15 @@ module Connectors
     end
 
     def clear_gateway_errors!
+      gateway_errors.update_all(last_error: nil, last_error_at: nil)
+    end
+
+    def gateway_errors?
+      gateway_errors.exists?
+    end
+
+    def gateway_errors
       Source.discord.where("last_error LIKE ?", "#{GATEWAY_ERROR_PREFIX}:%")
-        .update_all(last_error: nil, last_error_at: nil)
     end
 
     def customer_message?(payload)
