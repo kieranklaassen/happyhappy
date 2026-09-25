@@ -101,11 +101,11 @@ you with `(WebMCP)`, created on first use, and timeline events name you. Signing
 out unregisters the tools. Browsers without WebMCP get nothing; no polyfill
 ships.
 
-The browser side follows Thinkroom's WebMCP modules (`app/frontend/lib/webmcp.ts`,
-`webmcp_execute.ts`, `use_webmcp_tools.ts`). For Chrome's WebMCP origin trial, set
-`WEBMCP_ORIGIN_TRIAL_TOKEN` to one public token per origin. `npm run check:webmcp`
-runs the Playwright check against `bin/dev` (set `BASE_URL`, default
-`http://localhost:3000`).
+This is the compound-stack-rails `webmcp` module (template 0.8.0, see
+[docs/modules/webmcp.md](docs/modules/webmcp.md)): tools live in `app/tools/`
+and `ToolRegistry` serves them to `/mcp` and to the browser's `WebmcpProvider`.
+For Chrome's WebMCP origin trial, set `WEBMCP_ORIGIN_TRIAL_TOKEN` to one public
+token per origin.
 
 Customer content is untrusted. Message bodies, excerpts, and author fields in
 tool results sit in objects marked `"untrusted": true`. They are what customers

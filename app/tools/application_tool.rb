@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 # Base class for every agent tool (docs/modules/webmcp.md). A tool is an
-# MCP::Tool, so the official SDK's DSL declares it once — `tool_name`,
-# `description`, `input_schema`, `annotations` — and ToolRegistry serves the
+# MCP::Tool, so the official SDK's DSL declares it once (`tool_name`,
+# `description`, `input_schema`, `annotations`), and ToolRegistry serves the
 # same class to MCP clients and to WebMCP browser agents.
 #
 # Subclasses implement `#call` and return a String or anything JSON-serializable;
