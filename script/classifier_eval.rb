@@ -7,9 +7,10 @@
 # message the way a backfill would, classifies each one in order with the current
 # code, and scores the rolled-up item labels against the judge's gold labels.
 # EVAL_MODE=prod scores the exported production labels instead, without calling
-# TypeSafe (EVAL_EXPORT picks another export of the same items, such as one
-# taken after a production rerun). Responses are cached by request payload under EVAL_DIR/cache, so an
-# unchanged request is never paid for twice. Prints one JSON line of metrics.
+# TypeSafe; EVAL_EXPORT picks another export of the same items, such as one
+# taken after a production rerun. Responses are cached by request payload under
+# EVAL_DIR/cache, so an unchanged request is never paid for twice. Prints one
+# JSON line of metrics.
 require "digest"
 
 dir = Pathname(ENV.fetch("EVAL_DIR"))
