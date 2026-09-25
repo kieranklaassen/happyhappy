@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_045002) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_160000) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -37,13 +37,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_045002) do
     t.datetime "last_seen_at", null: false
     t.string "metric", null: false
     t.integer "product_id", null: false
-    t.string "severity", null: false
+    t.string "severity"
     t.integer "source_id"
     t.string "status", default: "active", null: false
     t.datetime "updated_at", null: false
     t.datetime "window_end", null: false
     t.datetime "window_start", null: false
     t.float "z_score", null: false
+    t.string "polarity", default: "neutral", null: false
+    t.string "highlight"
     t.index ["product_id", "metric", "dimension", "granularity", "window_start"], name: "index_anomalies_on_series_and_window"
     t.index ["product_id"], name: "index_anomalies_on_product_id"
     t.index ["source_id"], name: "index_anomalies_on_source_id"

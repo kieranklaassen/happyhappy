@@ -84,7 +84,7 @@ module Anomalies
           overlapping = rows.find { |row| row.window_start < point.window_end && row.window_end > point.window_start }
           target = overlapping || open_row
           if target && (target == open_row || target.active?)
-            extend_row(target, point, verdict)
+            extend_row(target, line, point, verdict)
             open_row = target
           elsif overlapping.nil?
             open_row = create_row(line, point, verdict)
@@ -114,7 +114,7 @@ module Anomalies
       return false unless lift >= MIN_LIFT[line.count_metric? ? :count : :ratio] && detector.anomaly?([ point.value ], threshold)
 
       z = [ lift / std, MAX_Z ].min
-      { expected: mean, actual: point.value.to_f, z_score: z, severity: severity(z) }
+      { expected: mean, actual: point.value.to_f, z_score: z, level: level(z) }
     end
 
     def enough?(line, point)
@@ -128,32 +128,39 @@ module Anomalies
       line.points[from...index].filter_map { |point| point.value.to_f if enough?(line, point) }
     end
 
-    def severity(z)
+    # 0 to 2 at 1, 1.5, and 2 times the sensitivity; DetectedAnomaly.grade turns it into a severity or highlight.
+    def level(z)
       sensitivity = @setting.anomaly_sensitivity
-      if z >= sensitivity * 2 then "high"
-      elsif z >= sensitivity * 1.5 then "medium"
-      else "low"
+      if z >= sensitivity * 2 then 2
+      elsif z >= sensitivity * 1.5 then 1
+      else 0
       end
+    end
+
+    def graded(line, verdict, item_ids)
+      level = verdict[:level]
+      verdict.except(:level).merge(DetectedAnomaly.grade(metric: line.metric, dimension: line.dimension, item_ids: item_ids, level: level))
     end
 
     def create_row(line, point, verdict)
       historical = historical?(point)
+      item_ids = point.item_ids.first(DetectedAnomaly::ITEM_LIMIT)
       anomaly = DetectedAnomaly.create!(
         product_id: line.product_id, source_id: line.source_id, metric: line.metric, dimension: line.dimension,
         granularity: @granularity, window_start: point.window_start, window_end: point.window_end,
-        item_ids: point.item_ids.first(DetectedAnomaly::ITEM_LIMIT),
+        item_ids: item_ids,
         status: historical ? :ended : :active, historical: historical, ended_at: (@now if historical),
-        first_seen_at: @now, last_seen_at: @now, **verdict
+        first_seen_at: @now, last_seen_at: @now, **graded(line, verdict, item_ids)
       )
       @created << anomaly unless historical
       anomaly
     end
 
-    def extend_row(row, point, verdict)
+    def extend_row(row, line, point, verdict)
       attributes = { last_seen_at: @now }
       if point.window_end >= row.window_end
-        attributes.merge!(verdict, window_end: point.window_end,
-          item_ids: (point.item_ids + row.item_ids).uniq.first(DetectedAnomaly::ITEM_LIMIT))
+        item_ids = (point.item_ids + row.item_ids).uniq.first(DetectedAnomaly::ITEM_LIMIT)
+        attributes.merge!(graded(line, verdict, item_ids), window_end: point.window_end, item_ids: item_ids)
         # A spike that runs from old history into the active window is live after all.
         if row.historical? && !historical?(point)
           attributes.merge!(status: :active, historical: false, ended_at: nil)

@@ -29,6 +29,16 @@ class ListAnomaliesToolTest < ActiveSupport::TestCase
     assert_equal [ @ended.id ], call(status: "ended", product: "spiral").structured_content["anomalies"].map { |anomaly| anomaly["id"] }
   end
 
+  test "carries polarity, severity for bad news only, and a highlight for good news, and filters by polarity" do
+    praise = create_anomaly!(dimension: categories(:praise).id.to_s, polarity: "positive", severity: nil, highlight: "big")
+
+    anomalies = call.structured_content["anomalies"].index_by { |anomaly| anomaly["id"] }
+    assert_equal({ "polarity" => "negative", "severity" => "high", "highlight" => nil }, anomalies[@active.id].slice("polarity", "severity", "highlight"))
+    assert_equal({ "polarity" => "positive", "severity" => nil, "highlight" => "big" }, anomalies[praise.id].slice("polarity", "severity", "highlight"))
+    assert anomalies[praise.id].key?("severity")
+    assert_equal [ praise.id ], call(polarity: "positive").structured_content["anomalies"].map { |anomaly| anomaly["id"] }
+  end
+
   test "an unknown product or status is a tool error" do
     assert call(product: "nope").error?
     assert_equal "Invalid filter status: must be one of active, ended, all", call(status: "open").content.first[:text]
