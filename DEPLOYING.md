@@ -88,6 +88,7 @@ That hostname is `KAMAL_PROXY_HOST`, and `https://<hostname>` is
    export SLACK_BOT_TOKEN=...
    export DISCORD_BOT_TOKEN=...
    export INTERCOM_CLIENT_SECRET=...
+   export INTERCOM_ACCESS_TOKEN=...
    export POSTMARK_INBOUND_USER=...
    export POSTMARK_INBOUND_PASSWORD=...
    export X_BEARER_TOKEN=...
@@ -128,6 +129,7 @@ That hostname is `KAMAL_PROXY_HOST`, and `https://<hostname>` is
 | `SLACK_BOT_TOKEN` | secret | Slack author lookups, escalations, digests | posts fail and keep the error |
 | `DISCORD_BOT_TOKEN` | secret | `discord` role | the `discord` container exits and the deploy fails |
 | `INTERCOM_CLIENT_SECRET` | secret | Intercom webhook | every Intercom webhook gets 401 |
+| `INTERCOM_ACCESS_TOKEN` | secret | `backfill:intercom` only | the Intercom backfill refuses to start |
 | `POSTMARK_INBOUND_USER`, `POSTMARK_INBOUND_PASSWORD` | secret | Postmark inbound webhook | every Postmark request gets 401 |
 | `X_BEARER_TOKEN` | secret | X polling | X sources record an error and never poll |
 | `TYPESAFE_API_KEY` | secret | Jev classification | messages stay unclassified |
@@ -208,6 +210,8 @@ queries inside it.
   the URL with a HEAD request when saved.
 - Sources select a team or inbox id; a source with selector `*` catches
   conversations no other source matches.
+- For the history backfill only: the app's access token (Authentication) is
+  `INTERCOM_ACCESS_TOKEN`. Webhooks do not need it.
 
 ### Email (Postmark inbound)
 
@@ -240,6 +244,25 @@ queries inside it.
 - `bin/kamal app logs --roles discord` shows `[discord] starting gateway bot`.
 - Post in a Slack source channel, reply in a Discord source channel, and send a
   test mail; each shows up in the feed and gets classified.
+
+## Backfilling history
+
+Live connectors only see messages sent after a source exists. To import older
+messages for the active Discord sources and for Intercom (through the Intercom
+sources' routing), run in the web container:
+
+```sh
+bin/kamal app exec --roles web --reuse "bin/rails 'backfill:discord[90]'"
+bin/kamal app exec --roles web --reuse "bin/rails 'backfill:intercom[90]'"
+bin/kamal app exec --roles web --reuse "bin/rails backfill:status"
+```
+
+The argument is days (default 90). Each run prints per-source counts; a rerun
+dedupes on message ids and creates nothing new. Backfilled messages are
+classified at a lower job priority than live ones (one TypeSafe call each),
+never escalate, never reopen a handled item, and send no outbound webhooks.
+Digests are unaffected: they count messages by the day they were written.
+`backfill:status` shows classification progress per source.
 
 ## Caveat: git worktrees do not inherit your shell secrets
 

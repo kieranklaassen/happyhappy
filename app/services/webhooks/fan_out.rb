@@ -33,6 +33,9 @@ module Webhooks
     end
 
     def call
+      # Imported history (Items::Ingest backfill) would replay months of events to every endpoint.
+      return [] if @item_event.data["backfill"]
+
       events = self.class.events_for(@item_event)
       return [] if events.empty?
 

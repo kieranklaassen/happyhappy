@@ -20,9 +20,32 @@ module Connectors
       ActiveSupport::SecurityUtils.secure_compare(expected, header.to_s)
     end
 
-    def self.call(notification)
-      new(notification).call
+    def self.call(notification, backfill: false)
+      new(notification, backfill: backfill).call
     end
+
+    # Ingests every customer-authored message of a conversation fetched from the
+    # REST API (GET /conversations/{id}) that was written at or after `since`, by
+    # replaying it as the webhook notifications that would have delivered it.
+    #
+    #   Connectors::Intercom.ingest_conversation(conversation, app_id: "abc123", since: 90.days.ago)
+    #   # => [Items::Ingest::Result, ...]
+    def self.ingest_conversation(conversation, app_id:, since:, backfill: true)
+      parts = Array(conversation.dig("conversation_parts", "conversation_parts"))
+      notifications = [ notification(CREATED, conversation, app_id) ] + parts.map do |part|
+        notification(REPLIED, conversation.merge("conversation_parts" => { "conversation_parts" => [ part ] }), app_id)
+      end
+
+      notifications.filter_map do |notification|
+        instance = new(notification, backfill: backfill)
+        instance.call if instance.written_since?(since)
+      end
+    end
+
+    def self.notification(topic, conversation, app_id)
+      { "topic" => topic, "app_id" => app_id, "data" => { "item" => conversation } }
+    end
+    private_class_method :notification
 
     def self.plain_text(html)
       fragment = Nokogiri::HTML5.fragment(html.to_s)
@@ -31,9 +54,15 @@ module Connectors
       fragment.text.gsub(/[ \t]+\n/, "\n").gsub(/\n{3,}/, "\n\n").strip
     end
 
-    def initialize(notification)
+    def initialize(notification, backfill: false)
       @notification = notification.is_a?(Hash) ? notification : {}
       @conversation = @notification.dig("data", "item") || {}
+      @backfill = backfill
+    end
+
+    def written_since?(time)
+      written_at = timestamp(customer_part&.dig("created_at") || @conversation["created_at"])
+      written_at.present? && written_at >= time
     end
 
     def call
@@ -47,7 +76,7 @@ module Connectors
       return if source.nil?
 
       begin
-        Items::Ingest.call(source: source, inbound: inbound)
+        Items::Ingest.call(source: source, inbound: inbound, backfill: @backfill)
       rescue ActiveModel::ValidationError => error
         source.record_error!("Intercom: #{error.message}")
         nil

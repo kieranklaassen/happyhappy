@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_24_190001) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_010000) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -160,6 +160,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_24_190001) do
 
   create_table "messages", force: :cascade do |t|
     t.float "anger_probability"
+    t.boolean "backfilled", default: false, null: false
     t.text "body", default: "", null: false
     t.json "classification_answers"
     t.text "classification_error"

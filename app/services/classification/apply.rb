@@ -47,6 +47,10 @@ module Classification
 
     def roll_up(item)
       classified = item.messages.classified.to_a
+      # Imported history is created now but written long ago, so it would count as
+      # open; it only speaks for an item no live message has reached.
+      live = classified.reject(&:backfilled?)
+      classified = live if live.any?
       open = classified.select { |message| message.created_at >= item.status_changed_at }
       # A message classified after a status change (a late job) has no open
       # siblings; judge the thread by everything classified so far.
@@ -117,7 +121,8 @@ module Classification
         category_id: item.category_id,
         sentiment: item.sentiment,
         anger_probability: item.anger_probability,
-        needs_review: item.needs_review
+        needs_review: item.needs_review,
+        **(@message.backfilled? ? { backfill: true } : {})
       }
     end
   end
