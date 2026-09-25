@@ -2,7 +2,7 @@
 
 The search box on the feed and the `search_items` agent tool search items and
 their messages in plain language, through the [truffler](https://github.com/kieranklaassen/truffler)
-gem (0.1.1). Both go through `FeedSearch`, so people and agents get the same
+gem (0.1.2). Both go through `FeedSearch`, so people and agents get the same
 results for the same query and filters.
 
 ## How a search runs
@@ -15,11 +15,12 @@ results for the same query and filters.
 2. **Chips.** Once Jev has read the query, labels it names become chips:
    a filter (only items with that label) or a boost (ranked higher). Under a
    label filter, words only rank; they are not required in the text. A time
-   phrase ("today", "yesterday", "this week", "last month", "last 3 days",
-   "past 2 weeks", "since monday") is read by truffler without Jev, limits
-   `last_message_at`, and shows as the last chip. Hours ("last 3 hours") are
-   not a time phrase. Removing a chip searches again without it. The feed
-   filters above always apply too.
+   phrase ("today", "yesterday", "this week", "last month", "last 3 hours",
+   "past week", "past month", "past 2 weeks", "since monday") is read by
+   truffler without Jev, limits `last_message_at`, and shows as the last chip.
+   "past week" and "past month" end now; "this/last week" and "this/last
+   month" are calendar windows. Removing a chip searches again without it.
+   The feed filters above always apply too.
 3. **Smart search (Enter).** Jev reads the top 30 candidates and sorts them
    into Strong, Possible, and Unlikely (collapsed). Buckets fill in as each
    chunk of 10 is read: `TrufflerChannel` pings the searcher and the page
@@ -67,22 +68,27 @@ not-relevant items unless the Relevance filter says otherwise.
 
 ## Deploy
 
-The first deploy runs two migrations: truffler's tables and the FTS5 index
-(filled from existing items and messages inside the migration).
+The first deploy runs three migrations: truffler's tables, the FTS5 index
+(filled from existing items and messages inside the migration), and
+truffler's backfill spend ledger (`truffler_backfill_spends`, added with
+`bin/rails generate truffler:upgrade` in 0.1.2).
 
 ```bash
 bin/rails db:migrate
 bin/rails search:reindex                                 # free: every supplied label, no Jev call
 bin/rails "truffler:status[Item]"                        # counts by status
-SPEND_CAP=5 bin/rails "truffler:backfill[Item]"          # paid: churn_risk for existing items
+bin/rails "truffler:backfill[Item]"                      # paid: churn_risk for existing items
 ```
 
 The backfill asks only `churn_risk` (supplied labels never reach Jev). At
 truffler's default price (`config.cost_per_million_tokens`, 0.042 dollars)
-20,000 items with long threads cost about a dollar. `SPEND_CAP` is in dollars;
-without it the run stops at truffler's default `config.backfill_spend_cap` (5
-dollars), which also caps automatic backfills. `SPEND_CAP=none` lifts the cap. Run it
-only when Kieran approves the spend. Until then, items have every supplied
+20,000 items with long threads cost about a dollar. Spend stops at truffler's
+default `config.backfill_spend_cap` (5 dollars) per vocabulary version, across
+reruns and automatic `BackfillJob` chains: the ledger reserves each request's
+estimate before it is sent, and `truffler:status` shows the spend so far.
+`SPEND_CAP=<dollars>` (checked against the ledger total, not the run) or
+`SPEND_CAP=none` overrides the cap, `RESET_SPEND=1` zeroes the ledger, and `MAX_DURATION=<seconds>` pauses the run
+(budget denials are waited out, not fatal). Run it only when Kieran approves the spend. Until then, items have every supplied
 label and `churn_risk` fills in for new and updated items.
 
 No new environment variables. Truffler uses `TYPESAFE_API_KEY` and counts its
@@ -107,11 +113,8 @@ the feed search is full-text only.
 
 Measure with `script/latency/search.sh` (see `script/latency/README.md`).
 
-## Working around truffler 0.1.1
+## Notes on truffler 0.1.2
 
-- **Product names.** Query encoding matches a query word against a label's
-  key and its option keys. Product options are slugs, so a product whose name
-  shares nothing with its slug is read from Jev's own word roles only.
 - **`none` and `other`.** `product_options` and `category_options` always
   offer them: they are answers `from:` gives, and the option set is part of
   every stored product and category label's fingerprint.

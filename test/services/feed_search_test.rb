@@ -90,21 +90,32 @@ class FeedSearchTest < ActiveSupport::TestCase
   end
 
   test "a time phrase becomes a time chip and limits results to when the item last heard from someone" do
-    result = FeedSearch.keystroke("cora last 1 day", user: @user)
+    result = FeedSearch.keystroke("cora last 3 hours", user: @user)
 
-    assert_equal "cora last 1 day", result.query
-    assert_equal [ { key: "time", label: "time", kind: :time, name: "Last 1 day" } ], result.chips
-    assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ].sort, result.records.map(&:id).sort
+    assert_equal "cora last 3 hours", result.query
+    assert_equal [ { key: "time", label: "time", kind: :time, name: "Last 3 hours" } ], result.chips
+    assert_equal [ items(:angry_slack).id ], result.records.map(&:id)
+  end
+
+  test "past week and past month are rolling windows that end now" do
+    items(:handled_email).update_columns(last_message_at: 10.days.ago)
+    week = FeedSearch.keystroke("cora past week", user: @user)
+    month = FeedSearch.keystroke("cora past month", user: @user)
+
+    assert_equal [ "Past week" ], week.chips.pluck(:name)
+    assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id ].sort, week.records.map(&:id).sort
+    assert_equal [ "Past month" ], month.chips.pluck(:name)
+    assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id, items(:handled_email).id ].sort, month.records.map(&:id).sort
   end
 
   test "removing a chip drops that label or the time filter" do
     angry_cora_fake
     encode_query!("angry cora", user: @user)
 
-    encode_query!("angry cora last 1 day", user: @user)
+    encode_query!("angry cora last 3 hours", user: @user)
 
-    no_anger = FeedSearch.keystroke("angry cora last 1 day", user: @user, suppressed: [ "anger" ])
-    no_time = FeedSearch.keystroke("cora last 1 day", user: @user, suppressed: [ "time" ])
+    no_anger = FeedSearch.keystroke("angry cora last 3 hours", user: @user, suppressed: [ "anger" ])
+    no_time = FeedSearch.keystroke("cora last 3 hours", user: @user, suppressed: [ "time" ])
 
     assert_equal [ "product:cora", "time" ], no_anger.chips.pluck(:key)
     assert_equal [ items(:angry_slack).id, items(:claimed_intercom).id, items(:handled_email).id ].sort, no_time.records.map(&:id).sort
