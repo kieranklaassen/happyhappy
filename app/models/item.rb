@@ -18,6 +18,8 @@ class Item < ApplicationRecord
   has_many :messages, -> { order(:occurred_at, :id) }, dependent: :destroy, inverse_of: :item
   has_many :events, -> { order(:created_at, :id) }, class_name: "ItemEvent", dependent: :delete_all, inverse_of: :item
 
+  include Searchable
+
   before_validation :copy_source_kind, if: -> { source && source_kind.blank? }
   before_validation -> { self.status_changed_at ||= Time.current }
   # Noise means not relevant, so the band follows every change of relevance,

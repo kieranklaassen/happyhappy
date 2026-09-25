@@ -54,3 +54,27 @@ report takes p50 and p95 per stage over the live messages only.
 | dashboard | ping received | modelled dashboard reload |
 | escalation | committed | Slack post returned |
 | outbound webhook | committed | endpoint answered 200 for `item.classified` |
+
+## Feed search (`search.sh`)
+
+```bash
+script/latency/search.sh                     # 20,000 items, 40 keystrokes per query and state
+script/latency/search.sh --items 50000
+set -a; source ~/.config/happyhappy/typesafe.env; set +a; script/latency/search.sh --live --items 2000 --smart 2
+```
+
+The same production setup against `tmp/latency-search/`. It seeds a feed of
+`--items` items (1 to 3 messages each, spread over 90 days, every supplied label
+written), then times:
+
+| Stage | From | To |
+|---|---|---|
+| keystroke, encoding pending | `FeedSearch.keystroke` called | feed rows built (keyword hits only, encoding enqueued) |
+| keystroke, encoding cached | `FeedSearch.keystroke` called | feed rows built (label filters, boosts, and keywords) |
+| smart, first bucket | `FeedSearch.smart` called | the first bucket is readable by the `smart` reload |
+| smart, all buckets | `FeedSearch.smart` called | the run is complete |
+
+Smart runs go through the forked Solid Queue supervisor. The page adds
+`SMART_COALESCE_MS` (100 ms) and one partial reload on top of the Smart numbers.
+Jev is a stub sleeping 300 to 900 ms per call that reads queries by keyword
+rules; `--live` encodes and reranks with TypeSafe instead (a few dozen calls).

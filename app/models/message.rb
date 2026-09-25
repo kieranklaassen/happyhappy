@@ -6,6 +6,12 @@ class Message < ApplicationRecord
   # metadata or, failing that, the classifier decides (Messages::AuthorRole).
   enum :author_role, { customer: "customer", team: "team", unknown: "unknown" }, prefix: :author, validate: true
 
+  # Feed search (Item::Searchable): the item's text index holds every body,
+  # and its team_replied label reads the authors.
+  after_commit -> { FeedSearch::TextIndex.refresh(item_id) }, if: -> { destroyed? || saved_change_to_body? || saved_change_to_item_id? }
+  after_commit -> { item.truffler_refresh_labels! }, on: %i[create update],
+    if: -> { saved_change_to_author_role? && (author_team? || author_role_before_last_save == "team") }
+
   validates :external_id, presence: true, uniqueness: { scope: :source_id }
   validates :occurred_at, presence: true
   validates :anger_probability,

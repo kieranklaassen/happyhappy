@@ -5,14 +5,14 @@ class McpControllerTest < ActionDispatch::IntegrationTest
 
   setup { host! "localhost" }
 
-  test "tools/list returns the six tools for a valid token" do
+  test "tools/list returns the seven tools for a valid token" do
     body = mcp_request("tools/list")
 
     assert_response :success
     assert_equal "no-store", response.headers["Cache-Control"]
     assert_nil response.headers["Mcp-Session-Id"]
     names = body.dig("result", "tools").map { |tool| tool["name"] }
-    assert_equal %w[list_items get_item claim_item release_item report_item list_anomalies], names
+    assert_equal %w[list_items get_item claim_item release_item report_item list_anomalies search_items], names
   end
 
   test "initialize answers with the server name and untrusted content instructions" do
