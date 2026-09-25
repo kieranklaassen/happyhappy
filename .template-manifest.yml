@@ -8,7 +8,11 @@
 # to the modules listed here, applies them in order, and bumps template_version.
 # See docs/changelog/README.md and docs/template-manifest.md.
 
-template_version: "0.6.0"
+# webmcp was adopted from the 0.8.0 entry (U21). The 0.7.0 entries (0.7.0-001 to
+# 0.7.0-006: Ruby 4 and Node 24, ruby_llm 2, Geneva Drive 0.6, gem, npm and
+# Actions refreshes) are NOT applied yet; apply them even though
+# template_version is past 0.7.0.
+template_version: "0.8.0"
 
 # module name -> the template_version at which this app adopted it.
 modules:
@@ -27,3 +31,4 @@ modules:
   geneva_drive: "0.4.0"
   pwa: "0.5.0"
   feature_flags: "0.6.0"
+  webmcp: "0.8.0"

@@ -454,6 +454,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U19 | Sun logo and a crowd on the sign-in page | `app/frontend/components/sun-logo.tsx`, `app/frontend/components/mood/login-crowd.tsx`, `public/icon.*` | U2, U18 |
 | U18 | Mood dashboard home page | `app/queries/mood_scene.rb`, `app/frontend/pages/home/index.tsx`, `app/frontend/components/mood/` | U1 |
 | U20 | Anomaly detection | `app/services/anomalies/`, `app/models/detected_anomaly.rb`, `app/jobs/anomaly_detection_job.rb` | U10, U12, U17, U18 |
+| U21 | WebMCP for signed-in users | `app/tools/tool_registry.rb`, `app/controllers/webmcp_tools_controller.rb`, `app/frontend/lib/webmcp_provider.tsx` | U12, U20 |
 
 ### U1. Foundation: gems, schema, models, ingest core
 
@@ -1123,6 +1124,51 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 - Happy path: the dashboard callout shows the metric, expected against actual, and a link to the feed filter.
 
 **Verification:** All gates pass, and the dashboard shows a callout on a product's hill with demo data from `bin/rails mood:demo`.
+
+### U21. WebMCP for signed-in users
+
+**Goal:** When a team member is signed in, expose the same tools the MCP server offers to agents running in their browser through WebMCP, so a browser agent can list, read, claim, and report on items with the person's own session.
+
+**Requirements:** R21, R24; KTD10; Kieran's WebMCP brief.
+
+**Dependencies:** U12 (MCP server and tools), U20 (`list_anomalies`).
+
+**Decisions:**
+- `decided (brief)`: implement WebMCP when you are signed in, with the same tools as the MCP server.
+- `decided (brief)`: adopt the compound-stack-rails `webmcp` module (template 0.8.0, kieranklaassen/compound-stack-rails#24) by following its changelog upgrade steps, so happyhappy stays aligned with the stack: `ApplicationTool` classes in `app/tools/`, a `ToolRegistry` on the official `mcp` gem, `POST /webmcp/tools/:name` with session and CSRF, and a React `WebmcpProvider` that checks `document.modelContext` first and falls back to `navigator.modelContext`. This supersedes the earlier Thinkroom layout.
+- `decided (brief)`: port `list_items`, `get_item`, `claim_item`, `release_item`, `report_item`, and `list_anomalies` into that shape so `/mcp` and WebMCP share one registry, keeping strict `list_items` filter validation on `/mcp`.
+- `decided (brief)`: register `webmcp` in `.template-manifest.yml` at 0.8.0 and bump `template_version`, never lowering it.
+- `assumed default`: module files are copied byte-identical where happyhappy needs nothing different; `ApplicationTool` and `ToolRegistry` are adapted (see Approach) and the differences are listed in the PR body as gaps to upstream.
+- `assumed default`: `/mcp` authenticates bearer-token agents with no user, so `ApplicationTool` accepts either a user or an agent in the server context; a JSON result also sets `structuredContent`, which happyhappy's MCP clients already rely on.
+- `assumed default`: claims need an agent to hold them (KTD11, the overdue sweep), so each person gets one browser agent record (`agents.user_id`, named after them with a WebMCP suffix) created on their first write call. It holds the claim; the timeline events it writes are attributed to the person (actor User). Revoking it on the agents page stops that person's WebMCP writes.
+- `assumed default`: tool names stay unprefixed so WebMCP and MCP names match, and `list_items` builds its schema from `ItemsQuery::FILTERS` without `additionalProperties: false`, so an unknown filter is refused by name ("mood is not a filter") on both surfaces.
+- `assumed default`: `WEBMCP_ORIGIN_TRIAL_TOKEN` is the module's own variable (`Webmcp.origin_trial_tokens`), emitted as `<meta http-equiv="origin-trial">` tags; empty by default. No polyfill ships.
+
+**Files:**
+- Create: `db/migrate/*_add_user_to_agents.rb`, `app/tools/{application_tool,tool_registry,item_tool}.rb`, `app/tools/{list_items,get_item,claim_item,release_item,report_item,list_anomalies}_tool.rb`, `app/controllers/webmcp_tools_controller.rb`, `config/initializers/webmcp.rb`, `app/frontend/lib/{webmcp.ts,webmcp_provider.tsx}`, `app/frontend/types/webmcp.d.ts`, `app/frontend/test/model_context_stub.ts`, `lib/generators/tool/`, `docs/modules/webmcp.md`
+- Delete: `app/services/mcp/tools/*`
+- Modify: `app/models/agent.rb`, `app/models/user.rb`, `app/services/agents/{claim,release,report}.rb`, `app/services/mcp/server.rb`, `app/controllers/inertia_controller.rb`, `app/views/layouts/application.html.erb`, `app/frontend/entrypoints/inertia.tsx`, `app/frontend/pages/agents/index.tsx`, `config/routes.rb`, `config/application.rb`, `config/deploy.yml`, `.env.example`, `.template-manifest.yml`, `docs/modules/README.md`, `AGENTS.md`, `CONCEPTS.md`, `README.md`, `DEPLOYING.md`
+- Test: `test/tools/*_test.rb` (moved from `test/services/mcp/tools/`), `test/tools/{application_tool,tool_registry}_test.rb`, `test/controllers/webmcp_tools_controller_test.rb`, `test/integration/webmcp_test.rb`, `test/generators/tool_generator_test.rb`, `test/models/agent_test.rb`, `app/frontend/lib/{webmcp.test.ts,webmcp_provider.test.tsx}`
+
+**Approach:**
+1. `ToolRegistry::TOOLS` lists the six tool classes. `ToolRegistry.mcp_server(user:, agent:)` builds the `MCP::Server` with happyhappy's name, instructions, and exception reporter; `Mcp::Server` mounts it for bearer-token agents, and `ToolRegistry.call` runs it for WebMCP. `ToolRegistry.manifest` is the lazy `webmcp` Inertia prop on signed-in pages.
+2. `ApplicationTool#agent` returns the token agent on `/mcp` or the signed-in person's browser agent on WebMCP, created lazily so read tools never create one.
+3. `WebmcpToolsController` is the module's: session auth (401), CSRF (422), 404 for unknown tools, 400 for a bad body, 60 calls per minute per user (429), and `{ result }` with the MCP `CallToolResult`.
+4. `WebmcpProvider` wraps the Inertia app, registers the manifest tools when signed in, and re-syncs on navigation, so signing out unregisters them.
+5. The agents page says what WebMCP is and that it acts with your browser session.
+
+**Test scenarios:**
+- Happy path: MCP `tools/list` equals the registry, the manifest carries the same names, descriptions, schemas, and read-only hints, and every `ApplicationTool` in `app/tools` is registered.
+- Happy path: every `ItemsQuery` filter appears in the `list_items` schema, and a new filter appears without further changes.
+- Happy path: signed-in pages ship the manifest; signed-out pages and partial reloads that do not ask for it do not.
+- Happy path: a signed-in POST runs `list_items` with filters and returns exactly the MCP result; invalid filters give the same error text as MCP.
+- Happy path: `claim_item` then `report_item` over WebMCP holds the claim with the person's browser agent and writes timeline events with actor User.
+- Error path: signed out returns 401 (before CSRF); a missing or forged CSRF token is refused; an unknown tool returns 404; a bad body returns 400; a taken claim or missing argument comes back as `isError`; a raising tool leaks no internals; the 61st call in a minute returns 429.
+- Origin trial: one meta tag per configured token, none when unset.
+- Frontend: the module's provider and client tests with the stubbed `document.modelContext` and the legacy `navigator.modelContext`.
+- Browser: agent-browser with a stubbed `document.modelContext`: sign in, six tools registered, `list_items`, claim and release credited to the person, and sign-out unregistering the tools with the endpoint answering 401.
+
+**Verification:** All gates pass, and the agent-browser check passes against the dev server.
 
 ---
 

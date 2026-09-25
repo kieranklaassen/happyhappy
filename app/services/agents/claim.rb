@@ -24,7 +24,7 @@ module Agents
           claimed_by_agent_id: @agent.id, claimed_at: now, status: "claimed",
           status_changed_at: now, overdue: false, updated_at: now
         )
-        @item.record_event!(:claimed, actor: @agent, from: "new", to: "claimed") if claimed == 1
+        @item.record_event!(:claimed, actor: @agent.event_actor, from: "new", to: "claimed") if claimed == 1
         claimed == 1
       end
       @item.reload

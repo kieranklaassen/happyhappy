@@ -61,8 +61,9 @@ stateless). Issue a token on the Agents page; it is shown once. Every request
 sends it as `Authorization: Bearer <token>`, and revoking the agent cuts it off
 on its next request. The tools are `list_items` (the feed filters: product,
 sentiment, category, status, source, source_kind, range, since, until,
-needs_review, overdue, relevance), `get_item`, `claim_item`, `release_item`, and
-`report_item` (a summary, an optional link, and `in_progress` or `handled`).
+needs_review, overdue, relevance, anomaly), `get_item`, `claim_item`,
+`release_item`, `report_item` (a summary, an optional link, and `in_progress` or
+`handled`), and `list_anomalies`.
 
 Cursor, in `.cursor/mcp.json` (or `~/.cursor/mcp.json`), with the token in the
 `HAPPYHAPPY_TOKEN` environment variable:
@@ -87,6 +88,24 @@ claude mcp add --transport http happyhappy https://happyhappy.example.com/mcp \
 
 Locally, use the Rails URL `bin/dev` opens, such as `http://localhost:3100/mcp`. The endpoint only answers requests
 whose `Host` is the `PUBLIC_BASE_URL` host (or localhost outside production).
+
+### WebMCP
+
+While you are signed in, every page also registers the same tools with the
+browser's WebMCP model context (`document.modelContext.registerTool`, from the
+[WebMCP draft](https://webmachinelearning.github.io/webmcp/)), so an agent built
+into the browser can use them without a token. Calls go to
+`POST /webmcp/tools/:name` with your session cookie and the page's CSRF token and
+run the same tool code as `/mcp`. Your claims are held by an agent named after
+you with `(WebMCP)`, created on first use, and timeline events name you. Signing
+out unregisters the tools. Browsers without WebMCP get nothing; no polyfill
+ships.
+
+This is the compound-stack-rails `webmcp` module (template 0.8.0, see
+[docs/modules/webmcp.md](docs/modules/webmcp.md)): tools live in `app/tools/`
+and `ToolRegistry` serves them to `/mcp` and to the browser's `WebmcpProvider`.
+For Chrome's WebMCP origin trial, set `WEBMCP_ORIGIN_TRIAL_TOKEN` to one public
+token per origin.
 
 Customer content is untrusted. Message bodies, excerpts, and author fields in
 tool results sit in objects marked `"untrusted": true`. They are what customers

@@ -1,9 +1,9 @@
 require "test_helper"
 
-class Mcp::Tools::GetItemTest < ActiveSupport::TestCase
+class GetItemToolTest < ActiveSupport::TestCase
   test "returns messages, labels, and the timeline" do
     item = items(:claimed_intercom)
-    payload = Mcp::Tools::GetItem.call(item_id: item.id, server_context: { agent: agents(:baby_agent) }).structured_content["item"]
+    payload = GetItemTool.call(item_id: item.id, server_context: { agent: agents(:baby_agent) }).structured_content["item"]
 
     assert_equal "claimed", payload["status"]
     assert_equal "Cursor", payload["claimed_by"]
@@ -14,7 +14,7 @@ class Mcp::Tools::GetItemTest < ActiveSupport::TestCase
   end
 
   test "an unknown id is a tool error" do
-    response = Mcp::Tools::GetItem.call(item_id: 0, server_context: { agent: agents(:cursor) })
+    response = GetItemTool.call(item_id: 0, server_context: { agent: agents(:cursor) })
 
     assert response.error?
     assert_equal "Item 0 was not found.", response.content.first[:text]

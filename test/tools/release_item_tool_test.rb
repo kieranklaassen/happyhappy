@@ -1,8 +1,8 @@
 require "test_helper"
 
-class Mcp::Tools::ReleaseItemTest < ActiveSupport::TestCase
+class ReleaseItemToolTest < ActiveSupport::TestCase
   def call(item, agent)
-    Mcp::Tools::ReleaseItem.call(item_id: item.id, server_context: { agent: agent })
+    ReleaseItemTool.call(item_id: item.id, server_context: { agent: agent })
   end
 
   test "releases the agent's own claim" do
