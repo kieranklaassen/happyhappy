@@ -10,7 +10,7 @@ upgrades arrive as reviewable PRs driven by that repo's changelog.
 
 ## Stack
 
-Ruby 3.4.2 · Rails ~> 8.1 · SQLite + solid_cache/queue/cable · Propshaft ·
+Ruby 4.0.7 · Node 24 LTS · Rails ~> 8.1 · SQLite + solid_cache/queue/cable · Propshaft ·
 Inertia.js + Vite + React 19 + TypeScript + Tailwind v4 (`app/frontend`, SSR
 wired-off) · Rails 8 session auth (hardened, no open registration) · Solid Queue
 in Puma · Minitest + Vitest · Kamal 2.12 (env-driven) · `ruby_llm` first-class ·
