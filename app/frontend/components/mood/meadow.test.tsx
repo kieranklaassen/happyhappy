@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import Meadow, { loudest } from './meadow'
@@ -66,11 +66,24 @@ describe('Meadow', () => {
     const meadow = screen.getByRole('region', { name: 'Cora' })
     expect(within(meadow).getByRole('button', { name: /Ana is furious about Cora on Slack.*Where is my inbox/ })).toBeInTheDocument()
     expect(within(meadow).getByRole('button', { name: /Bo is beaming about Cora on X/ })).toBeInTheDocument()
-    expect(within(meadow).getAllByRole('link', { name: 'Open in the feed' }).map((link) => link.getAttribute('href'))).toEqual(
-      expect.arrayContaining(['/items/7', '/items/8']),
-    )
     expect(within(meadow).getByText(/1 smiling · 0 meh · 1 grumpy/)).toBeInTheDocument()
     expect(within(meadow).getByRole('link', { name: 'Just Cora' })).toHaveAttribute('href', '/?range=7d&product=cora')
+  })
+
+  it('draws a hover card only while a customer is hovered or focused, linking to their item', () => {
+    render(<Meadow group={group([person({ key: 'a', item_id: 7, name: 'Ana' })])} history={null} productHref="/?product=cora" />)
+    const ana = screen.getByRole('button', { name: /Ana is meh/ })
+
+    expect(screen.queryByRole('link', { name: 'Open in the feed' })).toBeNull()
+
+    fireEvent.focus(ana)
+    expect(screen.getByRole('link', { name: 'Open in the feed' })).toHaveAttribute('href', '/items/7')
+
+    fireEvent.blur(ana)
+    expect(screen.queryByRole('link', { name: 'Open in the feed' })).toBeNull()
+
+    fireEvent.pointerEnter(ana.closest('li') as HTMLElement)
+    expect(screen.getByRole('link', { name: 'Open in the feed' })).toBeInTheDocument()
   })
 
   it('animates a customer whose mood changed and pops in a newcomer', () => {

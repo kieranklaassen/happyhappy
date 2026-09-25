@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react'
-import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, memo, type ReactNode, type RefObject, startTransition, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Character from './character'
 import Flora from './flora'
 import { MOOD_COLORS, plural, timeAgo } from './format'
@@ -76,17 +76,52 @@ function shorten(text: string): string {
   return text.length > SHOUT_LENGTH ? `${text.slice(0, SHOUT_LENGTH).trimEnd()}…` : text
 }
 
-function Person({ character, productName, history, shout }: { character: MoodCharacter; productName: string; history: MoodHistory; shout: boolean }) {
-  const previous = history?.get(character.key)
-  const arrived = history !== null && previous === undefined
-  const changed = previous !== undefined && previous !== character.mood
-  const event = arrived ? 'hh-arrive' : changed ? 'hh-changed' : ''
+type Change = 'none' | 'arrived' | 'changed'
+
+function changeFor(character: MoodCharacter, history: MoodHistory): Change {
+  if (history === null) return 'none'
+  const previous = history.get(character.key)
+  if (previous === undefined) return 'arrived'
+  return previous === character.mood ? 'none' : 'changed'
+}
+
+interface PersonProps {
+  character: MoodCharacter
+  productName: string
+  change: Change
+  shout: boolean
+  drawn: boolean
+}
+
+// A live reload hands every person a fresh object; compare the fields they draw instead.
+function samePerson(before: PersonProps, after: PersonProps): boolean {
+  const [a, b] = [before.character, after.character]
+  return (
+    before.productName === after.productName &&
+    before.change === after.change &&
+    before.shout === after.shout &&
+    before.drawn === after.drawn &&
+    (Object.keys(a) as (keyof MoodCharacter)[]).every((field) => a[field] === b[field])
+  )
+}
+
+const Person = memo(function Person({ character, productName, change, shout, drawn }: PersonProps) {
+  const changed = change === 'changed'
+  const event = change === 'arrived' ? 'hh-arrive' : changed ? 'hh-changed' : ''
   const offset = (hashSeed(character.seed) % 5) * 5
   const note = statusNote(character)
   const bubbleRef = useKeepInside<HTMLSpanElement>(shout)
+  const [open, setOpen] = useState(false)
 
   return (
-    <li className="hh-person group relative" style={{ marginTop: offset + (shout ? 64 : 0) } as CSSProperties}>
+    <li
+      className="hh-person group relative"
+      style={{ marginTop: offset + (shout ? 64 : 0) } as CSSProperties}
+      onPointerEnter={() => setOpen(true)}
+      onPointerLeave={(event) => setOpen(event.currentTarget.contains(document.activeElement))}
+      onFocus={() => setOpen(true)}
+      onBlur={(event) => setOpen(event.currentTarget.contains(event.relatedTarget as Node | null))}
+    >
       <button
         type="button"
         className="relative block w-[76px] rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[#3E3542]/60 sm:w-[104px]"
@@ -99,31 +134,37 @@ function Person({ character, productName, history, shout }: { character: MoodCha
         )}
         <span key={`${character.key}:${character.mood}`} className={`relative block ${event}`}>
           {changed && <span className="hh-splash" style={{ background: MOOD_COLORS[character.mood] }} aria-hidden="true" />}
-          <Character seed={character.seed} mood={character.mood} bandage={character.mended} idle />
+          {drawn ? (
+            <Character seed={character.seed} mood={character.mood} bandage={character.mended} idle />
+          ) : (
+            <span className="hh-unpainted block" aria-hidden="true" />
+          )}
         </span>
         <span className="hh-hand -mt-1 block truncate text-center text-[15px] leading-tight text-[#3E3542]/80" aria-hidden="true">
           {character.name}
         </span>
       </button>
-      <div className="hh-card">
-        <p className="hh-hand text-xl leading-none text-[#3E3542]">
-          {character.name}
-          <span className="ml-2 text-base text-[#3E3542]/60">is {moodBlurb(character.mood)}</span>
-        </p>
-        <p className="mt-1 text-xs text-[#3E3542]/60">
-          {character.handle ? `${character.handle} · ` : ''}
-          {sourceKindLabel(character.source_kind)} · {timeAgo(character.last_message_at)}
-          {character.threads > 1 ? ` · ${plural(character.threads, 'thread')}` : ''}
-        </p>
-        {character.excerpt && <blockquote className="mt-2 text-sm leading-snug text-[#3E3542]">“{character.excerpt}”</blockquote>}
-        {note && <p className="mt-2 text-xs font-medium text-[#6E9F86]">{note}</p>}
-        <Link href={`/items/${character.item_id}`} className="mt-3 inline-block text-sm font-semibold text-[#3E3542] underline decoration-[#F28C8C] decoration-2 underline-offset-4">
-          Open in the feed
-        </Link>
-      </div>
+      {open && (
+        <div className="hh-card">
+          <p className="hh-hand text-xl leading-none text-[#3E3542]">
+            {character.name}
+            <span className="ml-2 text-base text-[#3E3542]/60">is {moodBlurb(character.mood)}</span>
+          </p>
+          <p className="mt-1 text-xs text-[#3E3542]/60">
+            {character.handle ? `${character.handle} · ` : ''}
+            {sourceKindLabel(character.source_kind)} · {timeAgo(character.last_message_at)}
+            {character.threads > 1 ? ` · ${plural(character.threads, 'thread')}` : ''}
+          </p>
+          {character.excerpt && <blockquote className="mt-2 text-sm leading-snug text-[#3E3542]">“{character.excerpt}”</blockquote>}
+          {note && <p className="mt-2 text-xs font-medium text-[#6E9F86]">{note}</p>}
+          <Link href={`/items/${character.item_id}`} className="mt-3 inline-block text-sm font-semibold text-[#3E3542] underline decoration-[#F28C8C] decoration-2 underline-offset-4">
+            Open in the feed
+          </Link>
+        </div>
+      )}
     </li>
   )
-}
+}, samePerson)
 
 export const WIDE_CROWD = 5
 const ROW_TOLERANCE = 6
@@ -157,20 +198,23 @@ function useRowBottoms(count: number) {
   return { listRef, bottoms }
 }
 
-// Off-screen meadows pause their animations; SVG animation repaints on the main thread.
-function useOnScreen<T extends HTMLElement>() {
-  const ref = useRef<T>(null)
-  const [onScreen, setOnScreen] = useState(true)
+// Whether the element is within `margin` of the viewport. Meadows pause their animations when just off
+// screen (SVG animation repaints on the main thread) and stop drawing characters when far off screen.
+function useNearViewport(ref: RefObject<HTMLElement | null>, margin: string, initial: boolean) {
+  const [near, setNear] = useState(initial)
 
   useEffect(() => {
     const element = ref.current
     if (!element || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { rootMargin: '120px' })
+    // A transition lets React draw a hill's characters in slices between frames instead of one long task.
+    const observer = new IntersectionObserver(([entry]) => startTransition(() => setNear(entry.isIntersecting)), {
+      rootMargin: margin,
+    })
     observer.observe(element)
     return () => observer.disconnect()
-  }, [])
+  }, [ref, margin])
 
-  return { ref, onScreen }
+  return typeof IntersectionObserver === 'undefined' ? true : near
 }
 
 function Hill({ wash, seed, rowBottom }: { wash: string; seed: string; rowBottom?: number }) {
@@ -185,14 +229,28 @@ function Hill({ wash, seed, rowBottom }: { wash: string; seed: string; rowBottom
   )
 }
 
-export default function Meadow({ group, history, productHref, aside }: { group: MoodGroup; history: MoodHistory; productHref: string; aside?: ReactNode }) {
+export default function Meadow({
+  group,
+  history,
+  productHref,
+  aside,
+  eager = true,
+}: {
+  group: MoodGroup
+  history: MoodHistory
+  productHref: string
+  aside?: ReactNode
+  eager?: boolean
+}) {
   const name = group.product?.name ?? ''
   const title = group.product ? group.product.name : 'Not sure which product'
   const wash = GROUND_WASHES[hashSeed(group.product?.slug ?? 'none') % GROUND_WASHES.length]
   const characters = [...group.characters].sort((a, b) => hashSeed(a.seed) - hashSeed(b.seed))
   const shouter = loudest(group.characters)
   const { listRef, bottoms } = useRowBottoms(characters.length)
-  const { ref: meadowRef, onScreen } = useOnScreen<HTMLElement>()
+  const meadowRef = useRef<HTMLElement>(null)
+  const onScreen = useNearViewport(meadowRef, '120px', true)
+  const drawn = useNearViewport(meadowRef, '800px', eager)
   const headingId = `meadow-${group.product?.slug ?? 'none'}`
   const smiling = group.counts.beaming + group.counts.content + group.counts.relieved
   const grumpy = group.counts.grumpy + group.counts.furious
@@ -229,7 +287,14 @@ export default function Meadow({ group, history, productHref, aside }: { group: 
         )}
         <ul ref={listRef} className="relative flex flex-wrap items-end justify-center gap-x-1 gap-y-3 pb-1 sm:gap-x-3">
           {characters.map((character) => (
-            <Person key={character.key} character={character} productName={name} history={history} shout={character.key === shouter?.key} />
+            <Person
+              key={character.key}
+              character={character}
+              productName={name}
+              change={changeFor(character, history)}
+              shout={character.key === shouter?.key}
+              drawn={drawn}
+            />
           ))}
         </ul>
       </div>

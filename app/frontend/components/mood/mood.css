@@ -270,6 +270,10 @@
   font-weight: 600;
 }
 
+.hh-unpainted {
+  aspect-ratio: 120 / 172;
+}
+
 .hh-offscreen * {
   animation-play-state: paused !important;
 }

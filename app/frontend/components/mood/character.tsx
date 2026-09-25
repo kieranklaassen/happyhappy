@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useId } from 'react'
+import { type CSSProperties, memo, type ReactNode, useId } from 'react'
 import type { Mood } from './moods'
 import { traitsFor, type Traits } from './traits'
 
@@ -558,7 +558,7 @@ export interface CharacterProps {
   idle?: boolean
 }
 
-export default function Character({ seed, mood, bandage = false, className, title, idle = false }: CharacterProps) {
+function Character({ seed, mood, bandage = false, className, title, idle = false }: CharacterProps) {
   const clipId = `hh-clip-${useId().replace(/:/g, '')}`
   const traits = traitsFor(seed)
   const g = geometryFor(traits)
@@ -661,3 +661,6 @@ export default function Character({ seed, mood, bandage = false, className, titl
     </span>
   )
 }
+
+// Every prop is a primitive, so a live reload skips characters whose seed, mood, and bandage held still.
+export default memo(Character)

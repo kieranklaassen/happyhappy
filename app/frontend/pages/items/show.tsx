@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import AppNav from '../../components/app-nav'
 import Timeline from '../../components/timeline'
+import { useReveal } from '../../lib/use-reveal'
 import {
   formatPercent,
   formatTime,
@@ -103,6 +104,37 @@ function LabelForm({ itemId, name, title, label, current, display, threshold, ch
   )
 }
 
+function MessageList({ messages }: { messages: MessageData[] }) {
+  const { shown, sentinel } = useReveal(messages.length)
+
+  return (
+    <ol className="flex flex-col gap-3">
+      {messages.slice(0, shown).map((message) => (
+        <li
+          key={message.id}
+          className={`rounded border p-4 ${message.author_role === 'team' ? 'border-indigo-100 bg-indigo-50/40' : 'border-gray-200 bg-white'}`}
+        >
+          <p className="mb-1 flex items-center gap-2 text-xs font-medium text-gray-700">
+            {message.author ?? 'Unknown author'}
+            {message.author_role === 'team' && <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-indigo-700">Every team</span>}
+          </p>
+          <p className="text-sm whitespace-pre-wrap text-gray-900">{message.body}</p>
+          <p className="mt-2 text-xs text-gray-500">
+            <time dateTime={message.occurred_at}>{formatTime(message.occurred_at)}</time>
+            {' · '}
+            {message.author_role === 'team'
+              ? 'Not counted toward mood'
+              : message.classified
+                ? `${sentimentLabel(message.sentiment)} · Anger ${formatPercent(message.anger_probability)}`
+                : 'Not classified yet'}
+          </p>
+        </li>
+      ))}
+      {shown < messages.length && <li ref={sentinel} aria-hidden="true" className="h-px" />}
+    </ol>
+  )
+}
+
 export default function ItemShow({ item, messages, events, options, low_confidence_threshold }: ItemShowProps) {
   const { flash } = usePage<FlashProps>().props
   const { labels } = item
@@ -181,31 +213,7 @@ export default function ItemShow({ item, messages, events, options, low_confiden
               {messages.length === 0 ? (
                 <p className="text-sm text-gray-500">No messages stored for this item.</p>
               ) : (
-                <ol className="flex flex-col gap-3">
-                  {messages.map((message) => (
-                    <li
-                      key={message.id}
-                      className={`rounded border p-4 ${message.author_role === 'team' ? 'border-indigo-100 bg-indigo-50/40' : 'border-gray-200 bg-white'}`}
-                    >
-                      <p className="mb-1 flex items-center gap-2 text-xs font-medium text-gray-700">
-                        {message.author ?? 'Unknown author'}
-                        {message.author_role === 'team' && (
-                          <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-indigo-700">Every team</span>
-                        )}
-                      </p>
-                      <p className="text-sm whitespace-pre-wrap text-gray-900">{message.body}</p>
-                      <p className="mt-2 text-xs text-gray-500">
-                        <time dateTime={message.occurred_at}>{formatTime(message.occurred_at)}</time>
-                        {' · '}
-                        {message.author_role === 'team'
-                          ? 'Not counted toward mood'
-                          : message.classified
-                            ? `${sentimentLabel(message.sentiment)} · Anger ${formatPercent(message.anger_probability)}`
-                            : 'Not classified yet'}
-                      </p>
-                    </li>
-                  ))}
-                </ol>
+                <MessageList messages={messages} />
               )}
             </section>
 

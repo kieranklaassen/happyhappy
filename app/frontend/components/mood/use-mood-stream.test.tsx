@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useMoodStream } from './use-mood-stream'
+import { MIN_RELOAD_GAP_MS, useMoodStream } from './use-mood-stream'
 
 const reload = vi.fn()
 const usePoll = vi.fn()
@@ -60,6 +60,46 @@ describe('useMoodStream', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(reload).toHaveBeenCalledWith({ only: ['scene', 'today'] })
+  })
+
+  it('keeps reloads apart while pings keep coming, and still catches the last change', () => {
+    renderHook(() => useMoodStream())
+
+    act(() => {
+      callbacks.received()
+      vi.advanceTimersByTime(700)
+    })
+    expect(reload).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      for (let i = 0; i < 10; i++) {
+        callbacks.received()
+        vi.advanceTimersByTime(200)
+      }
+    })
+    expect(reload).toHaveBeenCalledTimes(1)
+
+    act(() => vi.advanceTimersByTime(MIN_RELOAD_GAP_MS))
+    expect(reload).toHaveBeenCalledTimes(2)
+  })
+
+  it('waits for a hidden tab to be shown before reloading', () => {
+    renderHook(() => useMoodStream())
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+
+    act(() => {
+      callbacks.received()
+      vi.advanceTimersByTime(700)
+    })
+    expect(reload).not.toHaveBeenCalled()
+
+    hidden.mockReturnValue(false)
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+      vi.advanceTimersByTime(700)
+    })
+    expect(reload).toHaveBeenCalledTimes(1)
+    hidden.mockRestore()
   })
 
   it('unsubscribes and disconnects on unmount', () => {
