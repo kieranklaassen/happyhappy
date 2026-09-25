@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react'
 import { type FormEvent, useState } from 'react'
 import AppNav from '../../components/app-nav'
 import ItemRow from '../../components/item-row'
+import { useMoodStream } from '../../components/mood/use-mood-stream'
 import { anomalyValue, anomalyWindow } from '../../lib/anomaly-format'
 import { sentimentLabel, sourceKindLabel, statusLabel } from '../../lib/feed-format'
 import type { AnomalyProps } from '../../types/anomalies'
@@ -146,7 +147,10 @@ export function AnomalyBanner({ anomalies, filter }: { anomalies: AnomalyProps[]
 
 const SELECT = 'rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm'
 
+const LIVE_PROPS = ['items', 'anomalies']
+
 export default function ItemsIndex({ items, filters, pagination, options, anomalies, error }: FeedProps) {
+  useMoodStream(LIVE_PROPS)
   const [form, setForm] = useState<FormState>(() => initialState(filters, options.products))
   const query = toQuery(initialState(filters, options.products))
   const selectedProduct = options.products.find((product) => String(product.id) === form.product)

@@ -4,48 +4,66 @@ import { useEffect, useState } from 'react'
 
 export type StreamStatus = 'live' | 'polling'
 
-const RELOAD = { only: ['scene', 'today'] }
+interface Ping {
+  backfill?: boolean
+}
+
+const DASHBOARD_PROPS = ['scene', 'today']
 const POLL_MS = 30_000
 const COALESCE_MS = 600
 export const MIN_RELOAD_GAP_MS = 3_000
+export const LIVE_COALESCE_MS = 150
+export const LIVE_RELOAD_GAP_MS = 500
 
 // Action Cable only says "something changed"; the page refetches its own props,
-// so there is still no JSON API. Polling covers a dropped socket. During a backfill
-// pings never stop, so reloads are at least MIN_RELOAD_GAP_MS apart with a trailing
-// reload for the final state, and a hidden tab catches up when it is shown again.
-export function useMoodStream(): StreamStatus {
+// so there is still no JSON API. Polling covers a dropped socket. A live change
+// reloads within LIVE_COALESCE_MS, at most every LIVE_RELOAD_GAP_MS. During a
+// backfill or rerun pings never stop, so those reloads are at least
+// MIN_RELOAD_GAP_MS apart with a trailing reload for the final state. A hidden
+// tab catches up when it is shown again.
+export function useMoodStream(only: string[] = DASHBOARD_PROPS): StreamStatus {
   const [status, setStatus] = useState<StreamStatus>('polling')
-  usePoll(POLL_MS, RELOAD)
+  const props = only.join(',')
+  usePoll(POLL_MS, { only })
 
   useEffect(() => {
+    const reloadOptions = { only: props.split(',') }
     const consumer = createConsumer()
     let pending: number | undefined
+    let pendingAt = Infinity
     let lastReload = -Infinity
     let staleWhileHidden = false
 
     const reload = () => {
       pending = undefined
+      pendingAt = Infinity
       if (document.hidden) {
         staleWhileHidden = true
         return
       }
       lastReload = Date.now()
-      router.reload(RELOAD)
+      router.reload(reloadOptions)
     }
-    const schedule = () => {
-      if (pending !== undefined) return
-      pending = window.setTimeout(reload, Math.max(COALESCE_MS, lastReload + MIN_RELOAD_GAP_MS - Date.now()))
+    const schedule = (live: boolean) => {
+      const now = Date.now()
+      const at = live
+        ? Math.max(now + LIVE_COALESCE_MS, lastReload + LIVE_RELOAD_GAP_MS)
+        : Math.max(now + COALESCE_MS, lastReload + MIN_RELOAD_GAP_MS)
+      if (at >= pendingAt) return
+      window.clearTimeout(pending)
+      pendingAt = at
+      pending = window.setTimeout(reload, at - now)
     }
     const onVisible = () => {
       if (document.hidden || !staleWhileHidden) return
       staleWhileHidden = false
-      schedule()
+      schedule(true)
     }
 
     const subscription = consumer.subscriptions.create('MoodChannel', {
       connected: () => setStatus('live'),
       disconnected: () => setStatus('polling'),
-      received: schedule,
+      received: (ping?: Ping) => schedule(!ping?.backfill),
     })
     document.addEventListener('visibilitychange', onVisible)
     return () => {
@@ -54,7 +72,7 @@ export function useMoodStream(): StreamStatus {
       subscription.unsubscribe()
       consumer.disconnect()
     }
-  }, [])
+  }, [props])
 
   return status
 }
