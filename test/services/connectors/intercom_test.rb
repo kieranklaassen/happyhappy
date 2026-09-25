@@ -85,6 +85,17 @@ class Connectors::IntercomTest < ActiveSupport::TestCase
     end
   end
 
+  test "a customer reply that reopens a closed conversation is stored" do
+    result = Connectors::Intercom.call(intercom_replied(part_type: "open", body: "<p>Back again, still broken</p>"))
+
+    assert_equal "Back again, still broken", result.message.body
+  end
+
+  test "a reopen without a customer message is ignored" do
+    assert_nil Connectors::Intercom.call(intercom_replied(part_type: "open", body: nil))
+    assert_nil Connectors::Intercom.call(intercom_replied(part_type: "open", author_type: "admin"))
+  end
+
   test "lead authors are customers too" do
     assert Connectors::Intercom.call(intercom_replied(author_type: "lead"))
   end
