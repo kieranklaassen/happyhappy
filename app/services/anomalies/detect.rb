@@ -168,9 +168,11 @@ module Anomalies
     end
 
     def end_stale
+      # Rows created by this scan are ended through their in-memory copy so the webhook filter sees it.
+      created = @created.index_by(&:id)
       DetectedAnomaly.active.where(granularity: @granularity)
         .where(window_end: ...(@now - @config[:stale_after]))
-        .find_each { |row| row.end!(at: @now) }
+        .find_each { |row| (created[row.id] || row).end!(at: @now) }
     end
   end
 end
