@@ -2,7 +2,7 @@
 
 The search box on the feed and the `search_items` agent tool search items and
 their messages in plain language, through the [truffler](https://github.com/kieranklaassen/truffler)
-gem (0.1.4). Both go through `FeedSearch`, so people and agents get the same
+gem (0.1.5). Both go through `FeedSearch`, so people and agents get the same
 results for the same query and filters.
 
 ## How a search runs
@@ -23,8 +23,9 @@ results for the same query and filters.
    The feed filters above always apply too. Generic nouns ("customers",
    "people", "messages", "stuff") are dropped as words when a chip or time
    phrase anchors the search, so "customers in the last 3 hours" is only the
-   time window. "email" is kept as a word (`config/initializers/truffler.rb`).
-   Removing a chip gives its words back to the search.
+   time window. A word that names a label, option, or search word ("email",
+   the source channel) is never dropped as filler. Removing a chip gives its
+   words back to the search.
 3. **Smart search (Enter).** Jev reads the top 30 candidates and sorts them
    into Strong, Possible, and Unlikely (collapsed). Buckets fill in as each
    chunk of 10 is read: `TrufflerChannel` pings the searcher and the page
@@ -140,6 +141,23 @@ The backfill rewrites the stale supplied labels from the item columns with no
 Jev call, and asks `churn_risk` only for items that do not have it yet. The
 new vocabulary version starts a fresh spend ledger, and cached query encodings
 miss once.
+
+### Upgrading to 0.1.5
+
+No label restales: every fingerprint and the vocabulary version are the same
+as 0.1.4, so no backfill is needed and the spend ledger carries over. Deploy
+runs one truffler migration from `bin/rails generate truffler:upgrade`: a
+nullable `tenant_key` on `truffler_backfill_spends`, with its unique index
+replaced by a per-tenant one and an app-wide one (`tenant_key IS NULL`, which
+is where `Item` spends, since it has no tenant).
+
+```bash
+bin/rails db:migrate
+```
+
+Choice labels now store rows only for options at or above 5 percent plus the
+most likely one; a missing option reads as 0. Existing rows stay valid and
+thin out as labels are rewritten.
 
 ## Development
 

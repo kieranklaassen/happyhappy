@@ -8,10 +8,6 @@ Truffler.configure do |config|
   # live classification, so search keeps to half of it.
   config.headroom = 0.5
 
-  # "email" names a source channel and what Cora handles, so it stays a word to
-  # search for rather than generic filler.
-  config.filler_words -= %w[email emails]
-
   # Smart search waits on these jobs, so they stay off the backfill queue, and
   # off realtime, which belongs to live classification (config/queue.yml).
   config.queue_name = :default

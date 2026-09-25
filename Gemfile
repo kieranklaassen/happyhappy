@@ -42,7 +42,7 @@ gem "ruby_llm", "~> 2.0"
 # TypeSafe Jev provider for RubyLLM: calibrated probabilities per question
 gem "ruby_llm-typesafe"
 # Intent search over the feed: stored labels, Jev query encoding, and Smart search (U25)
-gem "truffler", "~> 0.1.4"
+gem "truffler", "~> 0.1.5"
 
 # Official Ruby MCP SDK: app/tools/ subclass MCP::Tool, and ToolRegistry serves
 # them to MCP clients and to WebMCP browser agents (docs/modules/webmcp.md)
