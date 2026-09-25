@@ -93,6 +93,25 @@ class Webhooks::CustomControllerTest < ActionDispatch::IntegrationTest
     assert_equal "pending", response.parsed_body["classification"]
   end
 
+  test "an apply that marks the message classified and then fails still answers pending" do
+    use_fake_classifier
+    original = Classification::Apply.method(:call)
+    Classification::Apply.define_singleton_method(:call) do |message:, answers:|
+      message.assign_attributes(classified_at: Time.current, classification_answers: answers)
+      raise ActiveRecord::RecordInvalid
+    end
+    begin
+      deliver({ text: "Hello" }.to_json, sync: true)
+    ensure
+      Classification::Apply.define_singleton_method(:call, original)
+    end
+
+    assert_response :ok
+    assert_equal "pending", response.parsed_body["classification"]
+    assert_nil response.parsed_body["labels"]
+    assert_not Message.find(response.parsed_body["message_id"]).classified?
+  end
+
   test "a bad signature answers 401 and stores nothing" do
     body = { text: "hi" }.to_json
 

@@ -150,6 +150,8 @@ module Connectors
       Classification::Apply.call(message: message, answers: answers)
     rescue StandardError => error
       Rails.error.report(error, context: { message_id: message.id })
+      # Apply may have set classified_at in memory before its transaction rolled back.
+      message.reload
       nil
     end
   end
