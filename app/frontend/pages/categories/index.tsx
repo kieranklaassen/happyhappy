@@ -7,10 +7,14 @@ interface CategoryRow {
   id: number
   name: string
   description: string | null
+  search_blurb: string | null
   position: number
   retired_at: string | null
   item_count: number
 }
+
+const SEARCH_BLURB_MAX = 40
+const SEARCH_BLURB_HINT = 'Words that name it in feed search, 40 characters at most. Blank uses the name.'
 
 interface CategoriesIndexProps {
   categories: CategoryRow[]
@@ -21,6 +25,7 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
   const form = useForm({
     name: category.name,
     description: category.description ?? '',
+    search_blurb: category.search_blurb ?? '',
     position: category.position.toString(),
   })
   const prefix = `category_${category.id}`
@@ -32,7 +37,7 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
   }
 
   return (
-    <form onSubmit={submit} aria-label={`Edit ${category.name}`} className="grid gap-3 px-4 py-4 sm:grid-cols-[5rem_1fr_2fr_auto] sm:items-start">
+    <form onSubmit={submit} aria-label={`Edit ${category.name}`} className="grid gap-3 px-4 py-4 sm:grid-cols-[5rem_1fr_2fr_1fr_auto] sm:items-start">
       <Field label="Order" htmlFor={`${prefix}_position`} error={form.errors.position}>
         <input
           id={`${prefix}_position`}
@@ -60,6 +65,15 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
           className={inputClass}
         />
       </Field>
+      <Field label="Search words" htmlFor={`${prefix}_search_blurb`} error={form.errors.search_blurb} hint={SEARCH_BLURB_HINT}>
+        <input
+          id={`${prefix}_search_blurb`}
+          maxLength={SEARCH_BLURB_MAX}
+          value={form.data.search_blurb}
+          onChange={(e) => form.setData('search_blurb', e.target.value)}
+          className={inputClass}
+        />
+      </Field>
       <div className="flex gap-2 sm:pt-6">
         <button type="submit" disabled={form.processing || !form.isDirty} className={secondaryButtonClass}>
           Save
@@ -77,7 +91,7 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
 }
 
 function NewCategoryForm() {
-  const form = useForm({ name: '', description: '' })
+  const form = useForm({ name: '', description: '', search_blurb: '' })
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -86,7 +100,7 @@ function NewCategoryForm() {
   }
 
   return (
-    <form onSubmit={submit} aria-label="Add category" className="grid gap-3 rounded border border-gray-200 bg-white px-4 py-4 sm:grid-cols-[1fr_2fr_auto] sm:items-start">
+    <form onSubmit={submit} aria-label="Add category" className="grid gap-3 rounded border border-gray-200 bg-white px-4 py-4 sm:grid-cols-[1fr_2fr_1fr_auto] sm:items-start">
       <Field label="Name" htmlFor="new_category_name" error={form.errors.name}>
         <input
           id="new_category_name"
@@ -101,6 +115,15 @@ function NewCategoryForm() {
           id="new_category_description"
           value={form.data.description}
           onChange={(e) => form.setData('description', e.target.value)}
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Search words" htmlFor="new_category_search_blurb" error={form.errors.search_blurb} hint={SEARCH_BLURB_HINT}>
+        <input
+          id="new_category_search_blurb"
+          maxLength={SEARCH_BLURB_MAX}
+          value={form.data.search_blurb}
+          onChange={(e) => form.setData('search_blurb', e.target.value)}
           className={inputClass}
         />
       </Field>

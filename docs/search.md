@@ -2,7 +2,7 @@
 
 The search box on the feed and the `search_items` agent tool search items and
 their messages in plain language, through the [truffler](https://github.com/kieranklaassen/truffler)
-gem (0.1.3). Both go through `FeedSearch`, so people and agents get the same
+gem (0.1.4). Both go through `FeedSearch`, so people and agents get the same
 results for the same query and filters.
 
 ## How a search runs
@@ -20,7 +20,11 @@ results for the same query and filters.
    truffler without Jev, limits `last_message_at`, and shows as the last chip.
    "past week" and "past month" end now; "this/last week" and "this/last
    month" are calendar windows. Removing a chip searches again without it.
-   The feed filters above always apply too.
+   The feed filters above always apply too. Generic nouns ("customers",
+   "people", "messages", "stuff") are dropped as words when a chip or time
+   phrase anchors the search, so "customers in the last 3 hours" is only the
+   time window. "email" is kept as a word (`config/initializers/truffler.rb`).
+   Removing a chip gives its words back to the search.
 3. **Smart search (Enter).** Jev reads the top 30 candidates and sorts them
    into Strong, Possible, and Unlikely (collapsed). Buckets fill in as each
    chunk of 10 is read: `TrufflerChannel` pings the searcher and the page
@@ -66,6 +70,17 @@ contradictory answers.
 Relevance is not a label either: search runs inside `ItemsQuery`, which hides
 not-relevant items unless the Relevance filter says otherwise.
 
+### Search words
+
+Each product and category has **Search words** (`search_blurb`, at most 40
+characters, edited in the admin screens, blank means the name). Query words
+are matched only against these, while Jev still reads the full description and
+hint words to decide which option a query names. Once a product or category
+chip applies, the query words that match its search words stop being required
+in the text, so keep them to words that name the thing ("Cora assistant")
+and leave out words people search for as text ("email", "inbox").
+Sentiment and status options match their own names.
+
 ## Deploy
 
 The first deploy runs three migrations: truffler's tables, the FTS5 index
@@ -101,6 +116,31 @@ When a supplied label's `from:` logic changes, bump its `version:` in
 `Item::Searchable` and run `bin/rails search:reindex`. Changing `config.model`
 marks `churn_risk` stale for the paid backfill.
 
+A supplied label's fingerprint covers its kind, option keys, levels, and
+version, not descriptions or search words, so editing those never restales
+stored labels (it only changes the query encoding cache key). Adding, renaming,
+or deleting a product or category changes the option keys and
+restales every product or category label; `truffler:backfill[Item]` or
+`search:reindex` rewrites them without a Jev call.
+
+### Upgrading to 0.1.4
+
+0.1.4 changed the supplied fingerprint formula, so every supplied label
+(sentiment, product, category, anger, needs_action, status, source,
+team_replied, needs_review) is stale once after the upgrade. `churn_risk`'s
+fingerprint is unchanged. Deploy runs one app migration (the `search_blurb`
+column, filled from the names) and then one backfill:
+
+```bash
+bin/rails db:migrate
+bin/rails "truffler:backfill[Item]"
+```
+
+The backfill rewrites the stale supplied labels from the item columns with no
+Jev call, and asks `churn_risk` only for items that do not have it yet. The
+new vocabulary version starts a fresh spend ledger, and cached query encodings
+miss once.
+
 ## Development
 
 ```bash
@@ -113,8 +153,11 @@ the feed search is full-text only.
 
 Measure with `script/latency/search.sh` (see `script/latency/README.md`).
 
-## Notes on truffler 0.1.3
+## Notes on truffler
 
 - **`none` and `other`.** `product_options` and `category_options` always
-  offer them: they are answers `from:` gives, and the option set is part of
+  offer them: they are answers `from:` gives, and the option keys are part of
   every stored product and category label's fingerprint.
+- **Source channel.** "cora email inbox" may be read as the email source plus
+  Cora, which makes "email" a chip word. Removing the source chip makes it a
+  search word again.

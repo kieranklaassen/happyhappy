@@ -1,6 +1,7 @@
 cora:
   name: Cora
   slug: cora
+  search_blurb: Cora assistant
   description: AI email assistant that screens and summarizes your inbox.
   hint_words: <%= %w[cora brief inbox screener].to_json %>
   slack_channel_id: C0CORASUPPORT
@@ -9,6 +10,7 @@ cora:
 spiral:
   name: Spiral
   slug: spiral
+  search_blurb: Spiral ghostwriter
   description: Writing tool that turns rough notes into drafts in your voice.
   hint_words: <%= %w[spiral draft writing].to_json %>
   slack_channel_id: C0SPIRALSUPPORT
@@ -18,6 +20,7 @@ spiral:
 sparkle:
   name: Sparkle
   slug: sparkle
+  search_blurb: Sparkle organizer
   description: Mac app that organizes your files automatically.
   hint_words: <%= %w[sparkle files folders].to_json %>
   digest_hour: 9
@@ -25,6 +28,7 @@ sparkle:
 lex:
   name: Lex
   slug: lex
+  search_blurb: Lex
   description: Retired AI writing editor.
   hint_words: <%= %w[lex].to_json %>
   digest_hour: 9

@@ -50,6 +50,18 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, categories(:other).position
   end
 
+  test "create and update save the search words" do
+    post categories_path, params: { category: { name: "security", search_blurb: "security, hacked" } }
+    category = Category.find_by!(name: "security")
+    assert_equal "security, hacked", category.search_blurb
+
+    patch category_path(category), params: { category: { search_blurb: "" } }
+    assert_equal "security", category.reload.search_blurb
+
+    get categories_path
+    assert_equal "bug, broken, crash, error", inertia.props[:categories].first[:search_blurb]
+  end
+
   test "a blank name is rejected on update" do
     patch category_path(categories(:other)), params: { category: { name: "" } }
 

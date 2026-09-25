@@ -54,21 +54,21 @@ class ProductsController < InertiaController
   end
 
   def product_params
-    permitted = params.expect(product: %i[name slug description hint_words slack_channel_id escalation_threshold digest_hour])
+    permitted = params.expect(product: %i[name slug description hint_words search_blurb slack_channel_id escalation_threshold digest_hour])
     permitted[:hint_words] = permitted[:hint_words].split(/[,\n]/) if permitted.key?(:hint_words)
     permitted
   end
 
   def render_form(product)
     render inertia: "products/form", props: {
-      product: product.slice(:id, :name, :slug, :description, :hint_words, :slack_channel_id,
+      product: product.slice(:id, :name, :slug, :description, :hint_words, :search_blurb, :slack_channel_id,
         :escalation_threshold, :digest_hour),
       default_escalation_threshold: Setting.current.escalation_threshold
     }
   end
 
   def product_row(product)
-    product.slice(:id, :name, :slug, :description, :hint_words, :slack_channel_id, :escalation_threshold,
+    product.slice(:id, :name, :slug, :description, :hint_words, :search_blurb, :slack_channel_id, :escalation_threshold,
       :digest_hour).merge(retired_at: product.retired_at&.iso8601)
   end
 end

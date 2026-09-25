@@ -57,11 +57,11 @@ class CategoriesController < InertiaController
   end
 
   def category_params
-    params.expect(category: %i[name description position])
+    params.expect(category: %i[name description search_blurb position])
   end
 
   def category_row(category, item_count)
-    category.slice(:id, :name, :description, :position)
+    category.slice(:id, :name, :description, :search_blurb, :position)
       .merge(retired_at: category.retired_at&.iso8601, item_count: item_count)
   end
 end

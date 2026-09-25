@@ -7,10 +7,10 @@ module MoodDemo
   module_function
 
   PRODUCTS = {
-    "cora" => [ "Cora", "AI email assistant that screens and summarizes your inbox." ],
-    "spiral" => [ "Spiral", "Writing tool that turns rough notes into drafts in your voice." ],
-    "sparkle" => [ "Sparkle", "Mac app that organizes your files automatically." ],
-    "monologue" => [ "Monologue", "Voice dictation that writes like you talk." ]
+    "cora" => [ "Cora", "AI email assistant that screens and summarizes your inbox.", "Cora assistant" ],
+    "spiral" => [ "Spiral", "Writing tool that turns rough notes into drafts in your voice.", "Spiral ghostwriter" ],
+    "sparkle" => [ "Sparkle", "Mac app that organizes your files automatically.", "Sparkle organizer" ],
+    "monologue" => [ "Monologue", "Voice dictation that writes like you talk.", "Monologue dictation" ]
   }.freeze
 
   # product, source kind, author, sentiment, sentiment probability, anger, body
@@ -48,8 +48,8 @@ module MoodDemo
   end
 
   def product(slug)
-    name, description = PRODUCTS.fetch(slug)
-    Product.find_by(slug: slug) || Product.create!(slug: slug, name: name, description: description)
+    name, description, search_blurb = PRODUCTS.fetch(slug)
+    Product.find_by(slug: slug) || Product.create!(slug: slug, name: name, description: description, search_blurb: search_blurb)
   end
 
   def author(author)

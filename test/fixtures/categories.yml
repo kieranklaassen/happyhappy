@@ -1,35 +1,42 @@
 bug:
   name: bug
+  search_blurb: bug, broken, crash, error
   description: Something is broken or behaves wrongly.
   position: 1
 
 billing:
   name: billing
+  search_blurb: billing, charge, refund, invoice
   description: Charges, refunds, invoices, and subscriptions.
   position: 2
 
 feature_request:
   name: feature request
+  search_blurb: feature request
   description: Asking for something the product does not do yet.
   position: 3
 
 onboarding:
   name: onboarding
+  search_blurb: onboarding, setup
   description: Getting started, setup, and first use.
   position: 4
 
 praise:
   name: praise
+  search_blurb: praise, thanks
   description: Thanks, compliments, and happy stories.
   position: 5
 
 other:
   name: other
+  search_blurb: other
   description: Anything that fits no other category.
   position: 6
 
 pricing:
   name: pricing
+  search_blurb: pricing
   description: Retired in favor of billing.
   position: 7
   retired_at: <%= 10.days.ago.to_fs(:db) %>

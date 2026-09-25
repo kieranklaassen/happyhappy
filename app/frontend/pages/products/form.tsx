@@ -11,6 +11,7 @@ interface ProductFormProps {
     slug: string | null
     description: string | null
     hint_words: string[]
+    search_blurb: string | null
     slack_channel_id: string | null
     escalation_threshold: number | null
     digest_hour: number
@@ -18,6 +19,7 @@ interface ProductFormProps {
   default_escalation_threshold: number
 }
 
+const SEARCH_BLURB_MAX = 40
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
 export default function ProductForm({ product, default_escalation_threshold }: ProductFormProps) {
@@ -27,6 +29,7 @@ export default function ProductForm({ product, default_escalation_threshold }: P
     slug: product.slug ?? '',
     description: product.description ?? '',
     hint_words: product.hint_words.join(', '),
+    search_blurb: product.search_blurb ?? '',
     slack_channel_id: product.slack_channel_id ?? '',
     escalation_threshold: product.escalation_threshold?.toString() ?? '',
     digest_hour: product.digest_hour.toString(),
@@ -97,6 +100,21 @@ export default function ProductForm({ product, default_escalation_threshold }: P
               rows={2}
               value={form.data.hint_words}
               onChange={(e) => form.setData('hint_words', e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
+            label="Search words"
+            htmlFor="product_search_blurb"
+            error={form.errors.search_blurb}
+            hint="What people call it, 40 characters at most, for example Cora assistant. Feed search reads these words as naming the product. Leave out words people search for, such as email or inbox. Blank uses the name."
+          >
+            <input
+              id="product_search_blurb"
+              maxLength={SEARCH_BLURB_MAX}
+              value={form.data.search_blurb}
+              onChange={(e) => form.setData('search_blurb', e.target.value)}
               className={inputClass}
             />
           </Field>

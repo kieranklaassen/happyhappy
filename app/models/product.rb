@@ -1,5 +1,6 @@
 class Product < ApplicationRecord
   include Retirable
+  include SearchBlurb
 
   has_many :items, dependent: :restrict_with_error
   has_many :default_sources, class_name: "Source", foreign_key: :default_product_id,
