@@ -14,7 +14,7 @@ module SearchDemo
     "question" => "Asking how something works."
   }.freeze
 
-  THESIS = [ "Thesis", "Demo product for feed search: research notes that argue back." ].freeze
+  THESIS = [ "Thesis", "Demo product for feed search: research notes that argue back.", "Thesis advisor" ].freeze
 
   # product, category, source kind, author, sentiment, anger, actionability, days ago, body
   ITEMS = [
@@ -42,7 +42,7 @@ module SearchDemo
   def product(slug)
     return MoodDemo.product(slug) unless slug == "thesis"
 
-    Product.find_by(slug: slug) || Product.create!(slug: slug, name: THESIS.first, description: THESIS.last)
+    Product.find_by(slug: slug) || Product.create!(slug: slug, name: THESIS[0], description: THESIS[1], search_blurb: THESIS[2])
   end
 
   # mood:demo items carry sentiment and anger only; give them the rest of what

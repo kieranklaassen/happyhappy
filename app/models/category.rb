@@ -1,5 +1,6 @@
 class Category < ApplicationRecord
   include Retirable
+  include SearchBlurb
 
   has_many :items, dependent: :restrict_with_error
 

@@ -93,6 +93,16 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 7, products(:cora).digest_hour
   end
 
+  test "update saves the search words, and a too long blurb is rejected" do
+    patch product_path(products(:cora)), params: { product: { search_blurb: "Cora inbox screener" } }
+    assert_equal "Cora inbox screener", products(:cora).reload.search_blurb
+
+    patch product_path(products(:cora)), params: { product: { search_blurb: "x" * 41 } }
+    follow_redirect!
+    assert inertia.props[:errors]["search_blurb"].present?
+    assert_equal "Cora inbox screener", products(:cora).reload.search_blurb
+  end
+
   test "an out of range escalation threshold is rejected on update" do
     patch product_path(products(:cora)), params: { product: { escalation_threshold: "1.5" } }
 

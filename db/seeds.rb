@@ -3,15 +3,16 @@
 Setting.current
 
 [
-  [ "bug", "Something is broken or behaves wrongly." ],
-  [ "billing", "Charges, refunds, invoices, and subscriptions." ],
-  [ "feature request", "Asking for something the product does not do yet." ],
-  [ "onboarding", "Getting started, setup, and first use." ],
-  [ "praise", "Thanks, compliments, and happy stories." ],
-  [ "other", "Anything that fits no other category." ]
-].each.with_index(1) do |(name, description), position|
+  [ "bug", "Something is broken or behaves wrongly.", "bug, broken, crash, error" ],
+  [ "billing", "Charges, refunds, invoices, and subscriptions.", "billing, charge, refund, invoice" ],
+  [ "feature request", "Asking for something the product does not do yet.", "feature request" ],
+  [ "onboarding", "Getting started, setup, and first use.", "onboarding, setup" ],
+  [ "praise", "Thanks, compliments, and happy stories.", "praise, thanks" ],
+  [ "other", "Anything that fits no other category.", "other" ]
+].each.with_index(1) do |(name, description, search_blurb), position|
   Category.find_or_create_by!(name: name) do |category|
     category.description = description
+    category.search_blurb = search_blurb
     category.position = position
   end
 end
