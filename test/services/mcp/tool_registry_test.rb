@@ -11,20 +11,39 @@ class Mcp::ToolRegistryTest < ActionDispatch::IntegrationTest
     assert_equal Mcp::ToolRegistry.definitions.as_json, tools
   end
 
-  test "WebMCP definitions carry the same names, titles, descriptions, and input schemas" do
-    mcp = Mcp::ToolRegistry.definitions.map { |tool| tool.slice(:name, :title, :description, :inputSchema) }
-    webmcp = Mcp::ToolRegistry.webmcp_definitions.map { |tool| tool.except(:annotations) }
+  test "the WebMCP manifest carries the same names, descriptions, and input schemas as MCP" do
+    mcp = Mcp::ToolRegistry.definitions.map do |tool|
+      schema = tool[:inputSchema]
+      [ tool[:name], tool[:description], schema[:properties] || {}, (schema[:required] || []).map(&:to_s) ]
+    end
+    webmcp = Mcp::ToolRegistry.webmcp_tools("https://example.test")[:tools].map do |tool|
+      schema = tool[:input_schema]
+      [ tool[:name], tool[:description], schema[:properties], schema[:required] ]
+    end
 
     assert_equal mcp, webmcp
   end
 
-  test "WebMCP annotations follow the MCP read-only hint and mark customer content untrusted" do
-    annotations = Mcp::ToolRegistry.webmcp_definitions.to_h { |tool| [ tool[:name], tool[:annotations] ] }
+  test "each WebMCP tool POSTs its declared arguments to its own endpoint without an agent name" do
+    tools = Mcp::ToolRegistry.webmcp_tools("https://example.test")[:tools].index_by { |tool| tool[:name] }
+    claim = tools.fetch("claim_item")
 
-    assert_equal({ readOnlyHint: true, untrustedContentHint: true }, annotations["list_items"])
-    assert_equal({ readOnlyHint: true, untrustedContentHint: true }, annotations["get_item"])
-    assert_equal({ readOnlyHint: false, untrustedContentHint: true }, annotations["claim_item"])
-    assert_equal({ readOnlyHint: true, untrustedContentHint: false }, annotations["list_anomalies"])
+    assert_equal({ type: "object", properties: claim[:input_schema][:properties], required: [ "item_id" ],
+      additionalProperties: false }, claim[:input_schema])
+    assert_equal({ method: "POST", url: "https://example.test/webmcp/tools/claim_item", path_params: [],
+      body_params: [ "item_id" ], agent_identity: "omit" }, claim[:request])
+    assert_equal "request", claim[:kind]
+    assert_equal false, claim[:include_viewer_context]
+    assert_equal ItemsQuery::FILTERS.map(&:to_s) + %w[limit offset], tools.fetch("list_items")[:request][:body_params]
+  end
+
+  test "WebMCP annotations follow the MCP read-only hint and mark customer content untrusted" do
+    annotations = Mcp::ToolRegistry.webmcp_tools("https://example.test")[:tools].to_h { |tool| [ tool[:name], tool[:annotations] ] }
+
+    assert_equal({ read_only_hint: true, untrusted_content_hint: true }, annotations["list_items"])
+    assert_equal({ read_only_hint: true, untrusted_content_hint: true }, annotations["get_item"])
+    assert_equal({ read_only_hint: false, untrusted_content_hint: true }, annotations["claim_item"])
+    assert_equal({ read_only_hint: true, untrusted_content_hint: false }, annotations["list_anomalies"])
   end
 
   test "list_items offers every ItemsQuery filter plus paging" do

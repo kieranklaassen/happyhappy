@@ -1,6 +1,9 @@
-# WebMCP for signed-in people: the browser registers the MCP tools with document.modelContext and runs
-# them here. Like /mcp this is an agent protocol surface, not a page data API. It authenticates with the
-# session cookie and Rails' CSRF token, never an agent token.
+# WebMCP for signed-in people: the browser registers the manifest from the `webmcp` shared prop with
+# document.modelContext and runs each tool here. Like /mcp this is an agent protocol surface, not a page data
+# API. It authenticates with the session cookie and Rails' CSRF token, never an agent token.
+#
+# Responses are plain JSON the page interpreter wraps into WebMCP results (app/frontend/lib/webmcp_execute.ts):
+# 200 with the tool's structured payload, or an error status with { error: }.
 class WebmcpToolsController < ApplicationController
   include Authentication
   # Declared after the session check so a signed-out caller hears 401 before any CSRF refusal.
@@ -12,17 +15,17 @@ class WebmcpToolsController < ApplicationController
       status: :unprocessable_content
   end
 
-  def index
-    no_store
-    render json: { tools: Mcp::ToolRegistry.webmcp_definitions }
-  end
-
   def create
-    no_store
+    response.headers["Cache-Control"] = "no-store"
     arguments = JSON.parse(request.raw_post.presence || "{}", symbolize_names: true)
     raise JSON::ParserError unless arguments.is_a?(Hash)
 
-    render json: Mcp::ToolRegistry.call(params[:name], arguments, user: Current.user)
+    result = Mcp::ToolRegistry.call(params[:name], arguments, user: Current.user)
+    if result[:isError]
+      render json: { error: result[:content].first[:text] }, status: :unprocessable_content
+    else
+      render json: result[:structuredContent]
+    end
   rescue JSON::ParserError
     render json: { error: "The request body must be a JSON object of tool arguments." }, status: :bad_request
   rescue Mcp::ToolRegistry::UnknownTool => error
@@ -35,9 +38,5 @@ class WebmcpToolsController < ApplicationController
 
   def request_authentication
     render json: { error: "Sign in to happyhappy to use its tools." }, status: :unauthorized
-  end
-
-  def no_store
-    response.headers["Cache-Control"] = "no-store"
   end
 end

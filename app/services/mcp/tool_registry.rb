@@ -1,10 +1,10 @@
 module Mcp
   # The one list of happyhappy's tools. The MCP server serves it to agents with a token, and signed-in pages
-  # register the same definitions with WebMCP (document.modelContext) and run them through `call`, so both
-  # surfaces share names, descriptions, input schemas, and implementations.
+  # receive the same tools as a WebMCP manifest (the Thinkroom manifest shape, see app/frontend/lib/webmcp.ts)
+  # and run them through `call`, so both surfaces share names, descriptions, input schemas, and implementations.
   #
   #   Mcp::ToolRegistry.definitions                                  # => what MCP tools/list returns
-  #   Mcp::ToolRegistry.webmcp_definitions                           # => the same tools as WebMCP registrations
+  #   Mcp::ToolRegistry.webmcp_tools("https://happyhappy.example")   # => { tools: [...] } WebMCP manifest
   #   Mcp::ToolRegistry.call("list_items", { product: "cora" }, user:) # => MCP tools/call result Hash
   module ToolRegistry
     class UnknownTool < StandardError; end
@@ -20,12 +20,30 @@ module Mcp
       TOOLS.map(&:to_h)
     end
 
-    def webmcp_definitions
-      TOOLS.map do |tool|
-        tool.to_h.slice(:name, :title, :description, :inputSchema).merge(
-          annotations: { readOnlyHint: read_only?(tool), untrustedContentHint: tool.untrusted_content? }
-        )
-      end
+    # Every tool is a "request" tool that POSTs its arguments to WebmcpToolsController. agent_identity is
+    # "omit" because the session, not an agent_name argument, decides who acts (Agent.browser_for).
+    def webmcp_tools(base_url)
+      { tools: TOOLS.map { |tool| webmcp_tool(tool, base_url) } }
+    end
+
+    def webmcp_tool(tool, base_url)
+      schema = tool.input_schema_value.to_h
+      properties = schema.fetch(:properties, {})
+      {
+        name: tool.name_value,
+        description: tool.description_value,
+        input_schema: {
+          type: "object", properties: properties, required: schema.fetch(:required, []).map(&:to_s),
+          additionalProperties: false
+        },
+        annotations: { read_only_hint: read_only?(tool), untrusted_content_hint: tool.untrusted_content? },
+        kind: "request",
+        request: {
+          method: "POST", url: "#{base_url}/webmcp/tools/#{tool.name_value}", path_params: [],
+          body_params: properties.keys.map(&:to_s), agent_identity: "omit"
+        },
+        include_viewer_context: false
+      }
     end
 
     def find(name)

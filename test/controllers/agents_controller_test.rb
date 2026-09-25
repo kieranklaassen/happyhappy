@@ -16,15 +16,6 @@ class AgentsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, agents(:cursor).token_digest
   end
 
-  test "signed-in pages share the WebMCP tools url and signed-out pages do not" do
-    get agents_path
-    assert_equal({ "tools_url" => "/webmcp/tools" }, inertia.props[:webmcp])
-
-    sign_out
-    get new_session_path
-    assert_nil inertia.props[:webmcp]
-  end
-
   test "the agents screen shows the token once after creation" do
     assert_difference -> { Agent.count } => 1 do
       post agents_path, params: { agent: { name: "Codex" } }

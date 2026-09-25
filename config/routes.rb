@@ -74,7 +74,6 @@ Rails.application.routes.draw do
   match "mcp", to: "mcp#handle", via: %i[get post delete], as: :mcp
 
   # WebMCP for signed-in people (U21): the same tools, session and CSRF authenticated.
-  get "webmcp/tools", to: "webmcp_tools#index", as: :webmcp_tools
   post "webmcp/tools/:name", to: "webmcp_tools#create", as: :webmcp_tool, format: false
 
   # Custom inbound webhook sources (U16)

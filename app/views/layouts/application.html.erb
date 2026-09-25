@@ -26,6 +26,9 @@
     <meta name="theme-color" content="<%= pwa.theme_color %>">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <% Array(Rails.application.config.x.webmcp_origin_trial_tokens).each do |token| %>
+      <%= tag.meta "http-equiv": "origin-trial", content: token %>
+    <% end %>
 
     <%= yield :head %>
 

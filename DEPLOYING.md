@@ -133,6 +133,7 @@ That hostname is `KAMAL_PROXY_HOST`, and `https://<hostname>` is
 | `POSTMARK_INBOUND_USER`, `POSTMARK_INBOUND_PASSWORD` | secret | Postmark inbound webhook | every Postmark request gets 401 |
 | `X_BEARER_TOKEN` | secret | X polling | X sources record an error and never poll |
 | `TYPESAFE_API_KEY` | secret | Jev classification | messages stay unclassified |
+| `WEBMCP_ORIGIN_TRIAL_TOKEN` | clear, default empty | WebMCP origin-trial `<meta>` tags, one public token per origin | browsers without WebMCP enabled get no tools |
 | `ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY` | secret | Active Record encryption for custom webhook and outbound endpoint secrets; generate once with `bin/rails db:encryption:init` and never change | creating webhook sources or endpoints fails |
 | `ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY` | secret | Active Record encryption for custom webhook and outbound endpoint secrets; generate once with `bin/rails db:encryption:init` and never change | creating webhook sources or endpoints fails |
 | `ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT` | secret | Active Record encryption for custom webhook and outbound endpoint secrets; generate once with `bin/rails db:encryption:init` and never change | creating webhook sources or endpoints fails |
