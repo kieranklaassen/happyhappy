@@ -8,17 +8,24 @@ module Connectors
     # so without this bit every message arrives with empty content.
     MESSAGE_CONTENT_INTENT = 1 << 15
     INTENTS = [ :servers, :server_messages, MESSAGE_CONTENT_INTENT ].freeze
+    # discordrb 3.8.0 handles RESUMED inside its gateway without dispatching it,
+    # so a resumed session never raises an event; the connection is polled instead.
+    HEALTH_CHECK_SECONDS = 30
 
     def initialize(token:, logger: Rails.logger)
       @logger = logger
       @bot = Discordrb::Bot.new(token: token, intents: INTENTS)
       @bot.raw(type: :MESSAGE_CREATE) { |event| handle_message(event.data) }
-      @bot.raw(type: /\A(READY|RESUMED)\z/) { handle_connected }
+      @bot.raw(type: :READY) { handle_connected }
       @bot.disconnected { handle_disconnected }
+      @gateway_error = false
     end
 
     def run
+      health_check = start_health_check
       @bot.run
+    ensure
+      health_check&.kill
     end
 
     def stop
@@ -36,14 +43,33 @@ module Connectors
     end
 
     def handle_connected
+      @gateway_error = false
       within_app { Connectors::Discord.clear_gateway_errors! }
     end
 
     def handle_disconnected
+      @gateway_error = true
       within_app { Connectors::Discord.record_gateway_error!("disconnected, reconnecting") }
     end
 
+    # Clears a recorded disconnect once the gateway is open again, which after a
+    # resume is the only sign of reconnection.
+    def check_health
+      handle_connected if @gateway_error && @bot.connected?
+    end
+
     private
+
+    def start_health_check
+      Thread.new do
+        loop do
+          sleep HEALTH_CHECK_SECONDS
+          check_health
+        rescue StandardError => error
+          log_failure("health check", error)
+        end
+      end
+    end
 
     # Channels and active threads arrive in the gateway's guild payloads, so this
     # is a cache hit except for a thread the bot has not seen yet.
