@@ -1,148 +1,157 @@
-// Shared WebMCP contract for the page side: feature detection, the manifest
-// shape `Mcp::ToolRegistry.webmcp_tools` ships as the `webmcp` Inertia prop,
-// and the MCP-style result envelope every tool returns. Consumed by `use_webmcp_tools.ts`
-// (registration) and `webmcp_execute.ts` (the request interpreter).
+// WebMCP page side (docs/modules/webmcp.md): feature detection, the manifest
+// shape `ToolRegistry.manifest` ships as the `webmcp` shared prop, tool
+// registration, and the CSRF-protected call to `POST /webmcp/tools/:name`.
+
+/** One entry of `ToolRegistry.manifest` — the MCP `tools/list` tool shape. */
+export interface WebmcpTool {
+  name: string
+  description: string
+  inputSchema: Record<string, unknown>
+  annotations?: {
+    readOnlyHint?: boolean
+    destructiveHint?: boolean
+    idempotentHint?: boolean
+    openWorldHint?: boolean
+  }
+}
+
+export interface WebmcpManifest {
+  /** Same-origin path; a tool runs at `${endpoint}/${name}`. */
+  endpoint: string
+  tools: WebmcpTool[]
+}
+
+/** MCP `CallToolResult`: what both the MCP server and the endpoint return. */
+export interface WebmcpResult {
+  content: Array<{ type: 'text'; text: string }>
+  isError?: boolean
+}
 
 /**
- * Returns `document.modelContext` only when it is usable, falling back to the
- * pre-draft `navigator.modelContext` that Chrome 148 still ships. `typeof
- * document` keeps SSR safe; the `registerTool` check guards against a partial
- * or foreign object occupying the property. No polyfill is ever loaded: in
- * every other browser the page behaves exactly as before.
+ * The browser's model context, or null when WebMCP is unavailable (every
+ * browser but a WebMCP-enabled Chrome, and SSR). Prefers the current draft's
+ * `document.modelContext`, falls back to the older `navigator.modelContext`,
+ * and requires a callable `registerTool` so a partial object is ignored.
  */
 export function getModelContext(): ModelContext | null {
-  if (typeof document === 'undefined') return null
-  for (const context of [document.modelContext, globalThis.navigator?.modelContext]) {
+  if (typeof document === 'undefined' || typeof navigator === 'undefined') return null
+  for (const context of [document.modelContext, navigator.modelContext]) {
     if (context && typeof context.registerTool === 'function') return context
   }
   return null
 }
 
 /**
- * Chrome refuses tool names outside this set, and a rejected registration
- * would otherwise surface only as a swallowed promise in production.
+ * Inertia keeps a fresh `XSRF-TOKEN` cookie on every response; the layout's
+ * `csrf-token` meta is the fallback before the first Inertia round trip.
  */
-const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/
-
-export function toolNameValid(name: string): boolean {
-  return TOOL_NAME_PATTERN.test(name)
-}
-
-/** Manifest annotations arrive snake_case from Ruby; the spec wants camelCase. */
-export interface WebmcpAnnotations {
-  read_only_hint: boolean
-  untrusted_content_hint: boolean
-}
-
-export function toSpecAnnotations(annotations: WebmcpAnnotations): ToolAnnotations {
-  return {
-    readOnlyHint: annotations.read_only_hint,
-    untrustedContentHint: annotations.untrusted_content_hint,
-  }
-}
-
-/**
- * One JSON Schema property. Only `maxLength` is read by the page (UTF-8 byte
- * cap enforced before a request is sent); everything else passes through to
- * the browser untouched.
- */
-export interface WebmcpSchemaProperty {
-  type?: string
-  description?: string
-  maxLength?: number
-  minLength?: number
-  enum?: string[]
-  [key: string]: unknown
-}
-
-export interface WebmcpInputSchema {
-  type: 'object'
-  properties: Record<string, WebmcpSchemaProperty>
-  required: string[]
-  additionalProperties: false
-}
-
-/**
- * Everything the interpreter needs to turn a tool call into a fetch. `url`
- * is absolute, same-origin, under `/webmcp/tools/`, and may carry `:id`
- * placeholders named by `path_params`. `agent_name` is never a body param:
- * the interpreter lifts it into `X-Agent-Name` when `agent_identity` is
- * `"required"`. happyhappy's tools all `"omit"` it; the session decides who
- * acts.
- */
-export interface WebmcpRequest {
-  method: 'GET' | 'POST'
-  url: string
-  path_params: string[]
-  body_params: string[]
-  agent_identity: 'required' | 'omit'
-  /** Endpoint's `rate_limits.burst.within_seconds`; reported on 429 as an upper bound. */
-  rate_limit_window_seconds?: number
-}
-
-interface WebmcpToolBase {
-  name: string
-  description: string
-  input_schema: WebmcpInputSchema
-  annotations: WebmcpAnnotations
-  /** Merge the page's viewer context into the result. */
-  include_viewer_context: boolean
-}
-
-export interface WebmcpRequestTool extends WebmcpToolBase {
-  kind: 'request'
-  request: WebmcpRequest
-  static_text?: undefined
-}
-
-export interface WebmcpStaticTool extends WebmcpToolBase {
-  kind: 'static'
-  static_text: string
-  request?: undefined
-}
-
-/** Discriminated on `kind` so the interpreter never reads a missing branch. */
-export type WebmcpManifestTool = WebmcpRequestTool | WebmcpStaticTool
-
-export interface WebmcpManifest {
-  tools: WebmcpManifestTool[]
-}
-
-/**
- * MCP-style result. Always JSON-serializable and never `undefined`: the
- * spec turns a thrown execute into an opaque `UnknownError` and fails
- * serialization on `undefined`, so failures travel as data.
- */
-export interface WebmcpResult {
-  content: [{ type: 'text'; text: string }]
-  isError?: true
-}
-
-export function textResult(value: unknown): WebmcpResult {
-  return { content: [{ type: 'text', text: asText(value) }] }
+export function csrfToken(): string | null {
+  const cookie = document.cookie.split('; ').find((entry) => entry.startsWith('XSRF-TOKEN='))
+  if (cookie) return decodeURIComponent(cookie.slice('XSRF-TOKEN='.length))
+  return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? null
 }
 
 export function errorResult(value: unknown): WebmcpResult {
-  return { content: [{ type: 'text', text: asText(value) }], isError: true }
+  const text = typeof value === 'string' ? value : JSON.stringify(value)
+  return { content: [{ type: 'text', text }], isError: true }
 }
 
-/** Strings pass through verbatim; anything else is serialized as JSON. */
-function asText(value: unknown): string {
-  if (typeof value === 'string') return value
+/**
+ * Runs a tool through the session-authenticated endpoint. Never throws and
+ * never returns undefined: the spec turns a rejected `execute` into an opaque
+ * error, so every failure comes back as an `isError` result.
+ */
+export async function callTool(
+  endpoint: string,
+  name: string,
+  args: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<WebmcpResult> {
+  if (!endpoint.startsWith('/') || endpoint.startsWith('//')) {
+    return errorResult({ error: `refused: ${endpoint} is not a same-origin path` })
+  }
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  }
+  const token = csrfToken()
+  if (token) headers['X-CSRF-Token'] = token
+
   try {
-    const text = JSON.stringify(value)
-    return text === undefined ? String(value) : text
-  } catch {
-    return String(value)
+    const response = await fetch(`${endpoint}/${encodeURIComponent(name)}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers,
+      body: JSON.stringify({ arguments: args ?? {} }),
+      signal,
+    })
+    const body: unknown = await response.json().catch(() => null)
+    if (response.ok && isResult(body)) return body.result
+    return errorResult({ status: response.status, ...(isObject(body) ? body : {}) })
+  } catch (error) {
+    if (signal?.aborted || isAbortError(error)) return errorResult({ error: 'cancelled' })
+    return errorResult({ error: 'unreachable', detail: error instanceof Error ? error.message : String(error) })
   }
 }
 
-/** Human-readable message from any thrown value, for error envelopes. */
-export function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return typeof error === 'string' ? error : String(error)
+/**
+ * Registers every manifest tool on `context`; aborting `signal` unregisters
+ * them all and cancels in-flight calls. Registration failures are logged, not
+ * thrown: AbortError is the expected result of React StrictMode's immediate
+ * cleanup, and a duplicate name must not take the page down.
+ */
+export function registerTools(context: ModelContext, manifest: WebmcpManifest, signal: AbortSignal): void {
+  for (const tool of manifest.tools) {
+    const definition: ModelContextTool = {
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      annotations: { readOnlyHint: tool.annotations?.readOnlyHint ?? false },
+      execute: (input, options) => {
+        const callSignal = options?.signal ? AbortSignal.any([signal, options.signal]) : signal
+        return callTool(manifest.endpoint, tool.name, input ?? {}, callSignal)
+      },
+    }
+
+    try {
+      Promise.resolve(context.registerTool(definition, { signal }))
+        .then((registration) => onAbort(signal, () => unregisterLegacy(context, tool.name, registration)))
+        .catch((error: unknown) => reportRegistrationError(tool.name, error))
+    } catch (error) {
+      reportRegistrationError(tool.name, error)
+    }
+  }
 }
 
-export function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError'
+function unregisterLegacy(context: ModelContext, name: string, registration: void | ModelContextRegistration): void {
+  try {
+    if (registration && typeof registration.unregister === 'function') registration.unregister()
+    else if (typeof context.unregisterTool === 'function') context.unregisterTool(name)
+  } catch {
+    // Already gone: the current draft unregisters through the signal itself.
+  }
+}
+
+function onAbort(signal: AbortSignal, callback: () => void): void {
+  if (signal.aborted) callback()
+  else signal.addEventListener('abort', callback, { once: true })
+}
+
+function reportRegistrationError(name: string, error: unknown): void {
+  if (isAbortError(error)) return
+  console.warn(`[webmcp] failed to register ${name}: ${error instanceof Error ? error.message : String(error)}`)
+}
+
+// DOMException is not an Error subclass in every runtime, so match on the name.
+function isAbortError(error: unknown): boolean {
+  return isObject(error) && error.name === 'AbortError'
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isResult(value: unknown): value is { result: WebmcpResult } {
+  return isObject(value) && isObject(value.result) && Array.isArray(value.result.content)
 }
