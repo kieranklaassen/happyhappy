@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { type ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { WebmcpManifest } from '../lib/webmcp'
+import { createModelContextStub, installModelContext, requestTool } from '../test/model-context-stub'
 import AppNav, { NAV_ENTRIES, isActive } from './app-nav'
 
-const page = { url: '/items' }
+const page = { url: '/items', props: {} as { webmcp?: WebmcpManifest | null } }
 
 vi.mock('@inertiajs/react', () => ({
   usePage: () => page,
@@ -15,9 +17,12 @@ vi.mock('@inertiajs/react', () => ({
 }))
 
 describe('AppNav', () => {
+  let uninstall = () => {}
   beforeEach(() => {
     page.url = '/items'
+    page.props = {}
   })
+  afterEach(() => uninstall())
 
   it('links to every section', () => {
     render(<AppNav />)
@@ -52,6 +57,27 @@ describe('AppNav', () => {
 
     expect(screen.getByRole('link', { name: 'Products' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Feed' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('registers the WebMCP manifest from the shared prop and drops it on unmount', () => {
+    const context = createModelContextStub()
+    uninstall = installModelContext(context)
+    page.props = { webmcp: { tools: [requestTool()] } }
+
+    const { unmount } = render(<AppNav />)
+    expect([...context.tools.keys()]).toEqual(['claim_item'])
+
+    unmount()
+    expect(context.tools.size).toBe(0)
+  })
+
+  it('registers nothing without a manifest', () => {
+    const context = createModelContextStub()
+    uninstall = installModelContext(context)
+
+    render(<AppNav />)
+
+    expect(context.tools.size).toBe(0)
   })
 })
 

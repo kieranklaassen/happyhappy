@@ -1,4 +1,7 @@
 import { Link, usePage } from '@inertiajs/react'
+import { useWebmcpTools } from '../lib/use_webmcp_tools'
+import type { WebmcpManifest } from '../lib/webmcp'
+import { executeManifestTool } from '../lib/webmcp_execute'
 import SunLogo from './sun-logo'
 
 export interface NavEntry {
@@ -24,7 +27,12 @@ export function isActive(currentPath: string, href: string): boolean {
 }
 
 export default function AppNav() {
-  const { url } = usePage()
+  const { url, props } = usePage<{ webmcp?: WebmcpManifest | null }>()
+  useWebmcpTools({
+    key: 'app',
+    tools: props.webmcp?.tools ?? [],
+    execute: (tool, args, signal) => executeManifestTool(tool, args, { signal }),
+  })
 
   return (
     <nav aria-label="Main" className="border-b border-gray-200 bg-white">
