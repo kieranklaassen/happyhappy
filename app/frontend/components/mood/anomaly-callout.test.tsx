@@ -18,7 +18,7 @@ describe('AnomalyCallout', () => {
     render(<AnomalyCallout anomalies={[anomaly()]} />)
 
     const callout = screen.getByRole('complementary', { name: 'Storm warning for Cora' })
-    expect(callout).toHaveTextContent('Bug messages: 9 in the last hour, usually 0.4.')
+    expect(callout).toHaveTextContent('Bug messages: 9 in the last hour, usually under 1.')
     expect(callout).toHaveTextContent('High severity')
     expect(screen.getByRole('link', { name: 'See what happened' })).toHaveAttribute('href', '/items?anomaly=12')
     expect(screen.queryByRole('link', { name: /more/ })).not.toBeInTheDocument()

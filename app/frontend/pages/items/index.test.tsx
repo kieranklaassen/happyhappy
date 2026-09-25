@@ -157,7 +157,7 @@ describe('Feed page', () => {
     const banner = screen.getByRole('region', { name: 'Active anomalies' })
     expect(banner).toHaveTextContent('1 anomaly is active')
     expect(within(banner).getByRole('link', { name: 'Show their items' })).toHaveAttribute('href', '/items?anomaly=active')
-    expect(within(banner).getByRole('link', { name: /High severity: Bug messages for Cora: 9 in the last hour, usually 0\.4/ })).toHaveAttribute(
+    expect(within(banner).getByRole('link', { name: /High severity: Bug messages for Cora: 9 in the last hour, usually under 1/ })).toHaveAttribute(
       'href',
       '/items?anomaly=12',
     )

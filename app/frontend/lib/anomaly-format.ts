@@ -5,6 +5,14 @@ export function anomalyValue(anomaly: Pick<AnomalyProps, 'share'>, value: number
   return value >= 10 || Number.isInteger(value) ? String(Math.round(value)) : value.toFixed(1)
 }
 
+// Expected counts are averages; say them the way a person would ("usually under 1", not "usually 0.4").
+export function anomalyExpected(anomaly: Pick<AnomalyProps, 'share'>, value: number): string {
+  if (anomaly.share) return anomalyValue(anomaly, value)
+  if (value < 0.05) return 'none'
+  if (value < 1) return 'under 1'
+  return String(Math.round(value))
+}
+
 export function anomalyWindow(anomaly: Pick<AnomalyProps, 'granularity'>): string {
   switch (anomaly.granularity) {
     case 'hour':
@@ -46,14 +54,14 @@ export function anomalyTag(anomaly: Pick<AnomalyProps, 'polarity' | 'severity'>)
   }
 }
 
-// "Way more praise messages for Thesis: 12 in a day, usually 2." or "Bug messages: 9 in the last hour, usually 0.4."
+// "Way more praise messages for Thesis: 12 in a day, usually 2." or "Bug messages: 9 in the last hour, usually under 1."
 export function anomalySummary(anomaly: AnomalyProps, { withProduct = true }: { withProduct?: boolean } = {}): string {
   const where = [withProduct ? ` for ${anomaly.product.name}` : '', anomaly.source ? ` on ${anomaly.source.name}` : ''].join('')
   const subject =
     anomaly.polarity === 'positive' && anomaly.highlight
       ? `${MORE[anomaly.highlight]} ${anomaly.metric === 'volume' ? 'messages' : anomaly.label.toLowerCase()}`
       : anomaly.label
-  return `${subject}${where}: ${anomalyValue(anomaly, anomaly.actual)} ${anomalyWindow(anomaly)}, usually ${anomalyValue(anomaly, anomaly.expected)}.`
+  return `${subject}${where}: ${anomalyValue(anomaly, anomaly.actual)} ${anomalyWindow(anomaly)}, usually ${anomalyExpected(anomaly, anomaly.expected)}.`
 }
 
 export function anomalyItemsHref(anomaly: Pick<AnomalyProps, 'id'>): string {
