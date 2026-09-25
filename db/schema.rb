@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_170002) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -38,6 +38,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_160000) do
     t.string "metric", null: false
     t.integer "product_id", null: false
     t.string "severity"
+    t.datetime "slack_alerted_at"
     t.integer "source_id"
     t.string "status", default: "active", null: false
     t.datetime "updated_at", null: false
@@ -219,6 +220,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_160000) do
     t.index ["source_id"], name: "index_messages_on_source_id"
   end
 
+  create_table "overview_digests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.text "last_error"
+    t.datetime "posted_at"
+    t.string "slack_message_ts"
+    t.datetime "updated_at", null: false
+    t.index ["date"], name: "index_overview_digests_on_date", unique: true
+  end
+
   create_table "products", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
@@ -249,9 +260,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_160000) do
     t.integer "anomaly_min_count", default: 5, null: false
     t.float "anomaly_sensitivity", default: 3.0, null: false
     t.datetime "created_at", null: false
+    t.integer "digest_hour", default: 8, null: false
+    t.string "digest_time_zone", default: "America/Los_Angeles", null: false
     t.float "escalation_threshold", default: 0.8, null: false
     t.float "low_confidence_threshold", default: 0.6, null: false
     t.integer "report_back_window_minutes", default: 240, null: false
+    t.string "slack_channel_id"
     t.json "team_discord_role_ids", default: [], null: false
     t.json "team_discord_user_ids", default: [], null: false
     t.json "team_email_domains", default: ["every.to"], null: false

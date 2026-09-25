@@ -193,6 +193,14 @@ queries inside it.
   Signing Secret (Basic Information) is `SLACK_SIGNING_SECRET`.
 - Invite the bot to every public channel a Slack source selects and to each
   product's support channel (escalations and digests post there).
+- Posting only (no Slack sources) needs just `chat:write`, plus `channels:join`
+  if the bot should join public channels itself; no signing secret or event
+  subscription.
+- **Settings, Slack channel**: one channel ID gets the daily overview of all
+  products at the Settings hour and time zone (default 08:00
+  America/Los_Angeles), alerts for new high-severity bad-news anomalies, and the
+  escalations of products without a channel of their own. A product's own
+  channel still gets that product's digest and escalations.
 
 ### Discord
 

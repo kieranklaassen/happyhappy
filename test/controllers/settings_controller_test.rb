@@ -13,8 +13,31 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_inertia_props({ setting: {
       low_confidence_threshold: 0.6, escalation_threshold: 0.8, report_back_window_minutes: 240,
       anomaly_sensitivity: 3.0, anomaly_min_count: 5, anomaly_min_baseline_windows: 6, anomaly_active_days: 7,
-      team_email_domains: [ "every.to" ], team_discord_role_ids: [], team_discord_user_ids: []
+      team_email_domains: [ "every.to" ], team_discord_role_ids: [], team_discord_user_ids: [],
+      slack_channel_id: nil, digest_time_zone: "America/Los_Angeles", digest_hour: 8
     } })
+    assert_includes inertia.props[:time_zones], "America/Los_Angeles"
+    assert_includes inertia.props[:time_zones], "Europe/Amsterdam"
+  end
+
+  test "update saves the Slack channel and the daily overview time" do
+    patch settings_path, params: { setting: {
+      slack_channel_id: " C0AGB2RKA6R ", digest_time_zone: "Europe/Amsterdam", digest_hour: "9"
+    } }
+
+    assert_redirected_to settings_path
+    setting = Setting.current
+    assert_equal "C0AGB2RKA6R", setting.slack_channel_id
+    assert_equal "Europe/Amsterdam", setting.digest_time_zone
+    assert_equal 9, setting.digest_hour
+  end
+
+  test "an unknown time zone, an hour of 24, and a channel name instead of an ID are rejected" do
+    patch settings_path, params: { setting: { digest_time_zone: "Mars/Olympus", digest_hour: "24", slack_channel_id: "#customer-support" } }
+
+    follow_redirect!
+    %w[digest_time_zone digest_hour slack_channel_id].each { |field| assert inertia.props[:errors][field].present?, field }
+    assert_equal "America/Los_Angeles", Setting.current.digest_time_zone
   end
 
   test "update saves new thresholds" do

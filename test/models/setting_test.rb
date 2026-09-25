@@ -20,6 +20,22 @@ class SettingTest < ActiveSupport::TestCase
     assert_equal 1, Setting.count
   end
 
+  test "the daily overview defaults to 8:00 in Los Angeles with no Slack channel" do
+    Setting.delete_all
+    setting = Setting.current
+
+    assert_nil setting.slack_channel_id
+    assert_not setting.slack_channel?
+    assert_equal 8, setting.digest_hour
+    assert_equal ActiveSupport::TimeZone["America/Los_Angeles"], setting.digest_zone
+  end
+
+  test "a blank Slack channel is stored as none" do
+    settings(:current).update!(slack_channel_id: "  ")
+
+    assert_nil settings(:current).reload.slack_channel_id
+  end
+
   test "team lists default to the every.to domain and accept comma- or space-separated strings" do
     Setting.delete_all
     setting = Setting.current

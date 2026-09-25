@@ -39,6 +39,12 @@ class DetectedAnomaly < ApplicationRecord
     }
   end
 
+  # Bad news bad enough to interrupt the Slack channel. Only the all-sources row
+  # alerts, since each per-source row repeats the same spike.
+  def slack_alertable?
+    active? && !historical? && negative? && severity == "high" && source_id.nil?
+  end
+
   def positive?
     polarity == "positive"
   end

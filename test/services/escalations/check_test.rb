@@ -48,6 +48,32 @@ class Escalations::CheckTest < ActiveSupport::TestCase
     assert_equal newer, item.escalations.order(:created_at).last.message
   end
 
+  test "a product without its own channel escalates to the Settings channel" do
+    Setting.current.update!(slack_channel_id: "C0AGB2RKA6R")
+    item, message = classified_item(anger: 0.9, product: products(:sparkle))
+
+    assert_enqueued_jobs 1, only: PostEscalationJob do
+      item.publish_classified(message)
+    end
+    assert_equal "C0AGB2RKA6R", item.escalations.sole.slack_channel_id
+  end
+
+  test "a product's own channel wins over the Settings channel" do
+    Setting.current.update!(slack_channel_id: "C0AGB2RKA6R")
+    item, message = classified_item(anger: 0.9)
+
+    item.publish_classified(message)
+
+    assert_equal "C0CORASUPPORT", item.escalations.sole.slack_channel_id
+  end
+
+  test "with no product channel and no Settings channel nothing escalates" do
+    item, message = classified_item(anger: 0.95, product: products(:sparkle))
+
+    assert_no_enqueued_jobs(only: PostEscalationJob) { item.publish_classified(message) }
+    assert_empty item.escalations
+  end
+
   test "anger 0.79 under the default 0.8 threshold posts nothing" do
     item, message = classified_item(anger: 0.79)
 

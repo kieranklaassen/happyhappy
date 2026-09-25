@@ -3,7 +3,41 @@ require "test_helper"
 class DigestDispatchJobTest < ActiveJob::TestCase
   include SlackStubHelper
 
-  setup { DailyDigest.delete_all }
+  setup do
+    DailyDigest.delete_all
+    OverviewDigest.delete_all
+  end
+
+  test "the overview of all products is claimed once a day at the Settings hour in the Settings time zone" do
+    Setting.current.update!(slack_channel_id: "C0AGB2RKA6R", digest_time_zone: "America/Los_Angeles", digest_hour: 8)
+
+    travel_to Time.utc(2030, 1, 15, 15, 59) # 07:59 in Los Angeles
+    assert_no_enqueued_jobs(only: PostOverviewDigestJob) { DigestDispatchJob.perform_now }
+    assert_empty OverviewDigest.all
+
+    travel_to Time.utc(2030, 1, 15, 16, 0) # 08:00 in Los Angeles
+    assert_enqueued_jobs(1, only: PostOverviewDigestJob) { DigestDispatchJob.perform_now }
+    assert_equal Date.new(2030, 1, 15), OverviewDigest.sole.date
+
+    travel_to Time.utc(2030, 1, 15, 17, 0)
+    assert_no_enqueued_jobs(only: PostOverviewDigestJob) { DigestDispatchJob.perform_now }
+  end
+
+  test "the overview date follows the Settings time zone, not the server's" do
+    Setting.current.update!(slack_channel_id: "C0AGB2RKA6R", digest_time_zone: "America/Los_Angeles", digest_hour: 8)
+    travel_to Time.utc(2030, 1, 16, 7, 0) # still Jan 15 at 23:00 in Los Angeles
+
+    DigestDispatchJob.perform_now
+
+    assert_equal Date.new(2030, 1, 15), OverviewDigest.sole.date
+  end
+
+  test "without a Settings channel there is no overview" do
+    travel_to Time.utc(2030, 1, 15, 20, 0)
+
+    assert_no_enqueued_jobs(only: PostOverviewDigestJob) { DigestDispatchJob.perform_now }
+    assert_empty OverviewDigest.all
+  end
 
   test "at its digest hour a product with a Slack channel gets today's digest" do
     travel_to Time.zone.local(2030, 1, 15, 9, 0)
