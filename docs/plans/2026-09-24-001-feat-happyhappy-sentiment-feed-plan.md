@@ -456,6 +456,7 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 | U20 | Anomaly detection | `app/services/anomalies/`, `app/models/detected_anomaly.rb`, `app/jobs/anomaly_detection_job.rb` | U10, U12, U17, U18 |
 | U21 | WebMCP for signed-in users | `app/tools/tool_registry.rb`, `app/controllers/webmcp_tools_controller.rb`, `app/frontend/lib/webmcp_provider.tsx` | U12, U20 |
 | U23 | Stack upgrade to compound-stack-rails 0.8.0 | `.ruby-version`, `Dockerfile`, `Gemfile`, `package.json`, `.template-manifest.yml` | U21, U22 |
+| U24 | Anomaly polarity | `app/services/anomalies/polarity.rb`, `app/frontend/components/mood/anomaly-callout.tsx` | U17, U20, U21 |
 
 ### U1. Foundation: gems, schema, models, ingest core
 
@@ -1234,6 +1235,29 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 **Approach:** apply each 0.7.0 changelog entry in order with its own commit and verification, then bring the `mcp` pin in line with the 0.8.0 module and record the applied state in the manifest.
 
 **Verification:** All gates pass on Ruby 4.0.7 and Node 24, and the production image builds (or, without Docker, the base image tag exists and a deployment-mode `bundle install` works on Ruby 4).
+
+---
+
+### U24. Anomaly polarity
+
+**Goal:** A happy spike (more praise, more beaming customers) reads as good news everywhere anomalies appear, never as a storm or a warning.
+
+**Requirements:** Kieran's request: "In happyhappy we scan anomalies, but happy ones too, and that's a bit weird. Optimize the messages a bit: if it's positive, it's probably not a storm, right?"
+
+**Dependencies:** U20 (anomalies), U21 (`list_anomalies` tool), U17 (webhook payload).
+
+**Decisions:**
+- `decided (brief)`: every anomaly has a polarity derived from its metric and dimension: the praise category and beaming, content, or relieved mood shares are positive; complaint share, mean anger, grumpy or furious mood shares, and the bug, billing, and cancellation categories are negative; plain volume and other categories take the sentiment mix of their driving items (a majority of praise is positive, a majority of complaints negative, else neutral).
+- `decided (brief)`: severity is for negative anomalies only; positive ones get a highlight (notable, big, huge) instead. Payloads keep `severity` (null unless negative) and add `polarity` and `highlight`.
+- `decided (brief)`: the dashboard callout, feed banner, product overview timeline, MCP `list_anomalies`, and the `anomaly.detected` webhook all carry polarity; positive callouts are sunny or a rainbow with celebratory copy, negative ones keep storm and showers with severity wording, neutral ones are breezy ("Busier than usual").
+- `assumed default`: polarity, severity, and highlight are stored columns (polarity is filterable in `list_anomalies`), recomputed whenever detection extends a row, and backfilled for existing rows in the migration. Neutral anomalies carry neither severity nor highlight. Mood shares for other moods (meh or unknown) are neutral.
+- `assumed default`: highlight uses the same z-score bands as severity (1, 1.5, and 2 times the sensitivity).
+
+**Files:**
+- Create: `db/migrate/*_add_polarity_to_anomalies.rb`, `app/services/anomalies/polarity.rb`, `test/services/anomalies/polarity_test.rb`
+- Modify: `app/models/detected_anomaly.rb`, `app/services/anomalies/detect.rb`, `app/controllers/home_controller.rb`, `app/tools/list_anomalies_tool.rb`, `app/frontend/{types/anomalies.ts,lib/anomaly-format.ts,components/mood/anomaly-callout.tsx,components/anomaly-timeline.tsx,pages/items/index.tsx}`, `lib/tasks/mood_demo.rake`
+
+**Verification:** All gates pass, and a dashboard screenshot from `bin/rails mood:demo` shows one positive and one negative callout.
 
 ---
 
