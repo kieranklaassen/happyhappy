@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_041000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_045002) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -89,7 +89,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_041000) do
   create_table "geneva_drive_step_executions", force: :cascade do |t|
     t.datetime "canceled_at"
     t.datetime "completed_at"
+    t.bigint "continues_from_id"
     t.datetime "created_at", null: false
+    t.json "cursor"
     t.text "error_backtrace"
     t.string "error_class_name"
     t.text "error_message"
@@ -105,8 +107,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_041000) do
     t.string "step_name", null: false
     t.datetime "updated_at", null: false
     t.integer "workflow_id", null: false
+    t.index ["continues_from_id"], name: "index_geneva_drive_step_executions_on_continues_from_id"
     t.index ["finished_at"], name: "index_geneva_drive_step_executions_on_finished_at"
     t.index ["scheduled_for"], name: "index_geneva_drive_step_executions_on_scheduled_for"
+    t.index ["started_at"], name: "index_geneva_drive_step_executions_in_progress_started_at", where: "state = 'in_progress'"
     t.index ["state", "scheduled_for"], name: "index_geneva_drive_step_executions_scheduled"
     t.index ["state"], name: "index_geneva_drive_step_executions_on_state"
     t.index ["workflow_id", "created_at"], name: "idx_on_workflow_id_created_at_af16a14fb2"
@@ -121,6 +125,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_041000) do
     t.string "current_step_name"
     t.integer "hero_id"
     t.string "hero_type"
+    t.text "metadata"
     t.string "next_step_name"
     t.datetime "started_at"
     t.string "state", default: "ready", null: false

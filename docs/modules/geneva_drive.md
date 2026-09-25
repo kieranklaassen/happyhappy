@@ -2,11 +2,11 @@
 
 [Geneva Drive](https://github.com/julik/geneva_drive) provides durable,
 resumable, multi-step Rails workflows backed by Active Record and Active Job.
-This stack ships the open-source 0.5.0 engine without routes or an admin UI.
+This stack ships the open-source 0.6.0 engine without routes or an admin UI.
 
 ## What this module is
 
-- `geneva_drive` 0.5.0 from RubyGems, constrained to the 0.5 patch line.
+- `geneva_drive` 0.6.0 from RubyGems, constrained to the 0.6 patch line.
 - Two primary-database tables that persist workflow state and every step
   attempt, including failure details.
 - Step execution through the existing Active Job/Solid Queue `default` queue.
@@ -22,12 +22,13 @@ primary database, a worker consumes `default` (or `*`), and
 
 ## Files (the module boundary)
 
-- `Gemfile` and `Gemfile.lock` — `gem "geneva_drive", "~> 0.5.0"`, locked at
-  the reviewed 0.5.0 release.
+- `Gemfile` and `Gemfile.lock` — `gem "geneva_drive", "~> 0.6.0"`, locked at
+  the reviewed 0.6.0 release.
 - `config/initializers/geneva_drive.rb` — released retention, recovery, batch,
   and test enqueue defaults.
-- `db/migrate/*geneva_drive*.rb` — all six migrations emitted by the 0.5.0
-  installer, with the nullable-hero migration temporarily removing and restoring
+- `db/migrate/*geneva_drive*.rb` — all nine migrations emitted by the 0.6.0
+  installer (0.6.0 added workflow `metadata`, the in-progress `started_at`
+  recovery index, and the resumable-step `cursor` / `continues_from_id` columns), with the nullable-hero migration temporarily removing and restoring
   SQLite's inbound foreign key so the parent-table swap preserves step history.
 - `db/schema.rb` — `geneva_drive_workflows` and
   `geneva_drive_step_executions`, their indexes, and foreign key.
@@ -48,10 +49,10 @@ instructions below (or the 0.4.0 changelog entry), verify them, and only then ad
 `geneva_drive: "0.4.0"` to the app's `.template-manifest.yml`.
 
 1. Adopt the `jobs` module first if the Solid Queue preflight above fails.
-2. Add `gem "geneva_drive", "~> 0.5.0"` to `Gemfile` and run
-   `bundle install`. Confirm `bundle info geneva_drive` reports 0.5.0.
+2. Add `gem "geneva_drive", "~> 0.6.0"` to `Gemfile` and run
+   `bundle install`. Confirm `bundle info geneva_drive` reports 0.6.0.
 3. Run `bin/rails generate geneva_drive:install`. Keep the generated
-   initializer and all six migrations. In the initializer comment, use the real
+   initializer and all nine migrations. In the initializer comment, use the real
    setting name `stuck_in_progress_threshold` if the generator still writes the
    older `stuck_executing_threshold` name.
 4. Review the migrations and back up populated databases. In
@@ -165,15 +166,14 @@ until they are resumed or canceled. Treat the tables and database backups as
 sensitive diagnostic data. Never put secrets, tokens, or unnecessary personal
 data in exception messages.
 
-Geneva Drive 0.5.0 does not include the recovery-scan index currently present
-only on upstream `main`. Monitor housekeeping duration against its 30-minute
-interval and monitor workflow/step-execution row growth. If the scan approaches
-the interval or the backlog grows, move to the next tagged release that contains
-the index; do not cherry-pick unreleased migrations from `main`.
+Geneva Drive 0.6.0 ships the partial `started_at` index that keeps the
+in-progress recovery scan fast. Still monitor housekeeping duration against its
+30-minute interval and workflow/step-execution row growth, and do not
+cherry-pick unreleased migrations from upstream `main`.
 
 ## Upgrade Geneva Drive
 
-Treat every version change, including a 0.5 patch release, as a schema-bearing
+Treat every version change, including a 0.6 patch release, as a schema-bearing
 upgrade:
 
 1. Read the upstream changelog and update only Geneva Drive in the bundle.
@@ -196,12 +196,12 @@ The open-source gem is licensed under LGPLv3; the author separately offers a
 commercial license. A proprietary downstream app must confirm which licensing
 basis applies before distribution. This module records the choice but does not
 make a legal conclusion for an adopter. See the upstream
-[LGPLv3 text](https://github.com/julik/geneva_drive/blob/v0.5.0/LICENSE-LGPL.txt)
-and [commercial terms](https://github.com/julik/geneva_drive/blob/v0.5.0/LICENSE-COMMERCIAL.txt).
+[LGPLv3 text](https://github.com/julik/geneva_drive/blob/v0.6.0/LICENSE-LGPL.txt)
+and [commercial terms](https://github.com/julik/geneva_drive/blob/v0.6.0/LICENSE-COMMERCIAL.txt).
 
 ## Verify adoption
 
-- `bundle info geneva_drive` reports 0.5.0.
+- `bundle info geneva_drive` reports 0.6.0.
 - `RAILS_ENV=test bin/rails db:prepare` builds the primary and queue databases.
 - `bin/rails test test/workflows/geneva_drive_smoke_test.rb test/jobs/recurring_schedule_test.rb`
   passes.
