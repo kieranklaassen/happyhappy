@@ -1,8 +1,10 @@
 import { Head, Link } from '@inertiajs/react'
+import AnomalyTimeline from '../../components/anomaly-timeline'
 import AppNav from '../../components/app-nav'
 import ItemRow from '../../components/item-row'
 import SentimentChart, { type DayCounts } from '../../components/sentiment-chart'
 import { SENTIMENTS, SENTIMENT_COLORS, sentimentLabel } from '../../lib/feed-format'
+import type { AnomalyProps } from '../../types/anomalies'
 import type { ItemRowData, ProductOption } from '../../types/items'
 
 export interface ProductOverviewProps {
@@ -12,6 +14,7 @@ export interface ProductOverviewProps {
   notable_complaints: ItemRowData[]
   notable_praise: ItemRowData[]
   products: ProductOption[]
+  anomalies: AnomalyProps[]
 }
 
 function Notable({ id, title, items, empty }: { id: string; title: string; items: ItemRowData[]; empty: string }) {
@@ -40,6 +43,7 @@ export default function ProductOverview({
   notable_complaints,
   notable_praise,
   products,
+  anomalies,
 }: ProductOverviewProps) {
   return (
     <>
@@ -96,6 +100,13 @@ export default function ProductOverview({
           ) : (
             <SentimentChart days={days} />
           )}
+        </section>
+
+        <section aria-labelledby="anomalies-heading" className="flex flex-col gap-4 rounded border border-gray-200 bg-white p-4">
+          <h2 id="anomalies-heading" className="text-lg font-semibold text-gray-900">
+            Unusual activity
+          </h2>
+          <AnomalyTimeline anomalies={anomalies} />
         </section>
 
         <div className="grid gap-6 lg:grid-cols-2">

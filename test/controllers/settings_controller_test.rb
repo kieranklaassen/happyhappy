@@ -11,7 +11,8 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_inertia_component "settings/edit"
     assert_inertia_props({ setting: {
-      low_confidence_threshold: 0.6, escalation_threshold: 0.8, report_back_window_minutes: 240
+      low_confidence_threshold: 0.6, escalation_threshold: 0.8, report_back_window_minutes: 240,
+      anomaly_sensitivity: 3.0, anomaly_min_count: 5, anomaly_min_baseline_windows: 6, anomaly_active_days: 7
     } })
   end
 
@@ -42,5 +43,17 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert inertia.props[:errors]["low_confidence_threshold"].present?
     assert inertia.props[:errors]["report_back_window_minutes"].present?
+  end
+
+  test "update saves anomaly thresholds and rejects a zero minimum count" do
+    patch settings_path, params: { setting: { anomaly_sensitivity: "2.5", anomaly_active_days: "3" } }
+
+    assert_equal 2.5, Setting.current.anomaly_sensitivity
+    assert_equal 3, Setting.current.anomaly_active_days
+
+    patch settings_path, params: { setting: { anomaly_min_count: "0" } }
+    follow_redirect!
+    assert inertia.props[:errors]["anomaly_min_count"].present?
+    assert_equal 5, Setting.current.anomaly_min_count
   end
 end

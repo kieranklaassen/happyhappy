@@ -8,14 +8,55 @@ interface SettingsEditProps {
     low_confidence_threshold: number
     escalation_threshold: number
     report_back_window_minutes: number
+    anomaly_sensitivity: number
+    anomaly_min_count: number
+    anomaly_min_baseline_windows: number
+    anomaly_active_days: number
   }
 }
+
+type AnomalyField = 'anomaly_sensitivity' | 'anomaly_min_count' | 'anomaly_min_baseline_windows' | 'anomaly_active_days'
+
+const ANOMALY_FIELDS: { name: AnomalyField; label: string; hint: string; step: number; min: number }[] = [
+  {
+    name: 'anomaly_sensitivity',
+    label: 'Anomaly sensitivity',
+    hint: 'How many standard deviations above normal a window must be to count as an anomaly. Lower finds more.',
+    step: 0.1,
+    min: 0.1,
+  },
+  {
+    name: 'anomaly_min_count',
+    label: 'Minimum messages per window',
+    hint: 'Windows with fewer messages (or customers, for moods) are ignored, so a handful of messages never alerts.',
+    step: 1,
+    min: 1,
+  },
+  {
+    name: 'anomaly_min_baseline_windows',
+    label: 'Minimum baseline windows',
+    hint: 'How many earlier windows with enough data a series needs before it can be judged.',
+    step: 1,
+    min: 1,
+  },
+  {
+    name: 'anomaly_active_days',
+    label: 'Active window (days)',
+    hint: 'Anomalies older than this, such as spikes in imported history, are kept as history and never alert.',
+    step: 1,
+    min: 1,
+  },
+]
 
 export default function SettingsEdit({ setting }: SettingsEditProps) {
   const form = useForm({
     low_confidence_threshold: setting.low_confidence_threshold.toString(),
     escalation_threshold: setting.escalation_threshold.toString(),
     report_back_window_minutes: setting.report_back_window_minutes.toString(),
+    anomaly_sensitivity: setting.anomaly_sensitivity.toString(),
+    anomaly_min_count: setting.anomaly_min_count.toString(),
+    anomaly_min_baseline_windows: setting.anomaly_min_baseline_windows.toString(),
+    anomaly_active_days: setting.anomaly_active_days.toString(),
   })
 
   function submit(event: FormEvent) {
@@ -88,6 +129,21 @@ export default function SettingsEdit({ setting }: SettingsEditProps) {
               className={inputClass}
             />
           </Field>
+
+          {ANOMALY_FIELDS.map((field) => (
+            <Field key={field.name} label={field.label} htmlFor={`setting_${field.name}`} error={form.errors[field.name]} hint={field.hint}>
+              <input
+                id={`setting_${field.name}`}
+                type="number"
+                min={field.min}
+                step={field.step}
+                required
+                value={form.data[field.name]}
+                onChange={(e) => form.setData(field.name, e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+          ))}
 
           <div>
             <button type="submit" disabled={form.processing || !form.isDirty} className={primaryButtonClass}>

@@ -34,6 +34,16 @@ production: &recurring
     class: "WebhookDeliveryPruneJob"
     schedule: every day at 4:20am
 
+  # Anomaly detection (U20): trailing hourly windows every 15 minutes, calendar days once a day.
+  anomaly_detection_hourly:
+    class: "AnomalyDetectionJob"
+    args: [ "hour" ]
+    schedule: "*/15 * * * *"
+  anomaly_detection_daily:
+    class: "AnomalyDetectionJob"
+    args: [ "day" ]
+    schedule: every day at 0:10am
+
 development:
   <<: *recurring
 

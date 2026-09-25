@@ -6,6 +6,7 @@ class Product < ApplicationRecord
     inverse_of: :default_product, dependent: :nullify
   has_many :escalations, dependent: :restrict_with_error
   has_many :daily_digests, dependent: :restrict_with_error
+  has_many :anomalies, class_name: "DetectedAnomaly", dependent: :delete_all
 
   normalizes :name, with: ->(name) { name.strip }
   normalizes :slug, with: ->(slug) { slug.strip.parameterize }

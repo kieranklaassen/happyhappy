@@ -1,5 +1,5 @@
 class WebhookEndpoint < ApplicationRecord
-  EVENTS = %w[item.arrived item.classified item.status_changed item.escalated agent.reported].freeze
+  EVENTS = %w[item.arrived item.classified item.status_changed item.escalated agent.reported anomaly.detected].freeze
 
   encrypts :secret
 
@@ -39,6 +39,12 @@ class WebhookEndpoint < ApplicationRecord
     (product_ids.empty? || product_ids.include?(item.product_id)) &&
       (category_ids.empty? || category_ids.include?(item.category_id)) &&
       (sentiments.empty? || sentiments.include?(item.sentiment))
+  end
+
+  # Anomalies have a product and sometimes a category, but no sentiment, so sentiment filters do not apply.
+  def matches_anomaly?(anomaly)
+    (product_ids.empty? || product_ids.include?(anomaly.product_id)) &&
+      (category_ids.empty? || (anomaly.category.present? && category_ids.include?(anomaly.category.id)))
   end
 
   private
