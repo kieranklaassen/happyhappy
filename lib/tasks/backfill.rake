@@ -13,7 +13,9 @@ namespace :backfill do
 
   desc "Import customer messages from Intercom conversations updated in the last N days (default 90)"
   task :intercom, [ :days ] => :environment do |_task, args|
-    backfill = Backfill::Intercom.new(since: days_ago.call(args))
+    $stdout.sync = true
+    backfill = Backfill::Intercom.new(since: days_ago.call(args),
+      progress: ->(count) { puts "conversations scanned so far: #{count}" })
     stats = backfill.call
     puts "conversations scanned: #{backfill.conversations}"
     report.call(stats)
