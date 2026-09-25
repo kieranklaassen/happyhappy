@@ -22,7 +22,8 @@ module AnomalyHelper
     now = Time.current
     DetectedAnomaly.create!({
       product: products(:cora), metric: "category_volume", dimension: categories(:bug).id.to_s, granularity: "hour",
-      window_start: now - 1.hour, window_end: now, expected: 0.4, actual: 9, z_score: 12, severity: "high",
+      window_start: now - 1.hour, window_end: now, expected: 0.4, actual: 9, z_score: 12,
+      polarity: "negative", severity: "high",
       item_ids: [ items(:angry_slack).id ], first_seen_at: now, last_seen_at: now
     }.merge(attributes))
   end

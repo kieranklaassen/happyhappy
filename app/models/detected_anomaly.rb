@@ -6,6 +6,7 @@ class DetectedAnomaly < ApplicationRecord
   METRICS = %w[volume complaint_share mean_anger mood_share category_volume].freeze
   GRANULARITIES = { "hour" => 1.hour, "day" => 1.day }.freeze
   SEVERITIES = %w[low medium high].freeze
+  HIGHLIGHTS = %w[notable big huge].freeze
   ITEM_LIMIT = 50
   WEBHOOK_EVENT = "anomaly.detected".freeze
 
@@ -16,10 +17,40 @@ class DetectedAnomaly < ApplicationRecord
 
   validates :metric, inclusion: { in: METRICS }
   validates :granularity, inclusion: { in: GRANULARITIES.keys }
-  validates :severity, inclusion: { in: SEVERITIES }
+  validates :polarity, inclusion: { in: Anomalies::Polarity::ALL }
+  validates :severity, inclusion: { in: SEVERITIES }, if: :negative?
+  validates :severity, absence: true, unless: :negative?
+  validates :highlight, inclusion: { in: HIGHLIGHTS }, if: :positive?
+  validates :highlight, absence: true, unless: :positive?
   validates :window_start, :window_end, :first_seen_at, :last_seen_at, presence: true
 
   scope :recent_first, -> { order(window_end: :desc, id: :desc) }
+
+  # Severity is for bad news only; good news gets a highlight at the same strength, neutral neither.
+  #
+  #   DetectedAnomaly.grade(metric: "mood_share", dimension: "beaming", item_ids: [], level: 1)
+  #   # => { polarity: "positive", severity: nil, highlight: "big" }
+  def self.grade(metric:, dimension:, item_ids:, level:)
+    polarity = Anomalies::Polarity.for(metric: metric, dimension: dimension, item_ids: item_ids)
+    {
+      polarity: polarity,
+      severity: (SEVERITIES.fetch(level) if polarity == "negative"),
+      highlight: (HIGHLIGHTS.fetch(level) if polarity == "positive")
+    }
+  end
+
+  def positive?
+    polarity == "positive"
+  end
+
+  def negative?
+    polarity == "negative"
+  end
+
+  # 0 to 2, from severity or highlight; neutral anomalies have no strength of their own.
+  def strength
+    SEVERITIES.index(severity) || HIGHLIGHTS.index(highlight) || 0
+  end
 
   def category
     Category.find_by(id: dimension) if metric == "category_volume"
@@ -58,7 +89,9 @@ class DetectedAnomaly < ApplicationRecord
       actual: actual.round(3),
       share: share?,
       z_score: z_score.round(2),
+      polarity: polarity,
       severity: severity,
+      highlight: highlight,
       status: status,
       historical: historical,
       item_ids: item_ids,

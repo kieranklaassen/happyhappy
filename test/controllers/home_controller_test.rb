@@ -59,4 +59,18 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "cora" ], inertia.props[:anomalies].keys
     assert_equal [ anomaly.id ], inertia.props[:anomalies]["cora"].map { |row| row["id"] }
   end
+
+  test "bad news leads the callout, then stronger good news, each with its polarity" do
+    sign_in_as users(:one)
+    notable = create_anomaly!(metric: "mood_share", dimension: "content", polarity: "positive", severity: nil, highlight: "notable")
+    huge = create_anomaly!(dimension: categories(:praise).id.to_s, polarity: "positive", severity: nil, highlight: "huge")
+
+    get root_path
+    assert_equal [ huge.id, notable.id ], inertia.props[:anomalies]["cora"].map { |row| row["id"] }
+    assert_equal [ "positive", nil ], inertia.props[:anomalies]["cora"].first.values_at("polarity", "severity")
+
+    storm = create_anomaly!(severity: "low")
+    get root_path
+    assert_equal [ storm.id, huge.id ], inertia.props[:anomalies]["cora"].map { |row| row["id"] }
+  end
 end

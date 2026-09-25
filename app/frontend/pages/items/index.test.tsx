@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { anomaly } from '../../test/anomaly-fixture'
+import { anomaly, goodNews } from '../../test/anomaly-fixture'
 import type { ItemRowData } from '../../types/items'
 import ItemsIndex, { type FeedProps, toQuery } from './index'
 
@@ -157,10 +157,19 @@ describe('Feed page', () => {
     const banner = screen.getByRole('region', { name: 'Active anomalies' })
     expect(banner).toHaveTextContent('1 anomaly is active')
     expect(within(banner).getByRole('link', { name: 'Show their items' })).toHaveAttribute('href', '/items?anomaly=active')
-    expect(within(banner).getByRole('link', { name: /Bug messages for Cora: 9 in the last hour, usually 0\.4/ })).toHaveAttribute(
+    expect(within(banner).getByRole('link', { name: /High severity: Bug messages for Cora: 9 in the last hour, usually under 1/ })).toHaveAttribute(
       'href',
       '/items?anomaly=12',
     )
+  })
+
+  it('reads good news in the banner as good news', () => {
+    render(<ItemsIndex {...props({ anomalies: [goodNews()] })} />)
+
+    const banner = screen.getByRole('region', { name: 'Active anomalies' })
+    expect(banner).toHaveTextContent('Good news: Way more praise messages for Thesis: 12 in a day, usually 2.')
+    expect(banner).not.toHaveTextContent(/severity|storm|warning/i)
+    expect(banner).toHaveClass('bg-green-50')
   })
 
   it('filters to items in an active anomaly and explains the filter', () => {
@@ -171,7 +180,7 @@ describe('Feed page', () => {
     unmount()
 
     render(<ItemsIndex {...props({ anomalies: [anomaly()], filters: { anomaly: '12', relevance: 'relevant' } })} />)
-    expect(screen.getByRole('status')).toHaveTextContent('Showing items behind: Bug messages for Cora')
+    expect(screen.getByRole('status')).toHaveTextContent('Showing items behind: High severity: Bug messages for Cora')
     expect(screen.getByLabelText('In an active anomaly')).toBeChecked()
   })
 

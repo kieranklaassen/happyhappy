@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { anomaly } from '../../test/anomaly-fixture'
+import { anomaly, goodNews } from '../../test/anomaly-fixture'
 import ProductOverview, { type ProductOverviewProps } from './overview'
 
 vi.mock('@inertiajs/react', () => ({
@@ -87,5 +87,13 @@ describe('Product overview page', () => {
     expect(screen.getByText('History')).toBeInTheDocument()
     expect(screen.getAllByText(/9 against an expected 0\.4 per hour/)).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: '2 items' })[0]).toHaveAttribute('href', '/items?anomaly=12')
+    expect(screen.getAllByText('High severity')).toHaveLength(2)
+  })
+
+  it('tags good news on the timeline without a severity', () => {
+    render(<ProductOverview {...props({ anomalies: [goodNews()] })} />)
+    expect(screen.getByText('Good news')).toBeInTheDocument()
+    expect(screen.queryByText(/severity/)).not.toBeInTheDocument()
+    expect(screen.getByText('Active')).toHaveClass('bg-green-50')
   })
 })

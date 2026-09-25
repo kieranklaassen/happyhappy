@@ -9,14 +9,17 @@ class ListAnomaliesTool < ApplicationTool
   description <<~TEXT.squish
     List anomalies happyhappy detected in product series (message volume, complaint share, mean anger,
     share of customers in each mood, and per-category volume), most recent window first. Each carries
-    the expected and actual value, severity, status, and the ids of the items that drove it; pass those
-    to get_item. Defaults to active anomalies.
+    the expected and actual value, status, and the ids of the items that drove it; pass those to get_item.
+    Polarity says whether it is good news (positive, with a highlight of notable, big, or huge), bad news
+    (negative, with a severity of low, medium, or high), or neutral (neither); severity is null unless
+    negative. Defaults to active anomalies.
   TEXT
   input_schema(
     properties: {
       product: { type: "string", description: "Product id or slug." },
       status: { type: "string", enum: STATUSES, description: "Defaults to active." },
       granularity: { type: "string", enum: DetectedAnomaly::GRANULARITIES.keys },
+      polarity: { type: "string", enum: Anomalies::Polarity::ALL },
       limit: { type: "integer", minimum: 1, maximum: MAX_LIMIT, description: "Defaults to #{DEFAULT_LIMIT}." }
     }
   )
@@ -29,6 +32,7 @@ class ListAnomaliesTool < ApplicationTool
     scope = DetectedAnomaly.includes(:product, :source).recent_first
     scope = scope.where(status: status) unless status == "all"
     scope = scope.where(granularity: arguments[:granularity]) if arguments[:granularity].present?
+    scope = scope.where(polarity: arguments[:polarity]) if arguments[:polarity].present?
     scope = scope.where(product: product) if arguments[:product].present?
 
     { anomalies: scope.limit(arguments.fetch(:limit, DEFAULT_LIMIT).to_i.clamp(1, MAX_LIMIT)).map(&:to_props) }

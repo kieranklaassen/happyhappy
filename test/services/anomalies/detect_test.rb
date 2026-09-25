@@ -40,7 +40,9 @@ class Anomalies::DetectTest < ActiveSupport::TestCase
     assert_equal [ @now - 1.hour, @now ], [ anomaly.window_start, anomaly.window_end ]
     assert_in_delta 0.0, anomaly.expected
     assert_in_delta 8.0, anomaly.actual
+    assert_equal "negative", anomaly.polarity
     assert_equal "high", anomaly.severity
+    assert_nil anomaly.highlight
     assert_equal 8, anomaly.item_ids.size
     assert_equal @now, anomaly.first_seen_at
     assert_equal 1, bug_anomalies(source: sources(:slack_community)).count
@@ -162,7 +164,26 @@ class Anomalies::DetectTest < ActiveSupport::TestCase
     assert_equal bug_anomalies.sole.id, delivery.payload.dig("anomaly", "id")
     assert_match "/items?anomaly=#{bug_anomalies.sole.id}", delivery.payload.dig("anomaly", "url")
     assert_equal 8.0, delivery.payload.dig("anomaly", "actual")
+    assert_equal "negative", delivery.payload.dig("anomaly", "polarity")
+    assert_equal "high", delivery.payload.dig("anomaly", "severity")
+    assert_nil delivery.payload.dig("anomaly", "highlight")
     assert_enqueued_jobs WebhookDelivery.count, only: WebhookDeliveryJob
+  end
+
+  test "a burst of praise is good news: a highlight, no severity, and polarity in the webhook" do
+    hourly_baseline!
+    endpoint = create_webhook_endpoint(events: [ DetectedAnomaly::WEBHOOK_EVENT ])
+    8.times { |index| customer_message!(at: @now - 1.hour + (index + 1).minutes, sentiment: "praise", anger: 0.0, category: categories(:praise)) }
+
+    detect
+
+    praise = DetectedAnomaly.find_by!(product: products(:cora), source: nil, metric: "category_volume", dimension: categories(:praise).id.to_s)
+    assert_equal [ "positive", nil, "huge" ], [ praise.polarity, praise.severity, praise.highlight ]
+    volume = DetectedAnomaly.find_by!(product: products(:cora), source: nil, metric: "volume")
+    assert_equal "positive", volume.polarity
+    payload = endpoint.deliveries.find_by!("json_extract(payload, '$.anomaly.id') = ?", praise.id).payload["anomaly"]
+    assert_equal({ "polarity" => "positive", "severity" => nil, "highlight" => "huge" }, payload.slice("polarity", "severity", "highlight"))
+    assert payload.key?("severity")
   end
 
   test "a spike that already ended within the scanned hours is recorded without a webhook" do

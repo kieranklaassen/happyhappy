@@ -1,5 +1,21 @@
 import type { AnomalyProps } from '../types/anomalies'
 
+export function goodNews(overrides: Partial<AnomalyProps> = {}): AnomalyProps {
+  return anomaly({
+    id: 21,
+    product: { id: 5, slug: 'thesis', name: 'Thesis' },
+    dimension: '5',
+    label: 'Praise messages',
+    granularity: 'day',
+    expected: 2,
+    actual: 12,
+    polarity: 'positive',
+    severity: null,
+    highlight: 'big',
+    ...overrides,
+  })
+}
+
 export function anomaly(overrides: Partial<AnomalyProps> = {}): AnomalyProps {
   return {
     id: 12,
@@ -15,7 +31,9 @@ export function anomaly(overrides: Partial<AnomalyProps> = {}): AnomalyProps {
     actual: 9,
     share: false,
     z_score: 12,
+    polarity: 'negative',
     severity: 'high',
+    highlight: null,
     status: 'active',
     historical: false,
     item_ids: [7, 8],

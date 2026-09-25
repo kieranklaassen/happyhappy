@@ -1,13 +1,19 @@
 import { Link } from '@inertiajs/react'
-import { anomalyItemsHref, anomalyValue, isGoodNews } from '../lib/anomaly-format'
+import { anomalyItemsHref, anomalyTag, anomalyValue } from '../lib/anomaly-format'
 import { formatDateTime } from '../lib/format'
 import type { AnomalyProps } from '../types/anomalies'
+
+const ACTIVE_CLASS: Record<AnomalyProps['polarity'], string> = {
+  positive: 'bg-green-50 text-green-700',
+  negative: 'bg-red-50 text-red-700',
+  neutral: 'bg-sky-50 text-sky-700',
+}
 
 function statusLabel(anomaly: AnomalyProps): { label: string; className: string } {
   if (anomaly.historical) return { label: 'History', className: 'bg-gray-100 text-gray-600' }
   switch (anomaly.status) {
     case 'active':
-      return { label: 'Active', className: 'bg-red-50 text-red-700' }
+      return { label: 'Active', className: ACTIVE_CLASS[anomaly.polarity] }
     case 'ended':
       return { label: 'Ended', className: 'bg-gray-100 text-gray-700' }
     default: {
@@ -18,16 +24,15 @@ function statusLabel(anomaly: AnomalyProps): { label: string; className: string 
 }
 
 function dotClass(anomaly: AnomalyProps): string {
-  if (isGoodNews(anomaly)) return 'bg-amber-300'
-  switch (anomaly.severity) {
-    case 'high':
-      return 'bg-red-500'
-    case 'medium':
-      return 'bg-orange-400'
-    case 'low':
-      return 'bg-yellow-300'
+  switch (anomaly.polarity) {
+    case 'positive':
+      return 'bg-green-400'
+    case 'neutral':
+      return 'bg-sky-300'
+    case 'negative':
+      return anomaly.severity === 'high' ? 'bg-red-500' : anomaly.severity === 'medium' ? 'bg-orange-400' : 'bg-yellow-300'
     default: {
-      const unhandled: never = anomaly.severity
+      const unhandled: never = anomaly.polarity
       return unhandled
     }
   }
@@ -49,7 +54,7 @@ export default function AnomalyTimeline({ anomalies }: { anomalies: AnomalyProps
               <span className="font-medium text-gray-900">{anomaly.label}</span>
               {anomaly.source && <span className="text-gray-500">on {anomaly.source.name}</span>}
               <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${status.className}`}>{status.label}</span>
-              <span className="text-xs text-gray-500">{anomaly.severity} severity</span>
+              <span className="text-xs text-gray-500">{anomalyTag(anomaly)}</span>
             </p>
             <p className="mt-0.5 text-sm text-gray-700">
               {anomalyValue(anomaly, anomaly.actual)} against an expected {anomalyValue(anomaly, anomaly.expected)} per{' '}
