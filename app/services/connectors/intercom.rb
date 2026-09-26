@@ -46,13 +46,17 @@ module Connectors
     end
 
     # Returns :closed when this closed an unresolved item, :state when only the
-    # state changed, or nil when nothing did.
+    # state changed, or nil when nothing did. Closing releases the agent holding
+    # the item (R25), the same way a person handling it does.
     def self.apply_state(item, state, backfill: false)
       item.with_lock do
         changed = item.external_state != state
         item.update!(external_state: state) if changed
         if state == "closed" && Item::UNRESOLVED_STATUSES.include?(item.status)
-          item.change_status!(:handled, reason: "closed_in_intercom", **(backfill ? { backfill: true } : {}))
+          agent = item.claimed_by_agent
+          item.update!(claimed_by_agent: nil, claimed_at: nil, overdue: false) if agent
+          item.change_status!(:handled, reason: "closed_in_intercom",
+            **{ released_agent: agent&.name }.compact, **(backfill ? { backfill: true } : {}))
           next :closed
         end
         :state if changed

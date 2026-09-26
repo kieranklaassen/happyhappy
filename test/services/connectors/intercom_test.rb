@@ -178,6 +178,20 @@ class Connectors::IntercomTest < ActiveSupport::TestCase
     assert_equal({ "from" => "new", "to" => "handled", "reason" => "closed_in_intercom" }, event.data.slice("from", "to", "reason"))
   end
 
+  test "an admin close releases the agent holding the item" do
+    item = Connectors::Intercom.call(intercom_created).item
+    agent = agents(:cursor)
+    Agents::Claim.call(agent: agent, item: item)
+
+    Connectors::Intercom.call(admin_state_change("closed", topic: "conversation.admin.closed"))
+
+    item.reload
+    assert item.status_handled?
+    assert_nil item.claimed_by_agent_id
+    assert_nil item.claimed_at
+    assert_equal agent.name, item.events.where(kind: "status_changed").last.data["released_agent"]
+  end
+
   test "a snooze records the state and leaves the status alone" do
     item = Connectors::Intercom.call(intercom_created).item
 
