@@ -29,4 +29,18 @@ class MessageTest < ActiveSupport::TestCase
     refute messages(:unclassified_slack_reply).classified?
     assert_includes Message.unclassified, messages(:unclassified_slack_reply)
   end
+
+  test "a reply that is only an email address is not worth quoting" do
+    assert Message.new(body: "I was charged twice").substantive?
+    assert_not Message.new(body: " christoph@cambuildr.com ").substantive?
+    assert_not Message.new(body: "mailto:dana@example.com").substantive?
+    assert_not Message.new(body: "").substantive?
+    assert Message.new(body: "Please write to dana@example.com instead").substantive?
+
+    question = Message.new(body: "Why was I charged?")
+    email = Message.new(body: "dana@example.com")
+    assert_equal question, Message.quotable([ question, email ])
+    assert_equal email, Message.quotable([ email ])
+    assert_nil Message.quotable([])
+  end
 end

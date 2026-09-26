@@ -24,7 +24,43 @@ module Connectors
     end
 
     def self.call(notification, backfill: false)
-      new(notification, backfill: backfill).call
+      result = new(notification, backfill: backfill).call
+      conversation = notification.is_a?(Hash) ? notification.dig("data", "item") : nil
+      sync_state(conversation) if conversation.is_a?(Hash) && conversation["type"] == "conversation"
+      result
+    end
+
+    # Mirrors the conversation's Intercom state onto its item. Every conversation
+    # webhook carries the state after the change, so a customer reply that
+    # reopens it reads open, and an admin close (conversation.admin.closed, the
+    # close part of a reply or ticket) reads closed and marks the item handled.
+    # A snooze only records the state: someone is waiting on the customer.
+    #
+    #   Connectors::Intercom.sync_state({ "id" => "215470000000777", "state" => "closed" })
+    def self.sync_state(conversation, backfill: false)
+      state = conversation["state"].to_s
+      return unless Item::EXTERNAL_STATES.include?(state)
+
+      item = Item.find_by(source_kind: Source.kinds[:intercom], thread_key: conversation["id"].to_s)
+      apply_state(item, state, backfill: backfill) if item
+    end
+
+    # Returns :closed when this closed an unresolved item, :state when only the
+    # state changed, or nil when nothing did. Closing releases the agent holding
+    # the item (R25), the same way a person handling it does.
+    def self.apply_state(item, state, backfill: false)
+      item.with_lock do
+        changed = item.external_state != state
+        item.update!(external_state: state) if changed
+        if state == "closed" && Item::UNRESOLVED_STATUSES.include?(item.status)
+          agent = item.claimed_by_agent
+          item.update!(claimed_by_agent: nil, claimed_at: nil, overdue: false) if agent
+          item.change_status!(:handled, reason: "closed_in_intercom",
+            **{ released_agent: agent&.name }.compact, **(backfill ? { backfill: true } : {}))
+          next :closed
+        end
+        :state if changed
+      end
     end
 
     # Ingests every customer-authored message of a conversation fetched from the
@@ -107,17 +143,23 @@ module Connectors
     def inbound_message(part)
       author = part["author"] || {}
       conversation_id = @conversation["id"].to_s
+      body = self.class.plain_text(part["body"])
 
       Items::InboundMessage.new(
         external_id: part["id"].to_s.presence,
         thread_key: conversation_id,
-        body: self.class.plain_text(part["body"]),
+        body: body,
         occurred_at: timestamp(part["created_at"] || @conversation["created_at"]),
         author_name: author["name"].presence,
-        author_email: author["email"].presence,
+        # A lead Fin has not identified yet has no email until they type it in.
+        author_email: author["email"].presence || typed_email(body),
         permalink: permalink(conversation_id),
         raw_payload: { "topic" => topic, "conversation_id" => conversation_id, "part" => part }
       )
+    end
+
+    def typed_email(body)
+      body.strip.delete_prefix("mailto:") if body.match?(Message::EMAIL_ONLY)
     end
 
     def timestamp(value)

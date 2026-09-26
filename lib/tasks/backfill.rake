@@ -21,6 +21,12 @@ namespace :backfill do
     report.call(stats)
   end
 
+  desc "One-time: close items whose Intercom conversation is closed, and record snoozed and open states"
+  task intercom_states: :environment do
+    counts = Backfill::IntercomStates.new.call
+    puts "intercom states: #{counts.map { |key, value| "#{key}=#{value}" }.join(" ")}"
+  end
+
   desc "Classification progress of backfilled messages, per source"
   task status: :environment do
     Message.where(backfilled: true).group(:source_id).count.each do |source_id, total|

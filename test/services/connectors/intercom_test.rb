@@ -165,6 +165,70 @@ class Connectors::IntercomTest < ActiveSupport::TestCase
     assert_equal @source, result.message.source
   end
 
+  test "an admin close in Intercom marks the item handled and records the conversation closed" do
+    item = Connectors::Intercom.call(intercom_created).item
+    assert_equal "open", item.reload.external_state
+
+    assert_nil Connectors::Intercom.call(admin_state_change("closed", topic: "conversation.admin.closed"))
+
+    item.reload
+    assert item.status_handled?
+    assert_equal "closed", item.external_state
+    event = item.events.where(kind: "status_changed").last
+    assert_equal({ "from" => "new", "to" => "handled", "reason" => "closed_in_intercom" }, event.data.slice("from", "to", "reason"))
+  end
+
+  test "an admin close releases the agent holding the item" do
+    item = Connectors::Intercom.call(intercom_created).item
+    agent = agents(:cursor)
+    Agents::Claim.call(agent: agent, item: item)
+
+    Connectors::Intercom.call(admin_state_change("closed", topic: "conversation.admin.closed"))
+
+    item.reload
+    assert item.status_handled?
+    assert_nil item.claimed_by_agent_id
+    assert_nil item.claimed_at
+    assert_equal agent.name, item.events.where(kind: "status_changed").last.data["released_agent"]
+  end
+
+  test "a snooze records the state and leaves the status alone" do
+    item = Connectors::Intercom.call(intercom_created).item
+
+    Connectors::Intercom.call(admin_state_change("snoozed", topic: "conversation.admin.snoozed"))
+
+    item.reload
+    assert item.status_new?
+    assert_equal "snoozed", item.external_state
+    assert_not Item.needing_attention.exists?(item.id)
+  end
+
+  test "a customer writing into a closed conversation reopens the item" do
+    item = Connectors::Intercom.call(intercom_created).item
+    Connectors::Intercom.call(admin_state_change("closed", topic: "conversation.admin.closed"))
+
+    Connectors::Intercom.call(intercom_replied(id: "reopen-1", part_type: "open", body: "<p>It broke again</p>"))
+
+    item.reload
+    assert item.status_new?
+    assert_equal "open", item.external_state
+    assert Item.needing_attention.exists?(item.id)
+  end
+
+  test "a state change for a conversation happyhappy never saw is ignored" do
+    assert_no_difference [ -> { Item.count }, -> { ItemEvent.count } ] do
+      Connectors::Intercom.call(admin_state_change("closed", topic: "conversation.admin.closed"))
+    end
+  end
+
+  test "an email address typed into Fin becomes the author email of an unidentified lead" do
+    Connectors::Intercom.call(intercom_replied(id: "fin-1", body: "<p>I was charged but still see the paywall</p>").tap { |payload| strip_author(payload) })
+    result = Connectors::Intercom.call(intercom_replied(id: "fin-2", body: "<p>dana@example.com</p>").tap { |payload| strip_author(payload) })
+
+    assert_equal "dana@example.com", result.item.reload.author_email
+    assert_equal "dana@example.com", result.message.body
+  end
+
   test "valid_signature? checks the sha1 HMAC of the raw body" do
     body = '{"topic":"ping"}'
     header = "sha1=#{OpenSSL::HMAC.hexdigest("SHA1", "shh", body)}"
@@ -174,5 +238,24 @@ class Connectors::IntercomTest < ActiveSupport::TestCase
     refute Connectors::Intercom.valid_signature?("#{body} ", header, secret: "shh")
     refute Connectors::Intercom.valid_signature?(body, nil, secret: "shh")
     refute Connectors::Intercom.valid_signature?(body, header, secret: nil)
+  end
+
+  private
+
+  # The recorded conversation after an admin changes its state, as Intercom sends it.
+  def admin_state_change(state, topic:)
+    intercom_replied.tap do |payload|
+      payload["topic"] = topic
+      payload["data"]["item"]["state"] = state
+      payload["data"]["item"]["open"] = state == "open"
+      part = payload.dig("data", "item", "conversation_parts", "conversation_parts").last
+      part.merge!("id" => "state-#{state}", "part_type" => state == "closed" ? "close" : "snoozed", "body" => nil)
+      part["author"] = { "type" => "admin", "id" => "5500001", "name" => "Sam Support", "email" => "sam@every.to" }
+    end
+  end
+
+  def strip_author(payload)
+    payload.dig("data", "item", "conversation_parts", "conversation_parts").last["author"] =
+      { "type" => "user", "id" => "66f0c0ffee0000000000beef", "name" => nil, "email" => "" }
   end
 end

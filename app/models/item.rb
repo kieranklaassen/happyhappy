@@ -1,6 +1,10 @@
 class Item < ApplicationRecord
   CLASSIFIED_EVENT = "item.classified"
   HELD_STATUSES = %w[claimed in_progress].freeze
+  UNRESOLVED_STATUSES = %w[new claimed in_progress].freeze
+  # The conversation's state in the provider (Intercom): closed or snoozed means
+  # someone at Every already dealt with it or is waiting on the customer.
+  EXTERNAL_STATES = %w[open closed snoozed].freeze
 
   enum :status, {
     new: "new", claimed: "claimed", in_progress: "in_progress", handled: "handled", dismissed: "dismissed"
@@ -36,11 +40,14 @@ class Item < ApplicationRecord
     numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }, allow_nil: true
 
   validates :actionability_band, inclusion: { in: Actionability::BANDS }, allow_nil: true
+  validates :external_state, inclusion: { in: EXTERNAL_STATES }, allow_nil: true
 
   scope :relevant, -> { where(relevant: true) }
   scope :by_actionability, -> { order(Arel.sql("actionability IS NULL"), actionability: :desc, last_message_at: :desc, id: :desc) }
   scope :recent_first, -> { order(last_message_at: :desc, id: :desc) }
-  scope :unresolved, -> { where(status: %w[new claimed in_progress]) }
+  scope :unresolved, -> { where(status: UNRESOLVED_STATUSES) }
+  # Unresolved here and still open where the conversation lives.
+  scope :needing_attention, -> { unresolved.where(external_state: [ nil, "open" ]) }
   scope :unclaimed, -> { where(claimed_by_agent_id: nil) }
 
   # Messages received since the last status change; item anger is the highest among them.

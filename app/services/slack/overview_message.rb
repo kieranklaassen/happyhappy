@@ -61,7 +61,7 @@ module Slack
       totals = items.group(:product_id).count
       complaints = items.complaint.group(:product_id).count
       praise = items.praise.group(:product_id).count
-      act_now = items.where(actionability_band: "act_now").group(:product_id).count
+      act_now = items.merge(Item.needing_attention).where(actionability_band: "act_now").group(:product_id).count
       names = Product.where(id: totals.keys.compact).pluck(:id, :name).to_h
 
       lines = totals.sort_by { |id, count| [ -count, names[id].to_s ] }.map do |id, count|
@@ -76,9 +76,10 @@ module Slack
       lines.join("\n")
     end
 
-    # The customers who most need someone at Every, act-now first.
+    # The customers who most need someone at Every, act-now first, as of posting:
+    # an item handled here or closed or snoozed in Intercom is left out.
     def attention_text
-      scope = items.where(actionability_band: Actionability::ACTIONABLE_BANDS)
+      scope = items.merge(Item.needing_attention).where(actionability_band: Actionability::ACTIONABLE_BANDS)
         .order(Arel.sql("CASE actionability_band WHEN 'act_now' THEN 0 ELSE 1 END"))
         .merge(Item.by_actionability).includes(:product).limit(ATTENTION_COUNT)
       lines = scope.map do |item|
@@ -113,7 +114,7 @@ module Slack
     end
 
     def latest_body(item)
-      item.messages.from_customers.where(occurred_at: @window).last&.body
+      Message.quotable(item.messages.from_customers.where(occurred_at: @window))&.body
     end
 
     def handled_text

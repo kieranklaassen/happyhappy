@@ -24,6 +24,21 @@ class PostEscalationJobTest < ActiveJob::TestCase
       "slack_message_ts" => SLACK_OK_TS }, event.data)
   end
 
+  test "an item closed in Intercom or handled before the post is skipped" do
+    stub_slack_post_message
+    items(:angry_slack).update!(external_state: "closed")
+
+    PostEscalationJob.perform_now(@escalation)
+
+    assert_empty slack_posts
+    assert_not @escalation.reload.posted?
+    assert_match "Skipped", @escalation.last_error
+
+    items(:angry_slack).update!(external_state: nil, status: "handled")
+    PostEscalationJob.perform_now(@escalation)
+    assert_empty slack_posts
+  end
+
   test "a Slack 5xx records the error, keeps the escalation, and retries" do
     stub_slack_post_message(status: 503, body: "upstream error")
 

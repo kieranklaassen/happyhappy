@@ -68,14 +68,16 @@ module Slack
       counts.map { |id, count| "#{escape(names[id])} (#{count})" }.join(", ")
     end
 
-    # The customers who most need someone at Every, by actionability.
+    # The customers who most need someone at Every, by actionability, as of now:
+    # an item handled here or closed in Intercom since the day ended is left out.
     def needs_attention
-      items.where(actionability_band: Actionability::ACTIONABLE_BANDS).by_actionability.limit(STANDOUT_COUNT)
+      items.merge(Item.needing_attention).where(actionability_band: Actionability::ACTIONABLE_BANDS)
+        .by_actionability.limit(STANDOUT_COUNT)
     end
 
     def attention_text
       lines = needs_attention.map do |item|
-        body = item.messages.from_customers.where(occurred_at: @window).last&.body
+        body = Message.quotable(item.messages.from_customers.where(occurred_at: @window))&.body
         band = item.actionability_band == "act_now" ? "act now" : "should reply"
         "#{link(item_url(item), customer_handle(item))} (#{band}, #{percent(item.actionability)})\n#{quote(body)}"
       end
@@ -92,7 +94,7 @@ module Slack
 
     def standouts_text(scope, probability, label)
       lines = scope.map do |item|
-        body = item.messages.from_customers.where(occurred_at: @window).last&.body
+        body = Message.quotable(item.messages.from_customers.where(occurred_at: @window))&.body
         "#{link(item_url(item), customer_handle(item))} (#{label} #{percent(item.public_send(probability))})\n#{quote(body)}"
       end
       lines.presence&.join("\n") || "None"
