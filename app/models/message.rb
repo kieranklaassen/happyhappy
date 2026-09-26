@@ -22,8 +22,22 @@ class Message < ApplicationRecord
   # Customer voices, including authors nobody could place yet.
   scope :from_customers, -> { where.not(author_role: "team") }
 
+  # A reply that is only an email address, as a customer types into Fin's email
+  # capture, says who they are but nothing worth quoting.
+  EMAIL_ONLY = /\A\s*(?:mailto:)?[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+\s*\z/i
+
+  # The newest message with something to quote, else the newest at all.
+  def self.quotable(messages)
+    messages = messages.to_a
+    messages.reverse.find(&:substantive?) || messages.last
+  end
+
   def classified?
     classified_at.present?
+  end
+
+  def substantive?
+    body.present? && !body.match?(EMAIL_ONLY)
   end
 
   # The author's display name as the provider sent it with this message, which

@@ -55,6 +55,30 @@ class Slack::OverviewMessageTest < ActiveSupport::TestCase
     %w[off_topic old_news].each { |handle| assert_not_includes text, handle }
   end
 
+  test "needs attention leaves out items handled here or closed or snoozed in Intercom, as of posting" do
+    open_one = add_item(product: products(:cora), sentiment: "complaint", actionability: 0.95, handle: "still_waiting")
+    add_item(product: products(:cora), sentiment: "complaint", actionability: 0.96, handle: "closed_in_intercom").update!(external_state: "closed", status: "handled")
+    add_item(product: products(:cora), sentiment: "complaint", actionability: 0.97, handle: "snoozed_in_intercom").update!(external_state: "snoozed")
+    add_item(product: products(:cora), sentiment: "complaint", actionability: 0.98, handle: "handled_here").update!(status: "handled")
+
+    payload = overview.to_h
+    attention = section(payload, "*Needs attention*")
+
+    assert_includes attention, "/items/#{open_one.id}"
+    %w[closed_in_intercom snoozed_in_intercom handled_here].each { |handle| assert_not_includes attention, handle }
+    assert_includes rendered(payload), "*Cora*: 4 items · 4 complaints · 1 act now"
+  end
+
+  test "the quote skips a reply that is only an email address" do
+    item = add_item(product: products(:cora), sentiment: "complaint", actionability: 0.95, handle: nil, body: "I was charged but still see the paywall")
+    item.messages.create!(source: item.source, external_id: SecureRandom.hex(8), body: "dana@example.com", occurred_at: @noon + 1.minute)
+
+    attention = section(overview.to_h, "*Needs attention*")
+
+    assert_includes attention, "&gt; I was charged but still see the paywall"
+    assert_not_includes attention, "&gt; dana@example.com"
+  end
+
   test "a day without feedback says it was quiet" do
     payload = overview.to_h
 

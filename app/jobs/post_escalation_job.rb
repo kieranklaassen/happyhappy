@@ -6,6 +6,12 @@ class PostEscalationJob < ApplicationJob
   def perform(escalation)
     return if escalation.posted?
 
+    # Someone may have closed the conversation between the check and the post.
+    unless Item.needing_attention.exists?(id: escalation.item_id)
+      escalation.update!(last_error: "Skipped: the item was handled or closed before posting")
+      return
+    end
+
     ts = Slack::Client.new.post_message(channel: escalation.slack_channel_id,
       **Slack::EscalationMessage.new(escalation).to_h)
 

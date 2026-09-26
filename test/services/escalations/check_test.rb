@@ -40,12 +40,31 @@ class Escalations::CheckTest < ActiveSupport::TestCase
     item, message = classified_item(anger: 0.9)
     item.publish_classified(message)
     item.change_status!(:handled)
+    # Items::Ingest reopens a handled item when the customer writes again.
+    item.change_status!(:new, reason: "customer_wrote_again")
 
     newer = add_message(item, anger: 0.92, body: "It happened again")
     item.publish_classified(newer)
 
     assert_equal 2, item.escalations.count
     assert_equal newer, item.escalations.order(:created_at).last.message
+  end
+
+  test "an item whose conversation is closed or snoozed in Intercom never escalates" do
+    %w[closed snoozed].each do |state|
+      item, message = classified_item(anger: 0.95)
+      item.update!(external_state: state)
+
+      assert_no_enqueued_jobs(only: PostEscalationJob) { item.publish_classified(message) }
+      assert_empty item.escalations, state
+    end
+  end
+
+  test "a handled item never escalates" do
+    item, message = classified_item(anger: 0.95)
+    item.update_columns(status: "handled")
+
+    assert_no_enqueued_jobs(only: PostEscalationJob) { item.publish_classified(message) }
   end
 
   test "a product without its own channel escalates to the Settings channel" do

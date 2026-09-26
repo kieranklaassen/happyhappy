@@ -30,6 +30,7 @@ module Escalations
 
     def escalate?
       @item.relevant? &&
+        @item.class.needing_attention.exists?(id: @item.id) &&
         channel_id.present? &&
         angry?(@item.anger_probability) &&
         actionable? &&

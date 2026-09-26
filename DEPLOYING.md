@@ -218,8 +218,13 @@ queries inside it.
   secret (Basic information) is `INTERCOM_CLIENT_SECRET`; it signs each
   notification's `X-Hub-Signature`.
 - Webhooks: endpoint URL `https://<host>/webhooks/intercom`, topics
-  `conversation.user.created` and `conversation.user.replied`. Intercom checks
-  the URL with a HEAD request when saved.
+  `conversation.user.created` and `conversation.user.replied` (customer
+  messages) plus `conversation.admin.closed`, `conversation.admin.snoozed`,
+  `conversation.admin.unsnoozed`, and `conversation.admin.opened` (state: a
+  close marks the item handled, and snoozed items leave "needs attention").
+  Intercom checks the URL with a HEAD request when saved.
+- Items created before state sync existed: `bin/rails backfill:intercom_states`
+  closes the ones whose conversation is closed in Intercom (one-time, no Jev).
 - Sources select a team or inbox id; a source with selector `*` catches
   conversations no other source matches.
 - For the history backfill only: the app's access token (Authentication) is
