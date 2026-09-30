@@ -1,5 +1,5 @@
 class WebhookEndpoint < ApplicationRecord
-  EVENTS = %w[item.arrived item.classified item.status_changed item.escalated agent.reported anomaly.detected].freeze
+  EVENTS = %w[item.arrived item.classified item.status_changed item.escalated agent.reported anomaly.detected incident.resolved].freeze
 
   encrypts :secret
 
@@ -45,6 +45,11 @@ class WebhookEndpoint < ApplicationRecord
   def matches_anomaly?(anomaly)
     (product_ids.empty? || product_ids.include?(anomaly.product_id)) &&
       (category_ids.empty? || (anomaly.category.present? && category_ids.include?(anomaly.category.id)))
+  end
+
+  # An incident matches when any of its anomalies would.
+  def matches_incident?(incident)
+    incident.anomalies.any? { |anomaly| matches_anomaly?(anomaly) }
   end
 
   private

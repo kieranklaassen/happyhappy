@@ -18,6 +18,8 @@ interface SettingsEditProps {
     slack_channel_id: string | null
     digest_time_zone: string
     digest_hour: number
+    incident_window_minutes: number
+    slack_interactivity: boolean
   }
   time_zones: string[]
 }
@@ -94,6 +96,8 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
     slack_channel_id: setting.slack_channel_id ?? '',
     digest_time_zone: setting.digest_time_zone,
     digest_hour: setting.digest_hour.toString(),
+    incident_window_minutes: setting.incident_window_minutes.toString(),
+    slack_interactivity: setting.slack_interactivity,
   })
 
   function submit(event: FormEvent) {
@@ -195,6 +199,41 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
               onChange={(e) => form.setData('slack_channel_id', e.target.value)}
               className={inputClass}
             />
+          </Field>
+
+          <Field
+            label="Incident window (minutes)"
+            htmlFor="setting_incident_window_minutes"
+            error={form.errors.incident_window_minutes}
+            hint="Bad-news anomalies of one product this close together join one incident and one Slack ping in the product's alert channel."
+          >
+            <input
+              id="setting_incident_window_minutes"
+              type="number"
+              min={1}
+              step={1}
+              required
+              value={form.data.incident_window_minutes}
+              onChange={(e) => form.setData('incident_window_minutes', e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
+            label="Slack interactivity"
+            htmlFor="setting_slack_interactivity"
+            error={form.errors.slack_interactivity}
+            hint="Turn on once the Slack app's Interactivity Request URL is set to /webhooks/slack/interactions. Then Mark resolved in incident pings resolves right in Slack; while off it opens the incident page."
+          >
+            <label className="flex items-center gap-2 text-gray-700">
+              <input
+                id="setting_slack_interactivity"
+                type="checkbox"
+                checked={form.data.slack_interactivity}
+                onChange={(e) => form.setData('slack_interactivity', e.target.checked)}
+              />
+              Resolve incidents from Slack buttons
+            </label>
           </Field>
 
           <Field

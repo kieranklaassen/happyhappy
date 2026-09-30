@@ -10,7 +10,11 @@ module Anomalies
   #   already recorded for an overlapping window are reused, so rescans never duplicate.
   # - A spike whose window ended before the active window (default 7 days, typically backfilled
   #   history) is recorded as ended history and never alerts.
-  # - A row that is new and still active after the scan sends the anomaly.detected webhook.
+  # - A row that is new and still active after the scan sends the anomaly.detected webhook, and bad
+  #   news joins or opens an incident (Incidents::Correlate).
+  # - A resolved row (Incidents::Resolve) keeps its series quiet: spiking windows after it extend it
+  #   silently, and only a spike after the next normal window opens a new row that can alert again. A
+  #   new row overlapping a resolved row of the same series at the other granularity is born resolved.
   #
   #   Anomalies::Detect.call(granularity: "hour")  # every 15 minutes, trailing hour windows
   #   Anomalies::Detect.call(granularity: "day")   # daily, calendar days
@@ -44,6 +48,8 @@ module Anomalies
       end
       end_stale
       # A spike found and ended within one scan (say, on the first run) is history by the time we alert.
+      # Incidents first: a row that turns out to repeat a resolved spike is ended there and sends nothing.
+      Incidents::Correlate.all(@created.select(&:active?), setting: @setting)
       alert_channel = @setting.slack_channel?
       @created.select(&:active?).each do |anomaly|
         Rails.error.handle(context: { anomaly_id: anomaly.id }) { Webhooks::FanOut.anomaly(anomaly) }
@@ -76,6 +82,8 @@ module Anomalies
 
     def process(line, rows)
       open_row = rows.select(&:active?).max_by(&:window_end)
+      quiet_row = rows.select(&:resolved?).max_by(&:window_end)
+      quiet_row = nil if quiet_row && open_row && open_row.window_end > quiet_row.window_end
 
       (@scan_from...line.points.size).each do |index|
         point = line.points[index]
@@ -84,17 +92,22 @@ module Anomalies
 
         if verdict
           overlapping = rows.find { |row| row.window_start < point.window_end && row.window_end > point.window_start }
-          target = overlapping || open_row
-          if target && (target == open_row || target.active?)
+          target = overlapping || open_row || quiet_row
+          if target&.resolved?
+            extend_quietly(target, point) if target == quiet_row
+          elsif target && (target == open_row || target.active?)
             extend_row(target, line, point, verdict)
             open_row = target
           elsif overlapping.nil?
             open_row = create_row(line, point, verdict)
             rows << open_row
           end
-        elsif open_row && point.window_end > open_row.window_end
-          open_row.end!(at: @now)
-          open_row = nil
+        else
+          if open_row && point.window_end > open_row.window_end
+            open_row.end!(at: @now)
+            open_row = nil
+          end
+          quiet_row = nil if quiet_row && point.window_end > quiet_row.window_end
         end
       end
     end
@@ -170,6 +183,13 @@ module Anomalies
         end
       end
       row.update!(attributes)
+    end
+
+    def extend_quietly(row, point)
+      return unless point.window_end > row.window_end
+
+      item_ids = (point.item_ids + row.item_ids).uniq.first(DetectedAnomaly::ITEM_LIMIT)
+      row.update!(window_end: point.window_end, last_seen_at: @now, item_ids: item_ids)
     end
 
     def historical?(point)

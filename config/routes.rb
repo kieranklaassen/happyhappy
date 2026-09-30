@@ -16,6 +16,8 @@ Rails.application.routes.draw do
 
   # Slack connector (U4): Events API request URL, signature-authenticated.
   post "webhooks/slack/events" => "webhooks/slack#create", as: :webhooks_slack_events
+  # Slack interactivity Request URL (U26): incident "Mark resolved" buttons, signature-authenticated.
+  post "webhooks/slack/interactions" => "webhooks/slack_interactions#create", as: :webhooks_slack_interactions
 
   # PWA surface (docs/modules/pwa.md): Rails' built-in controller renders
   # app/views/pwa/*, public and outside the Inertia auth gate. Formats are pinned
@@ -42,6 +44,10 @@ Rails.application.routes.draw do
   end
   resources :products, only: [] do
     resource :overview, only: :show, controller: "product_overviews"
+  end
+  # Anomaly incidents (U26)
+  resources :incidents, only: :show do
+    patch :resolve, on: :member
   end
   # Products, categories, sources, and settings (U3)
   resources :products, only: %i[index new create edit update] do

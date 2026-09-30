@@ -6,8 +6,10 @@ module Slack
 
     private
 
+    # Also breaks plain @channel, @here, and @everyone with a zero-width space, so customer text can
+    # never ping a whole channel even if a message is ever sent with link_names.
     def escape(text)
-      text.to_s.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;")
+      text.to_s.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub(/@(channel|here|everyone)\b/i, "@\u200B\\1")
     end
 
     def quote(text, limit: QUOTE_LIMIT)

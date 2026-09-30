@@ -53,6 +53,20 @@ class ProductsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Monologue created.", inertia.props[:flash]["notice"]
   end
 
+  test "the incident alert channel and on-call Slack IDs save from the form, and bad IDs are rejected" do
+    patch product_path(products(:cora)), params: { product: { alert_channel_id: "C0AGCDCD6KG", alert_mention_ids: "U0AGQDHRV8U, S0BINGSU01" } }
+
+    assert_redirected_to products_path
+    assert_equal [ "C0AGCDCD6KG", %w[U0AGQDHRV8U S0BINGSU01] ], products(:cora).reload.values_at(:alert_channel_id, :alert_mention_ids)
+
+    patch product_path(products(:cora)), params: { product: { alert_mention_ids: "bingsu" } }
+    follow_redirect!
+    assert_match(/bingsu/, inertia.props[:errors]["alert_mention_ids"].sole)
+
+    get edit_product_path(products(:cora))
+    assert_equal %w[U0AGQDHRV8U S0BINGSU01], inertia.props[:product][:alert_mention_ids]
+  end
+
   test "a blank escalation threshold falls back to the global default" do
     post products_path, params: { product: { name: "Monologue", escalation_threshold: "", digest_hour: "9" } }
 

@@ -2,6 +2,7 @@ module Items
   # Changes an item's status on a person's behalf.
   #
   #   Items::ChangeStatus.call(item:, status: "dismissed", actor: Current.user)  # => true, or false if unchanged
+  #   Items::ChangeStatus.call(item:, status: "handled", actor: agent, reason: "Incident resolved")
   #
   # People can reopen, handle, or dismiss an item; claimed and in progress come only from agents. Moving a
   # claimed item releases the agent's claim (R25) and clears its overdue flag. Raises Invalid otherwise.
@@ -14,10 +15,11 @@ module Items
       new(...).call
     end
 
-    def initialize(item:, status:, actor:)
+    def initialize(item:, status:, actor:, reason: nil)
       @item = item
       @status = status.to_s
       @actor = actor
+      @reason = reason
     end
 
     def call
@@ -27,7 +29,7 @@ module Items
       @item.transaction do
         agent = @item.claimed_by_agent
         @item.update!(claimed_by_agent: nil, claimed_at: nil, overdue: false) if agent
-        @item.change_status!(@status, actor: @actor, **{ released_agent: agent&.name }.compact)
+        @item.change_status!(@status, actor: @actor, **{ released_agent: agent&.name, reason: @reason }.compact)
       end
     end
   end

@@ -14,6 +14,7 @@ class DetectedAnomaly < ApplicationRecord
 
   belongs_to :product
   belongs_to :source, optional: true
+  belongs_to :incident, optional: true
 
   validates :metric, inclusion: { in: METRICS }
   validates :granularity, inclusion: { in: GRANULARITIES.keys }
@@ -43,6 +44,15 @@ class DetectedAnomaly < ApplicationRecord
   # alerts, since each per-source row repeats the same spike.
   def slack_alertable?
     active? && !historical? && negative? && severity == "high" && source_id.nil?
+  end
+
+  # Opens or joins an incident (Incidents::Correlate): live bad news only.
+  def incident_worthy?
+    active? && !historical? && negative?
+  end
+
+  def resolved?
+    resolved_at.present?
   end
 
   def positive?
@@ -103,7 +113,9 @@ class DetectedAnomaly < ApplicationRecord
       item_ids: item_ids,
       first_seen_at: first_seen_at.iso8601,
       last_seen_at: last_seen_at.iso8601,
-      ended_at: ended_at&.iso8601
+      ended_at: ended_at&.iso8601,
+      incident_id: incident_id,
+      resolved_at: resolved_at&.iso8601
     }
   end
 end

@@ -13,6 +13,8 @@ interface ProductFormProps {
     hint_words: string[]
     search_blurb: string | null
     slack_channel_id: string | null
+    alert_channel_id: string | null
+    alert_mention_ids: string[]
     escalation_threshold: number | null
     digest_hour: number
   }
@@ -31,6 +33,8 @@ export default function ProductForm({ product, default_escalation_threshold }: P
     hint_words: product.hint_words.join(', '),
     search_blurb: product.search_blurb ?? '',
     slack_channel_id: product.slack_channel_id ?? '',
+    alert_channel_id: product.alert_channel_id ?? '',
+    alert_mention_ids: product.alert_mention_ids.join(', '),
     escalation_threshold: product.escalation_threshold?.toString() ?? '',
     digest_hour: product.digest_hour.toString(),
   })
@@ -129,6 +133,34 @@ export default function ProductForm({ product, default_escalation_threshold }: P
               id="product_slack_channel_id"
               value={form.data.slack_channel_id}
               onChange={(e) => form.setData('slack_channel_id', e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
+            label="Incident alert channel id"
+            htmlFor="product_alert_channel_id"
+            error={form.errors.alert_channel_id}
+            hint="Bad-news spikes open an incident and ping this channel once, for example C0AGCDCD6KG. Leave empty for no incident pings."
+          >
+            <input
+              id="product_alert_channel_id"
+              value={form.data.alert_channel_id}
+              onChange={(e) => form.setData('alert_channel_id', e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+
+          <Field
+            label="On-call Slack IDs"
+            htmlFor="product_alert_mention_ids"
+            error={form.errors.alert_mention_ids}
+            hint="Mentioned in each incident ping. User IDs start with U (Copy member ID in Slack), user group IDs with S. Separate with commas."
+          >
+            <input
+              id="product_alert_mention_ids"
+              value={form.data.alert_mention_ids}
+              onChange={(e) => form.setData('alert_mention_ids', e.target.value)}
               className={inputClass}
             />
           </Field>

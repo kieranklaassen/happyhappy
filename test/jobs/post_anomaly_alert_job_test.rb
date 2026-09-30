@@ -23,6 +23,15 @@ class PostAnomalyAlertJobTest < ActiveJob::TestCase
     assert anomaly.reload.slack_alerted_at?
   end
 
+  test "an anomaly resolved before the alert runs is not posted" do
+    stub_slack_post_message
+    anomaly = create_anomaly!(resolved_at: Time.current)
+
+    PostAnomalyAlertJob.perform_now(anomaly)
+
+    assert_empty slack_posts
+  end
+
   test "does nothing without a Settings channel" do
     stub_slack_post_message
     Setting.current.update!(slack_channel_id: nil)
