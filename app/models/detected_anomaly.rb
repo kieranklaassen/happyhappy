@@ -41,9 +41,10 @@ class DetectedAnomaly < ApplicationRecord
   end
 
   # Bad news bad enough to interrupt the Slack channel. Only the all-sources row
-  # alerts, since each per-source row repeats the same spike.
+  # alerts, since each per-source row repeats the same spike. A product with its own
+  # alert channel already gets the incident ping there, so it skips this one.
   def slack_alertable?
-    active? && !historical? && negative? && severity == "high" && source_id.nil?
+    active? && !historical? && negative? && severity == "high" && source_id.nil? && product.alert_channel_id.blank?
   end
 
   # Opens or joins an incident (Incidents::Correlate): live bad news only.

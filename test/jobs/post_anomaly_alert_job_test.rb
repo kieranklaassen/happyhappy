@@ -50,4 +50,11 @@ class PostAnomalyAlertJobTest < ActiveJob::TestCase
     assert_not create_anomaly!(historical: true, status: "ended", ended_at: Time.current).slack_alertable?
     assert_not create_anomaly!(polarity: "positive", severity: nil, highlight: "huge", metric: "mood_share", dimension: "beaming").slack_alertable?
   end
+
+  test "a product with its own alert channel gets the incident ping instead of this alert" do
+    anomaly = create_anomaly!
+    anomaly.product.update!(alert_channel_id: "C0AGCDCD6KG")
+
+    assert_not anomaly.reload.slack_alertable?
+  end
 end

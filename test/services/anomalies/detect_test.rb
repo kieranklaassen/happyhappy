@@ -76,6 +76,17 @@ class Anomalies::DetectTest < ActiveSupport::TestCase
     assert_no_enqueued_jobs(only: PostAnomalyAlertJob) { detect }
   end
 
+  test "a product with its own alert channel gets only the incident ping, not the Settings alert" do
+    Setting.current.update!(slack_channel_id: "C0AGB2RKA6R")
+    products(:cora).update!(alert_channel_id: "C0AGCDCD6KG")
+    hourly_baseline!
+    burst!(8)
+
+    assert_enqueued_jobs(1, only: SyncIncidentSlackJob) do
+      assert_no_enqueued_jobs(only: PostAnomalyAlertJob) { detect }
+    end
+  end
+
   test "the anomaly gem decides against a z-score of the baseline" do
     hourly_baseline!
     burst!(8)
