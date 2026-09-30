@@ -47,6 +47,22 @@ module Webhooks
       }
     end
 
+    # The resolver's note is written by Every's team, not customers, so nothing here is untrusted either.
+    def self.for_incident(incident)
+      {
+        id: "evt_incident_#{incident.id}_resolved",
+        event: Incident::WEBHOOK_EVENT,
+        occurred_at: incident.resolved_at.iso8601,
+        untrusted_fields: [],
+        actor: { type: incident.resolved_by_type, name: incident.resolved_by_name },
+        data: { note: incident.resolution_note, items_handled: incident.items_handled },
+        incident: incident.to_props.merge(
+          url: "#{base_url}/incidents/#{incident.id}",
+          product_url: "#{base_url}/products/#{incident.product.slug}/overview"
+        )
+      }
+    end
+
     def self.base_url
       Rails.application.config.x.public_base_url.presence || "http://localhost:3000"
     end

@@ -91,10 +91,10 @@ module Slack
     end
 
     # Live spikes that touch the day, across all sources (the per-source rows
-    # repeat them), bad news first. Windows are half-open, so one ending at the
-    # day's start belongs to the day before.
+    # repeat them), bad news first, leaving out resolved incidents. Windows are
+    # half-open, so one ending at the day's start belongs to the day before.
     def anomalies
-      @anomalies ||= DetectedAnomaly.where(historical: false, source_id: nil)
+      @anomalies ||= DetectedAnomaly.where(historical: false, source_id: nil, resolved_at: nil)
         .where(window_start: ...@window.end)
         .where("anomalies.window_end > ?", @window.begin)
         .includes(:product, :source).to_a

@@ -1288,6 +1288,46 @@ Conflict hotspots across parallel branches are `config/routes.rb`, `config/recur
 
 ---
 
+### U26. Anomaly incidents: per-product Slack pings and resolve
+
+**Goal:** When bad news spikes for a product (Cora's support tickets jumping across Intercom and Discord at once), the product's on-call people get one Slack ping in their own channel, and anyone (in the web app, in Slack, or through an agent tool) can mark it resolved so it stops alerting and leaves every active surface.
+
+**Requirements:** Kieran's incident brief after Cora's support spike.
+
+**Dependencies:** U13 (Slack client and the Settings channel), U17 (outbound webhooks), U20 and U24 (anomalies and polarity), U21 (shared tool registry).
+
+**Decisions:**
+- `decided (brief)`: a new negative anomaly opens an incident for its product, posted to that product's own alert channel with @-mentions of its on-call people. Products carry an alert channel ID and a list of Slack IDs to mention: `U...` user IDs render `<@U...>`, `S...` user group IDs render `<!subteam^S...>`, anything else is rejected. Nothing is seeded; Cora is documented as channel `C0AGCDCD6KG` mentioning `U0AGQDHRV8U` plus bingsu once known.
+- `decided (brief)`: negative anomalies of one product (any source or metric) within a correlation window (a setting, default 2 hours) roll into one incident with status open or resolved, opened and resolved times, who resolved it, a note, and the Slack channel and message ts. Later anomalies attach to the open incident and update the original message with `chat.update`, never a new top-level ping.
+- `decided (brief)`: the daily overview in the Settings channel keeps its behavior. On `not_in_channel` the bot calls `conversations.join` and retries once.
+- `decided (brief)`: the ping is Block Kit: what spiked, expected against actual, which sources, top example messages with links (escaped, no mass mentions), a link to the incident page, and a Mark resolved button.
+- `decided (brief)`: resolve from an incident page (linked from the anomaly callout and timeline) with an optional note; from Slack through a signed interactivity endpoint at `POST /webhooks/slack/interactions` that maps the Slack user to a happyhappy user by email through `users.info` (else records the Slack name); and from agents through a `resolve_anomaly` tool in the shared registry, attributed like the other write tools.
+- `decided (brief)`: resolving ends the incident's anomalies with who, when, and the note; optionally marks the driving items handled through `Items::ChangeStatus` (default off); posts a threaded "Resolved by" reply on the ping; suppresses re-alerting for the spike; drops it from callouts, the feed banner, and the daily overview; and emits an `incident.resolved` webhook next to `anomaly.detected`. No agent claim flow.
+- `assumed default`: incidents are a table of their own and anomalies get a nullable `incident_id` plus `resolved_at`. Every new, live, negative anomaly (any severity, all-sources or per-source) joins or opens an incident; the incident exists even when the product has no alert channel, so the web and agent resolve flows always work. A product with no alert channel gets no incident ping.
+- `assumed default`: an incident takes a new anomaly when its latest anomaly arrived within the correlation window; otherwise a new incident opens. A product can have more than one open incident if spikes are further apart than the window.
+- `assumed default`: suppression is per series. A resolved anomaly keeps absorbing its series' spiking windows silently (its window grows, it stays ended) until the detector sees a normal window after it; only a spike after that normal window opens a new anomaly and can ping. A different series spiking after resolution is new bad news and opens a new incident.
+- `assumed default`: the Slack button is an action button (`action_id` `incident_resolve`) only when the Settings switch "Slack interactivity" is on; otherwise it is a URL button to the incident page, since Slack buttons cannot carry both. A Slack click resolves with no note (no modal); the incident page takes notes.
+- `assumed default`: the existing urgent alert to the Settings channel for high-severity all-sources anomalies stays as it is, except that it skips anomalies already resolved.
+
+**Files:**
+- Create: `db/migrate/*_create_incidents.rb`, `app/models/incident.rb`, `app/services/incidents/{correlate,resolve}.rb`, `app/services/slack/{incident_message,mentions}.rb`, `app/jobs/{sync_incident_slack_job,resolve_incident_from_slack_job}.rb`, `app/controllers/incidents_controller.rb`, `app/controllers/webhooks/slack_interactions_controller.rb`, `app/tools/resolve_anomaly_tool.rb`, `app/frontend/pages/incidents/show.tsx`, `app/frontend/types/incidents.ts`, `script/slack_preview.rb`
+- Modify: `app/models/{detected_anomaly,product,setting,webhook_endpoint}.rb`, `app/services/anomalies/detect.rb`, `app/services/slack/{client,formatting,overview_message}.rb`, `app/services/webhooks/{fan_out,payload}.rb`, `app/jobs/post_anomaly_alert_job.rb`, `app/tools/tool_registry.rb`, `app/controllers/{products,settings}_controller.rb`, `config/routes.rb`, `app/frontend/{types/anomalies.ts,lib/webhooks.ts,components/anomaly-timeline.tsx,components/mood/anomaly-callout.tsx,pages/products/form.tsx,pages/settings/edit.tsx}`, `DEPLOYING.md`
+
+**Test scenarios:**
+- Happy path: a negative anomaly for Cora opens an incident and posts once to Cora's alert channel with `<@U...>` and `<!subteam^S...>` mentions; a positive one opens nothing.
+- Happy path: a second negative anomaly on another source within the window joins the incident and updates the message with `chat.update`; one outside the window opens a new incident.
+- Edge case: `not_in_channel` joins and retries once; a second failure raises.
+- Edge case: customer text with `<!channel>`, `@here`, and link syntax is escaped in the blocks.
+- Happy path: a signed interaction resolves the incident as the matching user; a bad signature is 401; an unknown Slack user is recorded by name.
+- Edge case: with interactivity off the button is a URL button to the incident page.
+- Happy path: resolving ends the anomalies, posts a threaded reply, optionally marks items handled with timeline events, emits `incident.resolved`, and drops the anomalies from callouts, the banner, and the daily overview.
+- Edge case: after resolution the detector does not reopen or re-ping the same series while it keeps spiking, and does after a normal window.
+- Integration: `resolve_anomaly` returns the same result over MCP and WebMCP and is attributed to the calling agent.
+
+**Verification:** All gates pass; a rendered Slack ping preview and the incident resolve page are captured as screenshots.
+
+---
+
 ## Verification Contract
 
 | Gate | Command | Applies to |

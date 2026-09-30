@@ -116,6 +116,55 @@ class Anomalies::DetectTest < ActiveSupport::TestCase
     assert_equal 1, bug_anomalies.count
   end
 
+  test "a detected spike puts every new bad-news row, across sources and metrics, into one incident" do
+    hourly_baseline!
+    burst!(8)
+
+    assert_enqueued_jobs(1, only: SyncIncidentSlackJob) { detect }
+
+    incident = Incident.sole
+    negative = DetectedAnomaly.where(polarity: "negative")
+    assert_operator negative.count, :>, 1
+    assert negative.all? { |anomaly| anomaly.incident == incident }
+    assert DetectedAnomaly.where.not(polarity: "negative").all? { |anomaly| anomaly.incident_id.nil? }
+  end
+
+  test "a resolved spike stays quiet while its series keeps spiking, and alerts again only after a normal window" do
+    create_webhook_endpoint(events: [ DetectedAnomaly::WEBHOOK_EVENT ])
+    hourly_baseline!
+    burst!(8)
+    detect
+    anomaly = bug_anomalies.sole
+    Incidents::Resolve.call(incident: anomaly.incident, actor_name: "Ana")
+    clear_enqueued_jobs
+
+    burst!(14, ending: @now + 1.hour)
+    assert_no_difference %w[DetectedAnomaly.count Incident.count WebhookDelivery.count] do
+      detect(now: @now + 1.hour)
+    end
+    assert_no_enqueued_jobs(only: [ SyncIncidentSlackJob, PostAnomalyAlertJob ])
+    anomaly.reload
+    assert_predicate anomaly, :ended?
+    assert_predicate anomaly, :resolved?
+    assert_equal @now + 1.hour, anomaly.window_end, "the resolved row absorbs the spike"
+
+    detect(now: @now + 1.hour + 15.minutes)
+    assert_equal 1, bug_anomalies.count, "a rescan while the spike lasts stays quiet"
+
+    customer_message!(at: @now + 90.minutes, category: categories(:other))
+    detect(now: @now + 2.hours)
+    assert_equal 1, bug_anomalies.count
+
+    burst!(30, ending: @now + 3.hours)
+    detect(now: @now + 3.hours)
+
+    assert_equal 2, bug_anomalies.count
+    fresh = bug_anomalies.order(:id).last
+    assert_predicate fresh, :active?
+    assert_predicate fresh.incident, :open?
+    assert_not_equal anomaly.incident, fresh.incident
+  end
+
   test "rerunning at the same time never duplicates" do
     hourly_baseline!
     burst!(8)

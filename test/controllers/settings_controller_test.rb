@@ -14,7 +14,8 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
       low_confidence_threshold: 0.6, escalation_threshold: 0.8, report_back_window_minutes: 240,
       anomaly_sensitivity: 3.0, anomaly_min_count: 5, anomaly_min_baseline_windows: 6, anomaly_active_days: 7,
       team_email_domains: [ "every.to" ], team_discord_role_ids: [], team_discord_user_ids: [],
-      slack_channel_id: nil, digest_time_zone: "America/Los_Angeles", digest_hour: 8
+      slack_channel_id: nil, digest_time_zone: "America/Los_Angeles", digest_hour: 8,
+      incident_window_minutes: 120, slack_interactivity: false
     } })
     assert_includes inertia.props[:time_zones], "America/Los_Angeles"
     assert_includes inertia.props[:time_zones], "Europe/Amsterdam"
@@ -38,6 +39,15 @@ class SettingsControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     %w[digest_time_zone digest_hour slack_channel_id].each { |field| assert inertia.props[:errors][field].present?, field }
     assert_equal "America/Los_Angeles", Setting.current.digest_time_zone
+  end
+
+  test "update saves the incident window and the Slack interactivity switch" do
+    patch settings_path, params: { setting: { incident_window_minutes: "90", slack_interactivity: "true" } }
+
+    assert_redirected_to settings_path
+    setting = Setting.current
+    assert_equal 90, setting.incident_window_minutes
+    assert setting.slack_interactivity
   end
 
   test "update saves new thresholds" do

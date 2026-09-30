@@ -5,6 +5,7 @@ export type WebhookEvent =
   | 'item.escalated'
   | 'agent.reported'
   | 'anomaly.detected'
+  | 'incident.resolved'
 export type DeliveryEvent = WebhookEvent | 'webhook.test'
 export type DeliveryStatus = 'pending' | 'succeeded' | 'failed'
 
@@ -48,6 +49,8 @@ export function eventLabel(event: DeliveryEvent): string {
       return 'Agent reported'
     case 'anomaly.detected':
       return 'Anomaly detected'
+    case 'incident.resolved':
+      return 'Incident resolved'
     case 'webhook.test':
       return 'Test send'
     default: {

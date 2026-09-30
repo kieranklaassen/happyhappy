@@ -1,4 +1,5 @@
 class Setting < ApplicationRecord
+  CHANNEL_ID = /\A[CG][A-Z0-9]{6,}\z/
   # Who counts as Every's own team (Messages::AuthorRole). Forms send each list
   # as one string of comma- or space-separated values.
   LIST = ->(value) { (value.is_a?(String) ? value.split(/[\s,]+/) : Array(value)).map { |entry| entry.to_s.strip } }
@@ -8,7 +9,7 @@ class Setting < ApplicationRecord
   normalizes :slack_channel_id, with: ->(value) { value.strip.presence }
   normalizes :digest_time_zone, with: ->(value) { value.strip }
 
-  validates :slack_channel_id, format: { with: /\A[CG][A-Z0-9]{6,}\z/, message: "must be a Slack channel ID like C0AGB2RKA6R" },
+  validates :slack_channel_id, format: { with: CHANNEL_ID, message: "must be a Slack channel ID like C0AGB2RKA6R" },
     allow_nil: true
   validates :digest_hour, numericality: { only_integer: true, in: 0..23 }
   validate :digest_time_zone_exists
@@ -17,7 +18,7 @@ class Setting < ApplicationRecord
     numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
   validates :report_back_window_minutes, numericality: { only_integer: true, greater_than: 0 }
   validates :anomaly_sensitivity, numericality: { greater_than: 0, less_than_or_equal_to: 10 }
-  validates :anomaly_min_count, :anomaly_min_baseline_windows, :anomaly_active_days,
+  validates :anomaly_min_count, :anomaly_min_baseline_windows, :anomaly_active_days, :incident_window_minutes,
     numericality: { only_integer: true, greater_than: 0 }
 
   def self.current
@@ -26,6 +27,11 @@ class Setting < ApplicationRecord
 
   def report_back_window
     report_back_window_minutes.minutes
+  end
+
+  # Negative anomalies of one product this close together share an incident and one Slack ping.
+  def incident_window
+    incident_window_minutes.minutes
   end
 
   # The channel for the daily overview, negative anomaly alerts, and escalations

@@ -4,7 +4,7 @@ class PostAnomalyAlertJob < ApplicationJob
   retry_on Slack::Client::RetryableError, wait: :polynomially_longer, attempts: 10
 
   def perform(anomaly)
-    return if anomaly.slack_alerted_at?
+    return if anomaly.slack_alerted_at? || anomaly.resolved?
 
     setting = Setting.current
     return unless setting.slack_channel?

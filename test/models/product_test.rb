@@ -36,6 +36,21 @@ class ProductTest < ActiveSupport::TestCase
     assert duplicate.errors.key?(:slug)
   end
 
+  test "incident alerts take a channel ID and Slack user or user group IDs to mention" do
+    product = products(:cora)
+    product.update!(alert_channel_id: " C0AGCDCD6KG ", alert_mention_ids: "U0AGQDHRV8U, S0BINGSU01 W0GRIDUSER")
+
+    assert_equal "C0AGCDCD6KG", product.alert_channel_id
+    assert_equal %w[U0AGQDHRV8U S0BINGSU01 W0GRIDUSER], product.alert_mention_ids
+    assert_equal "<@U0AGQDHRV8U> <!subteam^S0BINGSU01> <@W0GRIDUSER>", Slack::Mentions.render(product.alert_mention_ids)
+
+    product.alert_mention_ids = "U0AGQDHRV8U, @bingsu, <!channel>"
+    product.alert_channel_id = "#cora-alerts"
+    assert_not product.valid?
+    assert_includes product.errors[:alert_mention_ids].sole, "@bingsu, <!channel>"
+    assert product.errors[:alert_channel_id].any?
+  end
+
   test "digest hour must be an hour of the day" do
     product = products(:cora)
     product.digest_hour = 24

@@ -5,7 +5,7 @@ class SettingsController < InertiaController
     low_confidence_threshold escalation_threshold report_back_window_minutes
     anomaly_sensitivity anomaly_min_count anomaly_min_baseline_windows anomaly_active_days
     team_email_domains team_discord_role_ids team_discord_user_ids
-    slack_channel_id digest_time_zone digest_hour
+    slack_channel_id digest_time_zone digest_hour incident_window_minutes slack_interactivity
   ].freeze
 
   def show

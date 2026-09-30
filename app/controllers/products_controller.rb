@@ -54,7 +54,7 @@ class ProductsController < InertiaController
   end
 
   def product_params
-    permitted = params.expect(product: %i[name slug description hint_words search_blurb slack_channel_id escalation_threshold digest_hour])
+    permitted = params.expect(product: %i[name slug description hint_words search_blurb slack_channel_id alert_channel_id alert_mention_ids escalation_threshold digest_hour])
     permitted[:hint_words] = permitted[:hint_words].split(/[,\n]/) if permitted.key?(:hint_words)
     permitted
   end
@@ -62,7 +62,7 @@ class ProductsController < InertiaController
   def render_form(product)
     render inertia: "products/form", props: {
       product: product.slice(:id, :name, :slug, :description, :hint_words, :search_blurb, :slack_channel_id,
-        :escalation_threshold, :digest_hour),
+        :alert_channel_id, :alert_mention_ids, :escalation_threshold, :digest_hour),
       default_escalation_threshold: Setting.current.escalation_threshold
     }
   end

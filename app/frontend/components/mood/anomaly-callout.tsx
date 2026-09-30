@@ -121,6 +121,11 @@ export default function AnomalyCallout({ anomalies }: { anomalies: readonly Anom
           >
             {positive ? 'See the love' : 'See what happened'}
           </Link>
+          {anomaly.incident_id !== null && (
+            <Link href={`/incidents/${anomaly.incident_id}`} className="text-[#3E3542]/70 underline decoration-dotted underline-offset-4">
+              Resolve
+            </Link>
+          )}
           {more > 0 && (
             <Link href={`/items?anomaly=active&product=${anomaly.product.slug}`} className="text-[#3E3542]/70 underline decoration-dotted underline-offset-4">
               +{more} more

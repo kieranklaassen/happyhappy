@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_26_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_150000) do
   create_table "agents", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
@@ -47,6 +47,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_220000) do
     t.float "z_score", null: false
     t.string "polarity", default: "neutral", null: false
     t.string "highlight"
+    t.integer "incident_id"
+    t.datetime "resolved_at"
+    t.index ["incident_id"], name: "index_anomalies_on_incident_id"
     t.index ["product_id", "metric", "dimension", "granularity", "window_start"], name: "index_anomalies_on_series_and_window"
     t.index ["product_id"], name: "index_anomalies_on_product_id"
     t.index ["source_id"], name: "index_anomalies_on_source_id"
@@ -140,6 +143,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_220000) do
     t.index ["state"], name: "index_geneva_drive_workflows_on_state"
     t.index ["type", "hero_type", "hero_id"], name: "index_geneva_drive_workflows_unique_ongoing", unique: true, where: "state NOT IN ('finished', 'canceled') AND allow_multiple = 0"
     t.index ["type"], name: "index_geneva_drive_workflows_on_type"
+  end
+
+  create_table "incidents", force: :cascade do |t|
+    t.integer "product_id", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "opened_at", null: false
+    t.datetime "last_anomaly_at", null: false
+    t.datetime "resolved_at"
+    t.string "resolved_by_type"
+    t.integer "resolved_by_id"
+    t.string "resolved_by_name"
+    t.text "resolution_note"
+    t.boolean "items_handled", default: false, null: false
+    t.string "slack_channel_id"
+    t.string "slack_message_ts"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["product_id", "status", "last_anomaly_at"], name: "index_incidents_on_product_id_and_status_and_last_anomaly_at"
+    t.index ["resolved_by_type", "resolved_by_id"], name: "index_incidents_on_resolved_by"
   end
 
   create_table "item_events", force: :cascade do |t|
@@ -244,6 +266,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_220000) do
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.string "search_blurb"
+    t.string "alert_channel_id"
+    t.json "alert_mention_ids", default: [], null: false
     t.index ["name"], name: "index_products_on_name", unique: true
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
@@ -273,6 +297,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_220000) do
     t.json "team_discord_user_ids", default: [], null: false
     t.json "team_email_domains", default: ["every.to"], null: false
     t.datetime "updated_at", null: false
+    t.integer "incident_window_minutes", default: 120, null: false
+    t.boolean "slack_interactivity", default: false, null: false
   end
 
   create_table "sources", force: :cascade do |t|
@@ -457,6 +483,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_220000) do
   add_foreign_key "escalations", "messages"
   add_foreign_key "escalations", "products"
   add_foreign_key "geneva_drive_step_executions", "geneva_drive_workflows", column: "workflow_id", on_delete: :cascade
+  add_foreign_key "incidents", "products"
   add_foreign_key "item_events", "items"
   add_foreign_key "items", "agents", column: "claimed_by_agent_id"
   add_foreign_key "items", "categories"

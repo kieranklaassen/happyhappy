@@ -10,6 +10,7 @@ const ACTIVE_CLASS: Record<AnomalyProps['polarity'], string> = {
 }
 
 function statusLabel(anomaly: AnomalyProps): { label: string; className: string } {
+  if (anomaly.resolved_at) return { label: 'Resolved', className: 'bg-gray-100 text-gray-700' }
   if (anomaly.historical) return { label: 'History', className: 'bg-gray-100 text-gray-600' }
   switch (anomaly.status) {
     case 'active':
@@ -38,7 +39,7 @@ function dotClass(anomaly: AnomalyProps): string {
   }
 }
 
-export default function AnomalyTimeline({ anomalies }: { anomalies: AnomalyProps[] }) {
+export default function AnomalyTimeline({ anomalies, showIncident = true }: { anomalies: AnomalyProps[]; showIncident?: boolean }) {
   if (anomalies.length === 0) {
     return <p className="text-sm text-gray-500">Nothing unusual in the last 30 days.</p>
   }
@@ -61,11 +62,18 @@ export default function AnomalyTimeline({ anomalies }: { anomalies: AnomalyProps
               {anomaly.granularity}, <time dateTime={anomaly.window_start}>{formatDateTime(anomaly.window_start)}</time> to{' '}
               <time dateTime={anomaly.window_end}>{formatDateTime(anomaly.window_end)}</time>
             </p>
-            {anomaly.item_ids.length > 0 && (
-              <Link href={anomalyItemsHref(anomaly)} className="text-sm text-blue-700 underline">
-                {anomaly.item_ids.length === 1 ? '1 item' : `${anomaly.item_ids.length} items`}
-              </Link>
-            )}
+            <p className="flex flex-wrap gap-x-3 text-sm">
+              {anomaly.item_ids.length > 0 && (
+                <Link href={anomalyItemsHref(anomaly)} className="text-blue-700 underline">
+                  {anomaly.item_ids.length === 1 ? '1 item' : `${anomaly.item_ids.length} items`}
+                </Link>
+              )}
+              {showIncident && anomaly.incident_id !== null && (
+                <Link href={`/incidents/${anomaly.incident_id}`} className="text-blue-700 underline">
+                  {anomaly.status === 'active' ? 'Resolve incident' : 'Incident'}
+                </Link>
+              )}
+            </p>
           </li>
         )
       })}

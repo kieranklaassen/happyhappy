@@ -36,4 +36,29 @@ module SlackStubHelper
   def slack_posts
     @slack_posts ||= []
   end
+
+  # Stubs any Web API method; each call answers with the next body (the last repeats) and is
+  # recorded in slack_calls as [method, params], with JSON or form bodies decoded.
+  #
+  #   stub_slack_method("chat.postMessage", { ok: false, error: "not_in_channel" }, { ok: true, ts: SLACK_OK_TS })
+  #   slack_calls_to("chat.postMessage") # => [params, params]
+  def stub_slack_method(method, *bodies)
+    bodies = [ { ok: true } ] if bodies.empty?
+    stub_request(:post, "https://slack.com/api/#{method}")
+      .with(headers: { "Authorization" => "Bearer #{SLACK_TEST_TOKEN}" })
+      .to_return do |request|
+        params = request.headers["Content-Type"].to_s.include?("json") ? JSON.parse(request.body) : URI.decode_www_form(request.body).to_h
+        slack_calls << [ method, params ]
+        body = bodies.size > 1 ? bodies.shift : bodies.first
+        { status: 200, body: body.to_json, headers: { "Content-Type" => "application/json" } }
+      end
+  end
+
+  def slack_calls
+    @slack_calls ||= []
+  end
+
+  def slack_calls_to(method)
+    slack_calls.select { |called, _| called == method }.map(&:last)
+  end
 end

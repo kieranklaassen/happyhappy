@@ -19,13 +19,25 @@ module Webhooks
       new(item_event).call
     end
 
-    # Anomalies are not item timeline events, so they fan out on their own when Anomalies::Detect opens one.
+    # Anomalies and incidents are not item timeline events, so they fan out on their own when
+    # Anomalies::Detect opens an anomaly or Incidents::Resolve resolves an incident.
     def self.anomaly(anomaly)
       event = DetectedAnomaly::WEBHOOK_EVENT
       endpoints = WebhookEndpoint.active.select { |endpoint| endpoint.subscribed?(event) && endpoint.matches_anomaly?(anomaly) }
       return [] if endpoints.empty?
 
       payload = Payload.for_anomaly(anomaly)
+      endpoints.map do |endpoint|
+        endpoint.deliveries.create!(event: event, payload: payload).tap { |delivery| WebhookDeliveryJob.perform_later(delivery) }
+      end
+    end
+
+    def self.incident(incident)
+      event = Incident::WEBHOOK_EVENT
+      endpoints = WebhookEndpoint.active.select { |endpoint| endpoint.subscribed?(event) && endpoint.matches_incident?(incident) }
+      return [] if endpoints.empty?
+
+      payload = Payload.for_incident(incident)
       endpoints.map do |endpoint|
         endpoint.deliveries.create!(event: event, payload: payload).tap { |delivery| WebhookDeliveryJob.perform_later(delivery) }
       end

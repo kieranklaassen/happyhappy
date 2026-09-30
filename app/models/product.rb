@@ -8,17 +8,22 @@ class Product < ApplicationRecord
   has_many :escalations, dependent: :restrict_with_error
   has_many :daily_digests, dependent: :restrict_with_error
   has_many :anomalies, class_name: "DetectedAnomaly", dependent: :delete_all
+  has_many :incidents, dependent: :delete_all
 
   normalizes :name, with: ->(name) { name.strip }
   normalizes :slug, with: ->(slug) { slug.strip.parameterize }
   normalizes :hint_words, with: ->(words) { Array(words).map { |word| word.to_s.strip }.compact_blank.uniq }
-  normalizes :slack_channel_id, with: ->(channel_id) { channel_id.strip.presence }
+  normalizes :slack_channel_id, :alert_channel_id, with: ->(channel_id) { channel_id.strip.presence }
+  normalizes :alert_mention_ids, with: ->(ids) { Setting::LIST.call(ids).compact_blank.uniq }
 
   before_validation :derive_slug, if: -> { slug.blank? && name.present? }
 
   validates :name, presence: true, uniqueness: true
   validates :slug, presence: true, uniqueness: true
   validates :digest_hour, numericality: { only_integer: true, in: 0..23 }
+  validates :alert_channel_id, format: { with: Setting::CHANNEL_ID, message: "must be a Slack channel ID like C0AGCDCD6KG" },
+    allow_nil: true
+  validate :alert_mention_ids_are_slack_ids
   validates :escalation_threshold,
     numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }, allow_nil: true
 
@@ -29,6 +34,11 @@ class Product < ApplicationRecord
   end
 
   private
+
+  def alert_mention_ids_are_slack_ids
+    invalid = alert_mention_ids.grep_v(Slack::Mentions::ID)
+    errors.add(:alert_mention_ids, "must be Slack user IDs (U...) or user group IDs (S...), not #{invalid.join(", ")}") if invalid.any?
+  end
 
   def derive_slug
     self.slug = name.parameterize

@@ -24,6 +24,14 @@ describe('AnomalyCallout', () => {
     expect(screen.queryByRole('link', { name: /more/ })).not.toBeInTheDocument()
   })
 
+  it('links to resolve the incident only when the anomaly has one', () => {
+    const { rerender } = render(<AnomalyCallout anomalies={[anomaly()]} />)
+    expect(screen.queryByRole('link', { name: 'Resolve' })).not.toBeInTheDocument()
+
+    rerender(<AnomalyCallout anomalies={[anomaly({ incident_id: 4 })]} />)
+    expect(screen.getByRole('link', { name: 'Resolve' })).toHaveAttribute('href', '/incidents/4')
+  })
+
   it('formats shares as percentages and names the source', () => {
     render(
       <AnomalyCallout

@@ -28,4 +28,6 @@ export interface AnomalyProps {
   first_seen_at: string
   last_seen_at: string
   ended_at: string | null
+  incident_id: number | null
+  resolved_at: string | null
 }

@@ -40,6 +40,8 @@ export function anomaly(overrides: Partial<AnomalyProps> = {}): AnomalyProps {
     first_seen_at: '2026-09-24T10:00:00Z',
     last_seen_at: '2026-09-24T10:00:00Z',
     ended_at: null,
+    incident_id: null,
+    resolved_at: null,
     ...overrides,
   }
 }
