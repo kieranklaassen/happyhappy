@@ -92,6 +92,15 @@ class Incidents::ResolveTest < ActiveJob::TestCase
     assert_equal "Ana Every", @incident.reload.resolved_by_name
   end
 
+  test "ends an anomaly attached after the incident was loaded" do
+    incident = Incident.includes(anomalies: %i[product source]).find(@incident.id)
+    late = create_anomaly!(metric: "volume", dimension: nil)
+    late.update!(incident: incident)
+
+    assert_predicate Incidents::Resolve.call(incident: incident, actor_name: "Ana"), :success?
+    assert_predicate late.reload, :ended?
+  end
+
   test "sends incident.resolved to subscribed endpoints and keeps anomaly.detected" do
     subscribed = create_webhook_endpoint(events: [ Incident::WEBHOOK_EVENT ], product_ids: [ products(:cora).id ])
     create_webhook_endpoint(events: [ DetectedAnomaly::WEBHOOK_EVENT ])

@@ -27,17 +27,22 @@ module Incidents
       @at = at
     end
 
+    # Locks the incident so two clicks (or a click racing Incidents::Correlate) cannot both resolve it,
+    # and so the anomalies ended here are the ones attached when the lock was taken.
     def call
-      return Result.new(incident: @incident, error: "Incident #{@incident.id} is already resolved.") if @incident.resolved?
+      resolved = @incident.with_lock do
+        next false if @incident.resolved?
 
-      @incident.transaction do
         @incident.update!(status: :resolved, resolved_at: @at, resolved_by: @actor, resolved_by_name: @actor_name,
           resolution_note: @note, items_handled: @handle_items)
         @incident.anomalies.each do |anomaly|
           anomaly.update!(status: :ended, ended_at: anomaly.ended_at || @at, resolved_at: @at)
         end
         handle_items! if @handle_items
+        true
       end
+
+      return Result.new(incident: @incident, error: "Incident #{@incident.id} is already resolved.") unless resolved
 
       PostIncidentResolutionJob.perform_later(@incident) if @incident.slack_posted?
       Rails.error.handle(context: { incident_id: @incident.id }) { Webhooks::FanOut.incident(@incident) }
