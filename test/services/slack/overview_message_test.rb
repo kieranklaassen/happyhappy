@@ -5,7 +5,8 @@ class Slack::OverviewMessageTest < ActiveSupport::TestCase
 
   setup do
     @zone = "America/Los_Angeles"
-    @day = Date.current - 5
+    # Fixtures sit 4 and 40 days back; 10 days keeps the Los Angeles day clear of them at any hour.
+    @day = Date.current - 10
     @noon = @day.in_time_zone(@zone).noon
   end
 
