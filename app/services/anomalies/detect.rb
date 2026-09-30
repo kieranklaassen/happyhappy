@@ -13,7 +13,8 @@ module Anomalies
   # - A row that is new and still active after the scan sends the anomaly.detected webhook, and bad
   #   news joins or opens an incident (Incidents::Correlate).
   # - A resolved row (Incidents::Resolve) keeps its series quiet: spiking windows after it extend it
-  #   silently, and only a spike after the next normal window opens a new row that can alert again.
+  #   silently, and only a spike after the next normal window opens a new row that can alert again. A
+  #   new row overlapping a resolved row of the same series at the other granularity is born resolved.
   #
   #   Anomalies::Detect.call(granularity: "hour")  # every 15 minutes, trailing hour windows
   #   Anomalies::Detect.call(granularity: "day")   # daily, calendar days
@@ -47,12 +48,13 @@ module Anomalies
       end
       end_stale
       # A spike found and ended within one scan (say, on the first run) is history by the time we alert.
+      # Incidents first: a row that turns out to repeat a resolved spike is ended there and sends nothing.
+      Incidents::Correlate.all(@created.select(&:active?), setting: @setting)
       alert_channel = @setting.slack_channel?
       @created.select(&:active?).each do |anomaly|
         Rails.error.handle(context: { anomaly_id: anomaly.id }) { Webhooks::FanOut.anomaly(anomaly) }
         PostAnomalyAlertJob.perform_later(anomaly) if alert_channel && anomaly.slack_alertable?
       end
-      Incidents::Correlate.all(@created.select(&:active?), setting: @setting)
       @created
     end
 

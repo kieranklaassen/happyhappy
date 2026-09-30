@@ -24,7 +24,7 @@ class Slack::IncidentMessageTest < ActiveSupport::TestCase
     rendered = JSON.generate(payload[:blocks])
 
     assert_equal "Cora incident: message volume spiked <@U0AGQDHRV8U>", payload[:text]
-    assert_includes rendered, "Message volume across all sources: 42 vs about 6 expected (high)"
+    assert_includes rendered, "Message volume across all sources: 42, usually 6 (high)"
     assert_includes rendered, "Bug messages on Intercom"
     assert_includes rendered, "*Sources*"
     assert_includes rendered, "/items/#{items(:angry_slack).id}"

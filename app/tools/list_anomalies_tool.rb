@@ -12,7 +12,8 @@ class ListAnomaliesTool < ApplicationTool
     the expected and actual value, status, and the ids of the items that drove it; pass those to get_item.
     Polarity says whether it is good news (positive, with a highlight of notable, big, or huge), bad news
     (negative, with a severity of low, medium, or high), or neutral (neither); severity is null unless
-    negative. Defaults to active anomalies.
+    negative. Bad news carries the incident_id it belongs to; resolve it with resolve_anomaly. Defaults to
+    active anomalies.
   TEXT
   input_schema(
     properties: {

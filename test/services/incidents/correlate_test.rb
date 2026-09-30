@@ -85,6 +85,25 @@ class Incidents::CorrelateTest < ActiveJob::TestCase
     assert_empty slack_calls_to("chat.postMessage").select { |post| post["channel"] != "C0AGCDCD6KG" }
   end
 
+  test "the same spike seen at the other granularity after it was resolved joins the resolved incident silently" do
+    hourly = create_anomaly!
+    incident = correlate(hourly)
+    Incidents::Resolve.call(incident: incident, actor_name: "Ana")
+    slack_calls.clear
+
+    daily = create_anomaly!(granularity: "day", window_start: Time.current.beginning_of_day, window_end: Time.current.end_of_day)
+    other_series = create_anomaly!(granularity: "day", metric: "volume", dimension: nil,
+      window_start: Time.current.beginning_of_day, window_end: Time.current.end_of_day)
+
+    assert_nil correlate(daily)
+    daily.reload
+    assert_equal incident, daily.incident
+    assert_predicate daily, :ended?
+    assert_predicate daily, :resolved?
+    assert_not_equal incident, correlate(other_series), "a different series is new bad news"
+    assert_equal 1, slack_calls_to("chat.postMessage").size
+  end
+
   test "a product without an alert channel still gets an incident, with no ping" do
     products(:cora).update!(alert_channel_id: nil)
 

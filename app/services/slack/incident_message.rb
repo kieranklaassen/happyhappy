@@ -1,7 +1,8 @@
 module Slack
   # Block Kit payload for an incident ping in the product's alert channel: who is on call, what
-  # spiked (expected against actual), which sources, a few customers behind it, and buttons to open
-  # or resolve the incident. Once resolved it says who resolved it and drops the buttons and mentions.
+  # spiked (expected against actual), which sources, a few customers behind it (complaints first),
+  # and buttons to open or resolve the incident. Once resolved it says who resolved it and drops the
+  # buttons and mentions.
   #
   #   Slack::IncidentMessage.new(incident).to_h # => { text:, blocks: }
   #
@@ -74,12 +75,22 @@ module Slack
     def anomalies_text
       lines = anomalies.first(ANOMALY_COUNT).map do |anomaly|
         where = anomaly.source ? " on #{escape(anomaly.source.name)}" : " across all sources"
-        "• #{escape(anomaly.label)}#{where}: #{anomaly_value(anomaly, anomaly.actual)} vs about " \
-          "#{anomaly_value(anomaly, anomaly.expected)} expected (#{anomaly.severity})"
+        "• #{escape(anomaly.label)}#{where}: #{anomaly_value(anomaly, anomaly.actual)}, usually " \
+          "#{expected_text(anomaly)} (#{anomaly.severity})"
       end
       extra = anomalies.size - ANOMALY_COUNT
       lines << "…and #{extra} more" if extra.positive?
       lines.join("\n")
+    end
+
+    # Expected counts are averages, said the way the web callout says them ("usually under 1").
+    def expected_text(anomaly)
+      value = anomaly.expected.to_f
+      if anomaly.share? then percent(value)
+      elsif value < 0.05 then "none"
+      elsif value < 1 then "under 1"
+      else value.round.to_s
+      end
     end
 
     def sources
@@ -87,7 +98,8 @@ module Slack
     end
 
     def examples
-      @examples ||= Item.where(id: @incident.item_ids).by_actionability.includes(:source).limit(EXAMPLE_COUNT).to_a
+      @examples ||= Item.where(id: @incident.item_ids).order(Arel.sql("CASE sentiment WHEN 'complaint' THEN 0 ELSE 1 END"))
+        .merge(Item.by_actionability).includes(:source).limit(EXAMPLE_COUNT).to_a
     end
 
     def examples_text

@@ -125,8 +125,8 @@ That hostname is `KAMAL_PROXY_HOST`, and `https://<hostname>` is
 | `EVERY_OAUTH_BASE_URL` | clear, required | Sign in with Every | render fails |
 | `PUBLIC_BASE_URL` | clear, required | OAuth redirect URI, Slack item links | render fails |
 | `APP_TIME_ZONE` | clear, default `UTC` | digest hours and days, X month keys | UTC |
-| `SLACK_SIGNING_SECRET` | secret | Slack events webhook | every Slack event gets 401 |
-| `SLACK_BOT_TOKEN` | secret | Slack author lookups, escalations, digests | posts fail and keep the error |
+| `SLACK_SIGNING_SECRET` | secret | Slack events webhook and interactivity (incident Mark resolved buttons) | every Slack event and button click gets 401 |
+| `SLACK_BOT_TOKEN` | secret | Slack author lookups, escalations, digests, incident pings, resolver lookups | posts fail and keep the error |
 | `DISCORD_BOT_TOKEN` | secret | `discord` role | the `discord` container exits and the deploy fails |
 | `INTERCOM_CLIENT_SECRET` | secret | Intercom webhook | every Intercom webhook gets 401 |
 | `INTERCOM_ACCESS_TOKEN` | secret | `backfill:intercom` only | the Intercom backfill refuses to start |
@@ -201,6 +201,32 @@ queries inside it.
   America/Los_Angeles), alerts for new high-severity bad-news anomalies, and the
   escalations of products without a channel of their own. A product's own
   channel still gets that product's digest and escalations.
+
+#### Incident pings and resolve
+
+A new bad-news anomaly opens an incident for its product; bad-news anomalies of
+the same product within the Settings incident window (default 120 minutes) join
+it. Each incident is one message in the product's alert channel, updated in place
+as anomalies join, with a threaded "Resolved by" reply when someone resolves it.
+
+- Bot token scopes: `chat:write` (post, update, and thread the ping),
+  `channels:join` (the bot joins a public alert channel itself on
+  `not_in_channel` and retries once; invite it to private channels),
+  `users:read` and `users:read.email` (map whoever clicks Mark resolved to a
+  happyhappy user by email; without them the Slack name is recorded).
+- Interactivity & Shortcuts: turn Interactivity on and set the Request URL to
+  `https://<host>/webhooks/slack/interactions` (same `SLACK_SIGNING_SECRET`),
+  then switch on **Settings, Slack interactivity**. Until then the Mark resolved
+  button links to the incident page, where the web resolve takes a note.
+- **Products, Incident alert channel id and On-call Slack IDs**: per product. User
+  IDs start with `U` (Slack profile, Copy member ID) and render as `<@U...>`;
+  user group IDs start with `S` and render as `<!subteam^S...>`. Display names
+  such as `@bingsu` are rejected, since a bot cannot mention them.
+- Cora: alert channel `C0AGCDCD6KG`, on-call `U0AGQDHRV8U` plus bingsu's ID (a
+  `U...` member ID, or an `S...` ID if bingsu is a user group) once known. Nothing
+  is seeded; enter these on Cora's product page.
+- Agents resolve with the `resolve_anomaly` tool (MCP and WebMCP); webhook
+  endpoints can subscribe to `incident.resolved`.
 
 ### Discord
 
