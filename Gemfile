@@ -65,7 +65,7 @@ gem "faraday"
 gem "anomaly"
 
 # Durable, resumable workflows backed by Active Record
-gem "geneva_drive", "~> 0.6.0"
+gem "geneva_drive", "~> 0.7.0"
 
 # Vite integration for the app/frontend build pipeline
 gem "vite_rails"
