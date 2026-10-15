@@ -38,7 +38,7 @@ gem "ruby-vips", "~> 2.2"
 gem "inertia_rails"
 
 # First-class LLM access (OpenAI / Anthropic / Gemini) with a unified API.
-gem "ruby_llm", "~> 2.0"
+gem "ruby_llm", "~> 2.1"
 # TypeSafe Jev provider for RubyLLM: calibrated probabilities per question
 gem "ruby_llm-typesafe"
 # Intent search over the feed: stored labels, Jev query encoding, and Smart search (U25)
