@@ -46,7 +46,7 @@ gem "truffler", "~> 0.1.6"
 
 # Official Ruby MCP SDK: app/tools/ subclass MCP::Tool, and ToolRegistry serves
 # them to MCP clients and to WebMCP browser agents (docs/modules/webmcp.md)
-gem "mcp", "~> 1.6"
+gem "mcp", "~> 1.8"
 
 # Discord gateway bot; required only by the bin/discord process
 gem "discordrb", require: false
