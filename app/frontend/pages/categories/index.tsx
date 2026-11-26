@@ -21,6 +21,45 @@ interface CategoriesIndexProps {
   retired_categories: CategoryRow[]
 }
 
+interface TextFieldsForm {
+  data: { name: string; description: string; search_blurb: string }
+  errors: { name?: string[]; description?: string[]; search_blurb?: string[] }
+  setData(field: 'name' | 'description' | 'search_blurb', value: string): void
+}
+
+function TextFields({ form, prefix, nameHint }: { form: TextFieldsForm; prefix: string; nameHint?: string }) {
+  return (
+    <>
+      <Field label="Name" htmlFor={`${prefix}_name`} error={form.errors.name} hint={nameHint}>
+        <input
+          id={`${prefix}_name`}
+          required
+          value={form.data.name}
+          onChange={(e) => form.setData('name', e.target.value)}
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Description" htmlFor={`${prefix}_description`} error={form.errors.description}>
+        <input
+          id={`${prefix}_description`}
+          value={form.data.description}
+          onChange={(e) => form.setData('description', e.target.value)}
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Search words" htmlFor={`${prefix}_search_blurb`} error={form.errors.search_blurb} hint={SEARCH_BLURB_HINT}>
+        <input
+          id={`${prefix}_search_blurb`}
+          maxLength={SEARCH_BLURB_MAX}
+          value={form.data.search_blurb}
+          onChange={(e) => form.setData('search_blurb', e.target.value)}
+          className={inputClass}
+        />
+      </Field>
+    </>
+  )
+}
+
 function CategoryEditor({ category }: { category: CategoryRow }) {
   const form = useForm({
     name: category.name,
@@ -48,32 +87,7 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
           className={inputClass}
         />
       </Field>
-      <Field label="Name" htmlFor={`${prefix}_name`} error={form.errors.name} hint={`${category.item_count} items`}>
-        <input
-          id={`${prefix}_name`}
-          required
-          value={form.data.name}
-          onChange={(e) => form.setData('name', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Description" htmlFor={`${prefix}_description`} error={form.errors.description}>
-        <input
-          id={`${prefix}_description`}
-          value={form.data.description}
-          onChange={(e) => form.setData('description', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Search words" htmlFor={`${prefix}_search_blurb`} error={form.errors.search_blurb} hint={SEARCH_BLURB_HINT}>
-        <input
-          id={`${prefix}_search_blurb`}
-          maxLength={SEARCH_BLURB_MAX}
-          value={form.data.search_blurb}
-          onChange={(e) => form.setData('search_blurb', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
+      <TextFields form={form} prefix={prefix} nameHint={`${category.item_count} items`} />
       <div className="flex gap-2 sm:pt-6">
         <button type="submit" disabled={form.processing || !form.isDirty} className={secondaryButtonClass}>
           Save
@@ -101,32 +115,7 @@ function NewCategoryForm() {
 
   return (
     <form onSubmit={submit} aria-label="Add category" className="grid gap-3 rounded border border-gray-200 bg-white px-4 py-4 sm:grid-cols-[1fr_2fr_1fr_auto] sm:items-start">
-      <Field label="Name" htmlFor="new_category_name" error={form.errors.name}>
-        <input
-          id="new_category_name"
-          required
-          value={form.data.name}
-          onChange={(e) => form.setData('name', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Description" htmlFor="new_category_description" error={form.errors.description}>
-        <input
-          id="new_category_description"
-          value={form.data.description}
-          onChange={(e) => form.setData('description', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Search words" htmlFor="new_category_search_blurb" error={form.errors.search_blurb} hint={SEARCH_BLURB_HINT}>
-        <input
-          id="new_category_search_blurb"
-          maxLength={SEARCH_BLURB_MAX}
-          value={form.data.search_blurb}
-          onChange={(e) => form.setData('search_blurb', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
+      <TextFields form={form} prefix="new_category" />
       <div className="sm:pt-6">
         <button type="submit" disabled={form.processing} className={primaryButtonClass}>
           Add category
