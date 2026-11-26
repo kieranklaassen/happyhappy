@@ -35,7 +35,7 @@ function chipTitle(chip: SearchChip): string {
 
 interface Props {
   search: SearchProps | null
-  filterQuery: Record<string, string>
+  filterQuery: Record<string, string | string[]>
 }
 
 // Keystroke search on the feed: typing reloads the feed with `q` (no network
@@ -55,7 +55,7 @@ export default function FeedSearch({ search, filterQuery }: Props) {
       keystrokeTimer.current = undefined
       if (text === sent.current) return
       sent.current = text
-      const base = JSON.parse(filters) as Record<string, string>
+      const base = JSON.parse(filters) as Props['filterQuery']
       router.get('/items', text.trim() ? { ...base, q: text } : base, {
         ...VISIT,
         replace: true,
