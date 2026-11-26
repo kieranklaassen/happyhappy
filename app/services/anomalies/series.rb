@@ -106,9 +106,11 @@ module Anomalies
 
     def metric_lines(product_id, source_id, by_window, first_index)
       line = ->(metric, dimension = nil, &point) do
-        points = @windows.each_with_index.map do |(window_start, window_end), index|
-          value, count, item_ids = point.call(by_window.fetch(index) { Bucket.blank })
-          Point.new(window_start:, window_end:, value:, count:, item_ids: item_ids.uniq)
+        points = blank_points(metric).dup
+        by_window.each do |index, bucket|
+          value, count, item_ids = point.call(bucket)
+          window_start, window_end = @windows[index]
+          points[index] = Point.new(window_start:, window_end:, value:, count:, item_ids: item_ids.uniq)
         end
         Line.new(product_id:, source_id:, granularity: @granularity, metric:, dimension:, points:, first_index:)
       end
@@ -138,6 +140,15 @@ module Anomalies
           end
         end
       ]
+    end
+
+    # Most windows have no messages, so every line shares the points for empty windows.
+    def blank_points(metric)
+      value = metric.in?(COUNT_METRICS) ? 0 : nil
+      @blank_points ||= {}
+      @blank_points[value] ||= @windows.map do |window_start, window_end|
+        Point.new(window_start:, window_end:, value:, count: 0, item_ids: [].freeze)
+      end
     end
 
     def ratio(numerator, denominator)
