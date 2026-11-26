@@ -15,8 +15,8 @@ with SSR wired but off by default.
   `use_script_element_for_initial_page`, `use_data_inertia_head_attribute`.
 - A single entrypoint that branches `hydrateRoot`/`createRoot` on
   `data-server-rendered`, so **SSR turns on with no entrypoint change**. SSR is
-  disabled by default; `config/initializers/inertia_ssr_timeout.rb` bounds the SSR
-  HTTP call. See `INERTIA_SSR_ENABLED` / `npm run build:ssr`.
+  disabled by default; `config.ssr_timeout` (2 seconds, or `INERTIA_SSR_TIMEOUT`)
+  bounds the SSR HTTP call. See `INERTIA_SSR_ENABLED` / `npm run build:ssr`.
 - Split `tsconfig.app.json` / `tsconfig.node.json` and `npm run check`
   (tsc ×2 + Vitest). TypeScript pinned to `^5.7` (the stable end of the fleet's
   drift), not the generator's 7.x.
@@ -25,7 +25,7 @@ with SSR wired but off by default.
 
 - `app/frontend/**` (entrypoints, pages, lib, styles, ssr, types, test setup)
 - `app/controllers/inertia_controller.rb`, `app/controllers/application_controller.rb`
-- `config/initializers/inertia_rails.rb`, `config/initializers/inertia_ssr_timeout.rb`
+- `config/initializers/inertia_rails.rb`
 - `vite.config.ts`, `config/vite.json`, `tsconfig*.json`, `package.json`
 - `app/views/layouts/application.html.erb`, `Procfile.dev`, `bin/dev`, `bin/vite`
 
@@ -34,7 +34,7 @@ with SSR wired but off by default.
 1. Run the `inertia:install` generator (`--framework react --typescript --vite
    --tailwind`), then apply the house conventions above.
 2. Pin TypeScript to `^5.7`; add the split tsconfig + `npm run check`.
-3. Add the SSR keys + `inertia_ssr_timeout.rb`, and the `data-server-rendered`
+3. Add the SSR keys, `config.ssr_timeout` included, and the `data-server-rendered`
    branch in the entrypoint (SSR stays off).
 
 ## Verify adoption
