@@ -72,7 +72,10 @@ export default function AgentsIndex({ agents, new_token }: AgentsPageProps) {
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    form.post('/agents', { onSuccess: () => form.reset() })
+    const sent = form.data.name
+    form.post('/agents', {
+      onSuccess: () => form.setData((data: typeof form.data) => (data.name === sent ? { name: '' } : data)),
+    })
   }
 
   function revoke(agent: AgentRow) {

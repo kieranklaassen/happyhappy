@@ -203,4 +203,46 @@ describe('Settings page', () => {
       FIELDS.map(({ name, label }) => `${label} rejects ${name}`),
     )
   })
+
+  // Saves, with the request still open until the returned function says it succeeded.
+  function startSave() {
+    fireEvent.submit(saveButton().closest('form')!)
+    const options = patch.mock.lastCall![2]!
+    act(() => void options.onStart?.({} as never))
+    return async () => {
+      await act(async () => void (await options.onSuccess?.({} as never)))
+      act(() => void options.onFinish?.({} as never))
+    }
+  }
+
+  it('has nothing left to save once a save succeeds', async () => {
+    renderPage()
+    fireEvent.change(control('slack_channel_id'), { target: { value: 'C1' } })
+
+    const succeed = startSave()
+    await succeed()
+
+    expect(control('slack_channel_id')).toHaveValue('C1')
+    expect(saveButton()).toBeDisabled()
+  })
+
+  it.each([
+    { name: 'the saved field', field: 'slack_channel_id', value: 'C2' },
+    { name: 'another field', field: 'team_email_domains', value: 'every.to' },
+    { name: 'the saved field, back to its old value', field: 'slack_channel_id', value: '' },
+  ])('keeps text typed into $name during a save ready for the next save', async ({ field, value }) => {
+    renderPage()
+    fireEvent.change(control('slack_channel_id'), { target: { value: 'C1' } })
+
+    const succeed = startSave()
+    fireEvent.change(control(field), { target: { value } })
+    await succeed()
+
+    expect(control(field)).toHaveValue(value)
+    expect(saveButton()).toBeEnabled()
+    const succeedAgain = startSave()
+    expect(patch.mock.calls[1][1]).toEqual({ setting: { ...submittedSetting, slack_channel_id: 'C1', [field]: value } })
+    await succeedAgain()
+    expect(saveButton()).toBeDisabled()
+  })
 })
