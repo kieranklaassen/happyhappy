@@ -114,13 +114,13 @@ export function toQuery(state: FormState): Record<string, string> {
   return query
 }
 
-// Links carry every filter the server applied, including ones the form cannot show. Defaults are left
-// out, except that asking for noise makes the server default to every relevance.
+// Links carry every filter the server applied, including ones the form cannot show.
 function appliedQuery(filters: FeedFilters): Record<string, string | string[]> {
   const query: Record<string, string | string[]> = {}
+  const relevantIsDefault = !filters.actionability?.includes('noise')
   for (const [key, value] of Object.entries(filters)) {
     if (key === 'sort' && value === 'recent') continue
-    if (key === 'relevance' && value === 'relevant' && !filters.actionability?.includes('noise')) continue
+    if (key === 'relevance' && value === 'relevant' && relevantIsDefault) continue
     if (Array.isArray(value)) query[key] = value.length === 1 ? value[0] : value
     else query[key] = value === true ? '1' : String(value)
   }
@@ -271,7 +271,7 @@ const LIVE_PROPS = ['items', 'anomalies']
 
 export default function ItemsIndex({ items, filters, pagination, options, anomalies, search, smart, error }: FeedProps) {
   useMoodStream(LIVE_PROPS)
-  const [form, setForm] = useState(formState(filters, options.products))
+  const [form, setForm] = useState(() => formState(filters, options.products))
   const query = appliedQuery(filters)
   const selectedProduct = options.products.find((product) => String(product.id) === form.product)
 
