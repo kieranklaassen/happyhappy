@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react'
 import { type ChangeEvent, type FormEvent, type InputHTMLAttributes } from 'react'
 import AppNav from '../../components/app-nav'
 import { Field, FlashNotice, inputClass, primaryButtonClass } from '../../components/form-field'
+import { formatHour } from '../../lib/format'
 
 interface SettingsEditProps {
   setting: {
@@ -26,11 +27,6 @@ interface SettingsEditProps {
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
-function hourLabel(hour: number) {
-  return `${hour.toString().padStart(2, '0')}:00`
-}
-
-// Every setting edited as text; the checkbox is the only one that is not.
 type TextSetting = Exclude<keyof SettingsEditProps['setting'], 'slack_interactivity'>
 
 interface InputField {
@@ -209,7 +205,7 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
             <select {...controlProps('digest_hour')}>
               {HOURS.map((hour) => (
                 <option key={hour} value={hour.toString()}>
-                  {hourLabel(hour)}
+                  {formatHour(hour)}
                 </option>
               ))}
             </select>
