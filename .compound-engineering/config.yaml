@@ -1,0 +1,12 @@
+# Autonomous mode for this repository. Landing is by pull request (AGENTS.md), and hosted CI must be green.
+autonomous_profile: hands-off
+autonomous_motions: [main-red, backlog, stack, climb]
+autonomous_landing: pull-request
+autonomous_ci: required
+autonomous_merge_method: squash
+# Each starts from a clean copy. Dependency audits and brakeman's latest-version rule stay with hosted CI.
+autonomous_checks:
+  - run: (bundle check || bundle install --quiet) && bin/rubocop
+  - run: (bundle check || bundle install --quiet) && bundle exec brakeman --no-pager --quiet
+  - run: npm ci --no-audit --no-fund && npm run check
+  - run: H=$(mktemp -d /tmp/hh.XXXXXX) && trap 'rm -rf "$H"' EXIT && export RBENV_ROOT="${RBENV_ROOT:-$HOME/.rbenv}" npm_config_cache="$HOME/.npm" TMPDIR="$H" RAILS_ENV=test && (bundle check || bundle install --quiet) && npm ci --no-audit --no-fund && export HOME="$H" && bin/vite build --mode test && bin/rails db:test:prepare test
