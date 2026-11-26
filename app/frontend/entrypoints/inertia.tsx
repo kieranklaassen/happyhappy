@@ -1,9 +1,12 @@
 import { createInertiaApp } from '@inertiajs/react'
 import { StrictMode } from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
+import { reloadOnNewVersion } from '../lib/reload_on_new_version'
 import RiffrecProvider, { type RiffrecConfig } from '../lib/riffrec_provider'
 import type { WebmcpManifest } from '../lib/webmcp'
 import WebmcpProvider from '../lib/webmcp_provider'
+
+reloadOnNewVersion()
 
 void createInertiaApp({
   title: (title) => (title ? `${title} · happyhappy` : 'happyhappy: how your customers feel'),

@@ -6,12 +6,14 @@ import FeedSearch, { ENCODING_RELOAD_MS, SEARCH_DEBOUNCE_MS } from './feed-searc
 const get = vi.fn()
 const post = vi.fn()
 const reload = vi.fn()
+const on = vi.fn()
 
 vi.mock('@inertiajs/react', () => ({
   router: {
     get: (...args: unknown[]) => get(...args),
     post: (...args: unknown[]) => post(...args),
     reload: (...args: unknown[]) => reload(...args),
+    on: (...args: unknown[]) => on(...args),
   },
 }))
 
@@ -159,7 +161,93 @@ describe('FeedSearch', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Reading your search')
     act(() => vi.advanceTimersByTime(ENCODING_RELOAD_MS))
-    expect(reload).toHaveBeenCalledWith({ only: ['items', 'search'] })
+    expect(reload).toHaveBeenCalledWith(expect.objectContaining({ only: ['items', 'search'] }))
+  })
+
+  describe('Smart search while the query is still being read', () => {
+    interface Visit {
+      onStart?: () => void
+      onFinish?: () => void
+      onCancelToken?: (token: { cancel: () => void }) => void
+    }
+    const pending = () => search({ chips: [], encoding_status: 'pending' })
+    const visits: Visit[] = []
+    const wait = () => act(() => vi.advanceTimersByTime(ENCODING_RELOAD_MS * 2))
+    const pressEnter = () => fireEvent.submit(screen.getByRole('search'))
+
+    beforeEach(() => {
+      visits.length = 0
+      post.mockImplementation((_url: string, _data: unknown, options: Visit) => {
+        visits.push(options)
+        options.onStart?.()
+      })
+    })
+
+    it('a reload still waiting at Enter does not run during the POST', () => {
+      render(<FeedSearch search={pending()} filterQuery={{}} />)
+
+      act(() => vi.advanceTimersByTime(ENCODING_RELOAD_MS - 1))
+      pressEnter()
+      wait()
+      expect(reload).not.toHaveBeenCalled()
+
+      // Success, error, and cancel all end in onFinish.
+      act(() => visits[0].onFinish?.())
+      wait()
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('Enter cancels a reload in flight, and one that lands anyway schedules no other until the POST finishes', () => {
+      const cancel = vi.fn()
+      reload.mockImplementation((options: Visit) => options.onCancelToken?.({ cancel }))
+      const { rerender } = render(<FeedSearch search={pending()} filterQuery={{}} />)
+
+      act(() => vi.advanceTimersByTime(ENCODING_RELOAD_MS))
+      pressEnter()
+      expect(cancel).toHaveBeenCalledTimes(1)
+      // Newer Inertia clients keep the reload alive through the POST, so its response can still land.
+      rerender(<FeedSearch search={pending()} filterQuery={{}} />)
+      wait()
+      expect(reload).toHaveBeenCalledTimes(1)
+
+      act(() => visits[0].onFinish?.())
+      wait()
+      expect(reload).toHaveBeenCalledTimes(2)
+    })
+
+    it('pressing Enter twice waits for the second POST, whichever finish comes first', () => {
+      render(<FeedSearch search={pending()} filterQuery={{}} />)
+
+      pressEnter()
+      pressEnter()
+      act(() => visits[0].onFinish?.())
+      wait()
+      expect(reload).not.toHaveBeenCalled()
+
+      act(() => visits[1].onFinish?.())
+      wait()
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('holds back background visits, and only those, until the POST finishes', () => {
+      const stop = vi.fn()
+      on.mockReturnValue(stop)
+      render(<FeedSearch search={search()} filterQuery={{}} />)
+      expect(on).not.toHaveBeenCalled()
+
+      pressEnter()
+      expect(on).toHaveBeenCalledTimes(1)
+      const [name, allows] = on.mock.calls[0]
+      expect(name).toBe('before')
+      expect(allows({ detail: { visit: { async: true } } })).toBe(false)
+      expect(allows({ detail: { visit: { async: false } } })).toBe(true)
+      expect(stop).not.toHaveBeenCalled()
+
+      // Success, error, and cancel all end in onFinish.
+      act(() => visits[0].onFinish?.())
+      expect(stop).toHaveBeenCalledTimes(1)
+      expect(on).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('invites a Smart search when keyword results are thin', () => {
