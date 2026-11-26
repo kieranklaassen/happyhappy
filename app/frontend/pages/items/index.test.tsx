@@ -237,6 +237,30 @@ describe('Feed page', () => {
     expect(get).toHaveBeenCalledWith('/items', { q: 'angry Cora', removed: ['anger', 'time'] }, { preserveScroll: true })
   })
 
+  it('applying a changed filter during a search submits the filter and the search', () => {
+    const search = {
+      query: 'angry Cora',
+      chips: [],
+      removed: ['anger'],
+      relaxed_labels: [],
+      relaxed_notice: null,
+      invite_row: null,
+      encoding_status: 'cached' as const,
+      explicit_action: 'enter',
+      run_id: null,
+    }
+    render(<ItemsIndex {...props({ search })} />)
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sentiment' }), { target: { value: 'praise' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+
+    expect(get).toHaveBeenCalledWith(
+      '/items',
+      { sentiment: 'praise', q: 'angry Cora', removed: ['anger'] },
+      { preserveScroll: true },
+    )
+  })
+
   it('a search with no matches suggests Smart search', () => {
     const search = {
       query: 'praise for Thesis',
