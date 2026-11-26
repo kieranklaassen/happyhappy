@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react'
-import { type FormEvent, useEffect, useRef } from 'react'
+import { type FormEvent, useLayoutEffect, useRef } from 'react'
 import AppNav from '../../components/app-nav'
 import { Field, FlashNotice, inputClass, primaryButtonClass, secondaryButtonClass } from '../../components/form-field'
 import { plural } from '../../components/mood/format'
@@ -90,8 +90,9 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
     form.setDefaults(values)
   }
 
-  // Waits for a save in flight to finish, because only then is it known whether what it sent was stored.
-  useEffect(() => {
+  // Waits for a save in flight, which moves the defaults to what it sent once it succeeds. A layout effect, because
+  // useForm would lose text typed between the render and a passive one.
+  useLayoutEffect(() => {
     if (form.processing) return
     const stored = storedValues(category)
     const from = defaults.current

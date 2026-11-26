@@ -301,6 +301,39 @@ describe('editing a category', () => {
     expect(button(form, 'Save')).toBeEnabled()
   })
 
+  it('keeps text typed right as the save finishes', async () => {
+    const view = renderPage()
+    const form = formNamed('Edit bug')
+    const description = control(form, 'Description')
+    change(form, 'Name', 'defect')
+    const options = save()
+    act(() => void options.onStart?.({} as never))
+    reload(view, { name: 'defect' })
+    await act(async () => void (await options.onSuccess?.({} as never)))
+
+    // act would run every effect before the text arrives, so this finish and this input go without it, as in a browser.
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', false)
+    try {
+      const typed = new Promise<void>((resolve) => {
+        const observer = new MutationObserver(() => {
+          observer.disconnect()
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(description, 'It fails.')
+          description.dispatchEvent(new Event('input', { bubbles: true }))
+          resolve()
+        })
+        observer.observe(form, { subtree: true, attributes: true, childList: true, characterData: true })
+      })
+      options.onFinish?.({} as never)
+      await typed
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    } finally {
+      vi.unstubAllGlobals()
+    }
+
+    expect(description.value).toBe('It fails.')
+    expect(button(form, 'Save')).toBeEnabled()
+  })
+
   it.each([
     { typed: ' defect ', stored: 'defect' },
     { typed: ' bug ', stored: 'bug' },
