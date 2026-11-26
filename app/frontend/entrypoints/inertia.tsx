@@ -1,5 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react'
-import { StrictMode } from 'react'
+import { type ComponentType, StrictMode } from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import { reloadOnNewVersion } from '../lib/reload_on_new_version'
 import RiffrecProvider, { type RiffrecConfig } from '../lib/riffrec_provider'
@@ -12,8 +12,17 @@ void createInertiaApp({
   title: (title) => (title ? `${title} · happyhappy` : 'happyhappy: how your customers feel'),
 
   // Resolve page components from app/frontend/pages using the snake_case
-  // "controller/action" identifier Rails passes to `render inertia:`.
-  pages: '../pages',
+  // "controller/action" identifier Rails passes to `render inertia:`. The
+  // plugin's `pages` shorthand has no exclude, so it would ship the page tests.
+  resolve: async (name) => {
+    const pages = import.meta.glob<{ default: ComponentType }>([
+      '../pages/**/*.tsx',
+      '!../pages/**/*.{test,spec}.tsx',
+    ])
+    const page = await pages[`../pages/${name}.tsx`]?.()
+    if (!page) throw new Error(`Page not found: ${name}`)
+    return page.default
+  },
 
   defaults: {
     form: {
