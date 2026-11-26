@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react'
-import { type FormEvent } from 'react'
+import { type ChangeEvent, type FormEvent } from 'react'
 import AppNav from '../../components/app-nav'
 import { Field, inputClass, primaryButtonClass, secondaryButtonClass } from '../../components/form-field'
 import { formatHour } from '../../lib/format'
@@ -49,6 +49,20 @@ export default function ProductForm({ product, default_escalation_threshold }: P
     }
   }
 
+  function fieldProps(name: keyof typeof form.data) {
+    return { htmlFor: `product_${name}`, error: form.errors[name] }
+  }
+
+  function controlProps(name: keyof typeof form.data) {
+    return {
+      id: `product_${name}`,
+      value: form.data[name],
+      onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+        form.setData(name, e.target.value),
+      className: inputClass,
+    }
+  }
+
   const title = editing ? `Edit ${product.name}` : 'Add product'
 
   return (
@@ -59,138 +73,73 @@ export default function ProductForm({ product, default_escalation_threshold }: P
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">{title}</h1>
 
         <form onSubmit={submit} className="flex flex-col gap-5">
-          <Field label="Name" htmlFor="product_name" error={form.errors.name}>
-            <input
-              id="product_name"
-              required
-              value={form.data.name}
-              onChange={(e) => form.setData('name', e.target.value)}
-              className={inputClass}
-            />
+          <Field label="Name" {...fieldProps('name')}>
+            <input {...controlProps('name')} required />
           </Field>
 
-          <Field label="Slug" htmlFor="product_slug" error={form.errors.slug} hint="Leave blank to derive it from the name.">
-            <input
-              id="product_slug"
-              value={form.data.slug}
-              onChange={(e) => form.setData('slug', e.target.value)}
-              className={inputClass}
-            />
+          <Field label="Slug" {...fieldProps('slug')} hint="Leave blank to derive it from the name.">
+            <input {...controlProps('slug')} />
           </Field>
 
           <Field
             label="Description"
-            htmlFor="product_description"
-            error={form.errors.description}
+            {...fieldProps('description')}
             hint="One or two sentences. The classifier reads this to decide whether a message is about the product."
           >
-            <textarea
-              id="product_description"
-              rows={3}
-              value={form.data.description}
-              onChange={(e) => form.setData('description', e.target.value)}
-              className={inputClass}
-            />
+            <textarea {...controlProps('description')} rows={3} />
           </Field>
 
           <Field
             label="Hint words"
-            htmlFor="product_hint_words"
-            error={form.errors.hint_words}
+            {...fieldProps('hint_words')}
             hint="Aliases and feature names, separated by commas or new lines."
           >
-            <textarea
-              id="product_hint_words"
-              rows={2}
-              value={form.data.hint_words}
-              onChange={(e) => form.setData('hint_words', e.target.value)}
-              className={inputClass}
-            />
+            <textarea {...controlProps('hint_words')} rows={2} />
           </Field>
 
           <Field
             label="Search words"
-            htmlFor="product_search_blurb"
-            error={form.errors.search_blurb}
+            {...fieldProps('search_blurb')}
             hint="What people call it, 40 characters at most, for example Cora assistant. Feed search reads these words as naming the product. Leave out words people search for, such as email or inbox. Blank uses the name."
           >
-            <input
-              id="product_search_blurb"
-              maxLength={SEARCH_BLURB_MAX}
-              value={form.data.search_blurb}
-              onChange={(e) => form.setData('search_blurb', e.target.value)}
-              className={inputClass}
-            />
+            <input {...controlProps('search_blurb')} maxLength={SEARCH_BLURB_MAX} />
           </Field>
 
           <Field
             label="Slack support channel id"
-            htmlFor="product_slack_channel_id"
-            error={form.errors.slack_channel_id}
+            {...fieldProps('slack_channel_id')}
             hint="Escalations and the daily digest post here, for example C0123456789."
           >
-            <input
-              id="product_slack_channel_id"
-              value={form.data.slack_channel_id}
-              onChange={(e) => form.setData('slack_channel_id', e.target.value)}
-              className={inputClass}
-            />
+            <input {...controlProps('slack_channel_id')} />
           </Field>
 
           <Field
             label="Incident alert channel id"
-            htmlFor="product_alert_channel_id"
-            error={form.errors.alert_channel_id}
+            {...fieldProps('alert_channel_id')}
             hint="Bad-news spikes open an incident and ping this channel once, for example C0AGCDCD6KG. Leave empty for no incident pings."
           >
-            <input
-              id="product_alert_channel_id"
-              value={form.data.alert_channel_id}
-              onChange={(e) => form.setData('alert_channel_id', e.target.value)}
-              className={inputClass}
-            />
+            <input {...controlProps('alert_channel_id')} />
           </Field>
 
           <Field
             label="On-call Slack IDs"
-            htmlFor="product_alert_mention_ids"
-            error={form.errors.alert_mention_ids}
+            {...fieldProps('alert_mention_ids')}
             hint="Mentioned in each incident ping. User IDs start with U (Copy member ID in Slack), user group IDs with S. Separate with commas."
           >
-            <input
-              id="product_alert_mention_ids"
-              value={form.data.alert_mention_ids}
-              onChange={(e) => form.setData('alert_mention_ids', e.target.value)}
-              className={inputClass}
-            />
+            <input {...controlProps('alert_mention_ids')} />
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
               label="Escalation threshold"
-              htmlFor="product_escalation_threshold"
-              error={form.errors.escalation_threshold}
+              {...fieldProps('escalation_threshold')}
               hint={`Anger probability from 0 to 1. Blank uses the default, ${default_escalation_threshold}.`}
             >
-              <input
-                id="product_escalation_threshold"
-                type="number"
-                min={0}
-                max={1}
-                step={0.01}
-                value={form.data.escalation_threshold}
-                onChange={(e) => form.setData('escalation_threshold', e.target.value)}
-                className={inputClass}
-              />
+              <input {...controlProps('escalation_threshold')} type="number" min={0} max={1} step={0.01} />
             </Field>
 
-            <Field label="Digest time" htmlFor="product_digest_hour" error={form.errors.digest_hour} hint="Daily, in the app time zone.">
-              <select
-                id="product_digest_hour"
-                value={form.data.digest_hour}
-                onChange={(e) => form.setData('digest_hour', e.target.value)}
-                className={inputClass}
-              >
+            <Field label="Digest time" {...fieldProps('digest_hour')} hint="Daily, in the app time zone.">
+              <select {...controlProps('digest_hour')}>
                 {HOURS.map((hour) => (
                   <option key={hour} value={hour}>
                     {formatHour(hour)}
