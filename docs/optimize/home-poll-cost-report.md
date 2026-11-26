@@ -20,7 +20,7 @@ before, ...), 1-minute load 12 to 14 after each pair. The three runs of each sid
 | Feed poll (`items,anomalies`) | 18,161 to 17,495 (-3.7%) | 19 to 16 | 14,671 to 13,891 |
 | Feed full page | 18,259 to 18,265 | 19 to 19 | 14,671 to 14,671 |
 
-Held-out database (different seed; 9,000 items, 22,113 messages, 42 active anomalies), same protocol, load 12 to 15:
+Second database, measured at each step but not used to choose changes (different seed; 9,000 items, 22,113 messages, 42 active anomalies), same protocol, load 12 to 15:
 
 | Request | Objects | SQL queries | SQLite VM steps |
 |---|---|---|---|
