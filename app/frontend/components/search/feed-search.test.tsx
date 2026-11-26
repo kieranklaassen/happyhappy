@@ -6,12 +6,14 @@ import FeedSearch, { ENCODING_RELOAD_MS, SEARCH_DEBOUNCE_MS } from './feed-searc
 const get = vi.fn()
 const post = vi.fn()
 const reload = vi.fn()
+const on = vi.fn()
 
 vi.mock('@inertiajs/react', () => ({
   router: {
     get: (...args: unknown[]) => get(...args),
     post: (...args: unknown[]) => post(...args),
     reload: (...args: unknown[]) => reload(...args),
+    on: (...args: unknown[]) => on(...args),
   },
 }))
 
@@ -225,6 +227,26 @@ describe('FeedSearch', () => {
       act(() => visits[1].onFinish?.())
       wait()
       expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('holds back background visits, and only those, until the POST finishes', () => {
+      const stop = vi.fn()
+      on.mockReturnValue(stop)
+      render(<FeedSearch search={search()} filterQuery={{}} />)
+      expect(on).not.toHaveBeenCalled()
+
+      pressEnter()
+      expect(on).toHaveBeenCalledTimes(1)
+      const [name, allows] = on.mock.calls[0]
+      expect(name).toBe('before')
+      expect(allows({ detail: { visit: { async: true } } })).toBe(false)
+      expect(allows({ detail: { visit: { async: false } } })).toBe(true)
+      expect(stop).not.toHaveBeenCalled()
+
+      // Success, error, and cancel all end in onFinish.
+      act(() => visits[0].onFinish?.())
+      expect(stop).toHaveBeenCalledTimes(1)
+      expect(on).toHaveBeenCalledTimes(1)
     })
   })
 
