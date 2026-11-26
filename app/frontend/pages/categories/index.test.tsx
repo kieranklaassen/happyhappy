@@ -274,8 +274,9 @@ describe('editing a category', () => {
 })
 
 describe('adding a category', () => {
+  // Clicking, unlike submitting the form directly, is stopped by a blank required name as it is in a browser.
   function add() {
-    fireEvent.submit(formNamed('Add category'))
+    fireEvent.click(button(formNamed('Add category'), 'Add category'))
     return visits.post.mock.calls[0][2]!
   }
 
@@ -300,32 +301,47 @@ describe('adding a category', () => {
     renderPage()
     const form = formNamed('Add category')
 
+    change(form, 'Name', 'legal')
     change(form, label, edited)
     expect(control(form, label).value).toBe(edited)
     add()
 
     expect(visits.post).toHaveBeenCalledExactlyOnceWith(
       '/categories',
-      { category: { ...blank, [name]: edited } },
+      { category: { ...blank, name: 'legal', [name]: edited } },
       expect.objectContaining({ preserveScroll: true, errorBag: 'new_category' }),
     )
     expect(visits.patch).not.toHaveBeenCalled()
   })
 
-  it('is sent by its button', () => {
+  it('sends everything typed into it', () => {
+    renderPage()
+    NEW_FIELDS.forEach(({ label, edited }) => change(formNamed('Add category'), label, edited))
+    add()
+
+    expect(visits.post).toHaveBeenCalledExactlyOnceWith(
+      '/categories',
+      { category: { name: 'security', description: 'Account safety.', search_blurb: 'hacked' } },
+      expect.any(Object),
+    )
+  })
+
+  it('is not sent without a name', () => {
     renderPage()
     const form = formNamed('Add category')
 
-    change(form, 'Name', 'security')
+    fireEvent.click(button(form, 'Add category'))
+    change(form, 'Description', 'Account safety.')
     fireEvent.click(button(form, 'Add category'))
 
-    expect(visits.post).toHaveBeenCalledOnce()
+    expect(visits.post).not.toHaveBeenCalled()
   })
 
   it('cannot be sent again while it is being added', () => {
     renderPage()
     const form = formNamed('Add category')
     expect(button(form, 'Add category')).toBeEnabled()
+    change(form, 'Name', 'security')
     const options = add()
 
     act(() => void options.onStart?.({} as never))
