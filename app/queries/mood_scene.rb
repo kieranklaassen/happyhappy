@@ -8,6 +8,10 @@ class MoodScene
   CHARACTERS_PER_PRODUCT = 48
   ITEM_LIMIT = 2_000
   EXCERPT_LENGTH = 220
+  ITEM_COLUMNS = %i[
+    id product_id source_kind author_email author_handle author_name sentiment sentiment_probability
+    anger_probability status last_message_at
+  ].freeze
 
   attr_reader :range, :product
 
@@ -53,12 +57,12 @@ class MoodScene
 
   private
 
-  Person = Data.define(:item, :seed, :threads, :mood)
+  Person = Data.define(:item, :author, :threads, :mood)
   Group = Data.define(:product, :people, :overflow)
 
   def items
     @items ||= begin
-      scope = Item.relevant.includes(:product)
+      scope = Item.relevant.select(ITEM_COLUMNS).includes(:product)
         .where(last_message_at: (@now - RANGES.fetch(range))..)
         .recent_first
         .limit(ITEM_LIMIT)
@@ -69,8 +73,7 @@ class MoodScene
   def people
     @people ||= items.group_by { |item| [ item.product_id, author_key(item) ] }.map do |(_, key), threads|
       latest = threads.first
-      Person.new(item: latest, seed: Digest::SHA256.hexdigest(key).first(16), threads: threads.size,
-        mood: mood_for(latest))
+      Person.new(item: latest, author: key, threads: threads.size, mood: mood_for(latest))
     end
   end
 
@@ -104,9 +107,10 @@ class MoodScene
 
   def character_props(person)
     item = person.item
+    seed = Digest::SHA256.hexdigest(person.author).first(16)
     {
-      key: "#{item.product_id || 'none'}-#{person.seed}",
-      seed: person.seed,
+      key: "#{item.product_id || 'none'}-#{seed}",
+      seed: seed,
       item_id: item.id,
       name: display_name(item),
       handle: handle(item),
