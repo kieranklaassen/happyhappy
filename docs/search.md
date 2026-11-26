@@ -32,8 +32,9 @@ results for the same query and filters.
 3. **Smart search (Enter).** Jev reads the top 30 candidates and sorts them
    into Strong, Possible, and Unlikely (collapsed). Buckets fill in as each
    chunk of 10 is read: `TrufflerChannel` pings the searcher and the page
-   reloads only its `smart` prop. Any query or chip change cancels the run.
-   Each person gets 10 Smart runs a minute (truffler's per-user cap).
+   reloads only its `smart` prop. Any query or chip change cancels the run;
+   the page's background reloads never do. Each person gets 10 Smart runs a
+   minute (truffler's per-user cap).
 4. **Lenses.** Any signed-in person may create app-wide or personal lenses
    (`config.lenses`); nothing in the UI creates them yet.
 
