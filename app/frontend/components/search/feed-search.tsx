@@ -47,6 +47,8 @@ export default function FeedSearch({ search, filterQuery }: Props) {
   const reloads = useRef(0)
   const keystrokeTimer = useRef<number | undefined>(undefined)
   const keystrokeVisit = useRef<{ cancel: () => void } | null>(null)
+  const encodingVisit = useRef<{ cancel: () => void } | null>(null)
+  const [smartPosts, setSmartPosts] = useState(0)
   const filters = JSON.stringify(filterQuery)
 
   useEffect(() => {
@@ -83,22 +85,33 @@ export default function FeedSearch({ search, filterQuery }: Props) {
     reloads.current = 0
   }, [search?.query])
 
+  // An encoding reload carries no run_id either, so none is scheduled while a Smart POST is open.
   useEffect(() => {
-    if (search?.encoding_status !== 'pending' || reloads.current >= MAX_ENCODING_RELOADS) return
+    if (smartPosts > 0 || search?.encoding_status !== 'pending' || reloads.current >= MAX_ENCODING_RELOADS) return
     const timer = window.setTimeout(() => {
       reloads.current += 1
-      router.reload({ only: ['items', 'search'] })
+      router.reload({
+        only: ['items', 'search'],
+        onCancelToken: (token) => {
+          encodingVisit.current = token
+        },
+      })
     }, ENCODING_RELOAD_MS)
     return () => window.clearTimeout(timer)
-  }, [search])
+  }, [search, smartPosts])
 
   function startSmart(event?: FormEvent) {
     event?.preventDefault()
     if (!text.trim()) return
     dropKeystrokeSearch()
+    encodingVisit.current?.cancel()
     sent.current = text
     const removed = search && search.query === text ? search.removed : []
-    router.post('/items/search', { ...filterQuery, q: text, removed }, VISIT)
+    router.post('/items/search', { ...filterQuery, q: text, removed }, {
+      ...VISIT,
+      onStart: () => setSmartPosts((count) => count + 1),
+      onFinish: () => setSmartPosts((count) => count - 1),
+    })
   }
 
   function removeChip(chip: SearchChip) {
