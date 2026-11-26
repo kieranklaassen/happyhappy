@@ -109,6 +109,8 @@ module Anomalies
         points = blank_points(metric).dup
         by_window.each do |index, bucket|
           value, count, item_ids = point.call(bucket)
+          next unless count
+
           window_start, window_end = @windows[index]
           points[index] = Point.new(window_start:, window_end:, value:, count:, item_ids: item_ids.uniq)
         end
@@ -135,8 +137,8 @@ module Anomalies
         end,
         *categories.map do |category_id|
           line.("category_volume", category_id.to_s) do |bucket|
-            items = bucket.categories.fetch(category_id, [])
-            [ items.size, items.size, items.reverse ]
+            items = bucket.categories.fetch(category_id, nil)
+            [ items.size, items.size, items.reverse ] if items
           end
         end
       ]
