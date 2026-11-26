@@ -131,8 +131,19 @@ describe('Settings page', () => {
 
     const labels = (name: string) => Array.from(control(name).querySelectorAll('option')).map((option) => option.text)
     expect(labels('digest_time_zone')).toEqual(['UTC', 'Europe/Amsterdam'])
-    expect(labels('digest_hour')).toHaveLength(24)
-    expect(labels('digest_hour')[9]).toBe('09:00')
+    expect(labels('digest_hour')).toEqual(
+      Array.from({ length: 24 }, (_, hour) => (hour < 10 ? `0${hour}:00` : `${hour}:00`)),
+    )
+  })
+
+  it('shows the stored values', () => {
+    renderPage()
+
+    Object.entries(submittedSetting).forEach(([name, value]) => {
+      const element = control(name)
+      if (typeof value === 'boolean') expect((element as HTMLInputElement).checked).toBe(value)
+      else expect(element.value).toBe(value)
+    })
   })
 
   it('cannot be saved until something changes', () => {
