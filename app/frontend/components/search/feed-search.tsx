@@ -86,7 +86,6 @@ export default function FeedSearch({ search, filterQuery }: Props) {
   }, [search?.query])
 
   // An encoding reload carries no run_id either, so none is scheduled while a Smart POST is open.
-  // A count, because a second Enter can start its POST before the first one's onFinish.
   useEffect(() => {
     if (smartPosts > 0 || search?.encoding_status !== 'pending' || reloads.current >= MAX_ENCODING_RELOADS) return
     const timer = window.setTimeout(() => {
