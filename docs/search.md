@@ -33,7 +33,7 @@ results for the same query and filters.
    into Strong, Possible, and Unlikely (collapsed). Buckets fill in as each
    chunk of 10 is read: `TrufflerChannel` pings the searcher and the page
    reloads only its `smart` prop. Any query or chip change cancels the run;
-   the page's background reloads never do. Each person gets 10 Smart runs a
+   the page's background reloads do not. Each person gets 10 Smart runs a
    minute (truffler's per-user cap).
 4. **Lenses.** Any signed-in person may create app-wide or personal lenses
    (`config.lenses`); nothing in the UI creates them yet.
