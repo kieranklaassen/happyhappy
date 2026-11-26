@@ -32,12 +32,14 @@ InertiaRails.configure do |config|
 
   # --- SSR: wired but disabled by default (KTD5) ---
   # Everything SSR needs is in place — the entrypoint branches CSR/SSR on
-  # data-server-rendered, the render call is bounded by
-  # config/initializers/inertia_ssr_timeout.rb, and the layout emits
-  # inertia_ssr_head. Turning SSR on is env-only: build the bundle
+  # data-server-rendered, the render call is bounded by ssr_timeout, and the
+  # layout emits inertia_ssr_head. Turning SSR on is env-only: build the bundle
   # (`npm run build:ssr`) and set INERTIA_SSR_ENABLED=true — no code change.
   config.ssr_enabled = ActiveModel::Type::Boolean.new.cast(ENV.fetch("INERTIA_SSR_ENABLED", false))
   config.ssr_url = ENV.fetch("INERTIA_SSR_URL", "http://localhost:13714")
+  # Seconds to connect, write, and read. The gem's default of 10 would let a hung
+  # SSR process hold a Puma thread too long before the CSR fallback.
+  config.ssr_timeout = Float(ENV.fetch("INERTIA_SSR_TIMEOUT", "2"))
   config.ssr_bundle = Rails.root.join("public/vite-ssr/ssr.js").to_s
 
   # On any SSR failure, log the failing component and fall back to CSR rather
@@ -48,4 +50,9 @@ InertiaRails.configure do |config|
       "falling back to CSR: #{error.message}"
     )
   end
+
+  # The gem turns DevTools on in development, where it records requests under tmp/
+  # and serves them without authentication at /_inertia/devtools. bin/tunnel makes
+  # development public, so it stays off.
+  config.devtools.enabled = false
 end

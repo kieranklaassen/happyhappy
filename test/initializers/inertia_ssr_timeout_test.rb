@@ -3,18 +3,49 @@
 require "test_helper"
 
 class InertiaSSRTimeoutTest < ActiveSupport::TestCase
-  test "timeout constant resolves to the 2-second default when env is unset" do
-    assert_equal 2.0, InertiaSSRTimeout::TIMEOUT_SECONDS
+  test "the SSR request connects and reads with the 2-second default when env is unset" do
+    http = ssr_connection
+
+    assert_equal [ 2.0, 2.0 ], [ http.open_timeout, http.read_timeout ]
   end
 
-  test "the SSR renderer and Net::HTTP are patched with the timeout guard" do
-    assert_includes InertiaRails::SSRRenderer.ancestors, InertiaSSRTimeout::SSRRendererPatch
-    assert_includes Net::HTTP.singleton_class.ancestors, InertiaSSRTimeout::NetHTTPPatch
+  test "ordinary HTTP keeps Net::HTTP's own timeouts" do
+    stub_request(:get, "http://example.test/").to_return(body: "ok")
+
+    http = connections { Net::HTTP.start("example.test", 80) { |client| client.get("/") } }.sole
+
+    assert_equal [ 60, 60 ], [ http.open_timeout, http.read_timeout ]
   end
 
-  test "Net::HTTP timeouts are only injected while an SSR request is in flight" do
-    # Outside an SSR request the thread flag is unset, so ordinary HTTP is untouched.
-    refute Thread.current[InertiaSSRTimeout::IN_PROGRESS_KEY]
+  private
+
+  # The connection SSRRenderer really opens under this app's configuration. Only
+  # the built bundle check is lifted, because tests do not build one.
+  def ssr_connection
+    stub_request(:post, "#{InertiaRails.configuration.ssr_url}/render")
+      .to_return(body: { head: [], body: "<div></div>" }.to_json)
+    config = InertiaRails.configuration.merge(InertiaRails::Configuration.new(ssr_bundle: nil))
+
+    connections do
+      rendered = InertiaRails::SSRRenderer.new(config, page: { component: "home/index" }).render
+      assert_equal "<div></div>", rendered["body"]
+    end.sole
+  end
+
+  # Every Net::HTTP connection started while the block runs.
+  def connections(&block)
+    started = []
+    trace = TracePoint.new(:call) do |point|
+      started << point.self if point.method_id == :start && point.self.is_a?(Net::HTTP)
+    end
+    trace.enable(target_thread: Thread.current, &block)
+    started.uniq(&:object_id)
+  end
+end
+
+class InertiaDevtoolsTest < ActiveSupport::TestCase
+  test "DevTools stays off in every environment, development included" do
+    assert_equal false, InertiaRails.configuration.devtools.enabled
   end
 end
 
@@ -24,7 +55,7 @@ class InertiaSSRDisabledByDefaultTest < ActionDispatch::IntegrationTest
       "SSR must ship disabled by default (enable via INERTIA_SSR_ENABLED)"
   end
 
-  test "a public page still renders the client-side Inertia component with the patch loaded" do
+  test "a public page still renders the client-side Inertia component" do
     get new_session_path
 
     assert_response :success
