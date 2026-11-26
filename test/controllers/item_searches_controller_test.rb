@@ -24,6 +24,13 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  def start_angry_cora_run
+    angry_cora_fake
+    encode_query!("angry cora", user: @user)
+    post item_search_path, params: { q: "angry cora" }
+    Rack::Utils.parse_nested_query(URI(response.location).query).fetch("run_id")
+  end
+
   test "requires sign in" do
     sign_out
     post item_search_path, params: { q: "cora" }
@@ -98,12 +105,47 @@ class ItemSearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a new query without the run id cancels the searcher's run" do
-    angry_cora_fake
-    encode_query!("angry cora", user: @user)
-    post item_search_path, params: { q: "angry cora" }
-    run_id = Rack::Utils.parse_nested_query(URI(response.location).query).fetch("run_id")
+    run_id = start_angry_cora_run
 
     get items_path, params: { q: "angry cora billing" }
+
+    assert_equal :cancelled, FeedSearch.find_run(run_id, user: @user).status
+  end
+
+  # The only lists of useMoodStream (reload and poll), the encoding reload, and useTrufflerStream.
+  %w[items,anomalies items,search smart].each do |only|
+    test "a background reload of #{only} without the run id leaves the searcher's run alone" do
+      run_id = start_angry_cora_run
+
+      partial_reload({ q: "angry cora" }, only: only)
+
+      assert_equal only.split(","), inertia.props.keys.map(&:to_s) & %w[items anomalies search smart]
+      assert FeedSearch.find_run(run_id, user: @user).active?
+    end
+  end
+
+  {
+    "a removed chip" => { q: "angry cora", removed: [ "product:cora" ] },
+    "a filter change" => { q: "angry cora", status: [ "new" ] },
+    "the same query searched again" => { q: "angry cora" }
+  }.each do |visit, query|
+    test "#{visit} as a full Inertia visit without the run id cancels the searcher's run" do
+      run_id = start_angry_cora_run
+
+      get items_path, params: query, headers: { "X-Inertia" => "true", "X-Inertia-Version" => ViteRuby.digest.to_s }
+
+      assert_response :success
+      assert_equal :cancelled, FeedSearch.find_run(run_id, user: @user).status
+    end
+  end
+
+  test "a partial header naming another page is a full visit, so it cancels the searcher's run" do
+    run_id = start_angry_cora_run
+
+    get items_path, params: { q: "angry cora" }, headers: {
+      "X-Inertia" => "true", "X-Inertia-Version" => ViteRuby.digest.to_s,
+      "X-Inertia-Partial-Component" => "home/index", "X-Inertia-Partial-Data" => "scene,today"
+    }
 
     assert_equal :cancelled, FeedSearch.find_run(run_id, user: @user).status
   end

@@ -45,14 +45,16 @@ class ItemsController < InertiaController
 
   private
 
-  # Feed search (U25). A request without a run id is a new query or a chip
-  # change, which ends the searcher's Smart run. Partial reloads of `smart`
-  # (TrufflerChannel pings) compute only that prop.
+  # Feed search (U25). A full visit without a run id is a new query, a chip
+  # change, or a filter change, which ends the searcher's Smart run. Partial
+  # reloads are the page refreshing itself (mood pings and poll, the query
+  # encoding), so they never end one: they can reach the server after Enter.
+  # Partial reloads of `smart` (TrufflerChannel pings) compute only that prop.
   def search
     query = ItemsQuery.from_params(params)
     removed = Array(params[:removed]).map(&:to_s)
     run_id = params[:run_id].presence
-    FeedSearch.cancel(user: Current.user) unless run_id
+    FeedSearch.cancel(user: Current.user) unless run_id || partial_reload?
     result = nil
     keystroke = -> { result ||= FeedSearch.keystroke(params[:q], user: Current.user, filters: query.filters, suppressed: removed) }
 
@@ -68,6 +70,11 @@ class ItemsController < InertiaController
     }
   rescue ItemsQuery::InvalidFilter => error
     render_invalid_filter(error)
+  end
+
+  # As Inertia Rails decides it: a partial of another component renders in full.
+  def partial_reload?
+    request.headers["X-Inertia-Partial-Component"] == "items/index"
   end
 
   def render_invalid_filter(error)
