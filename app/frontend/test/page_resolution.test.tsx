@@ -25,8 +25,9 @@ vi.mock('@inertiajs/react/server', () => ({
 const files = Object.keys(import.meta.glob('../pages/**/*.tsx')).map((path) =>
   path.replace('../pages/', '').replace('.tsx', ''),
 )
-const pages = files.filter((name) => !name.endsWith('.test'))
-const tests = files.filter((name) => name.endsWith('.test'))
+const isTest = (name: string) => /\.(test|spec)$/.test(name)
+const pages = files.filter((name) => !isTest(name))
+const tests = files.filter(isTest)
 
 beforeEach(() => {
   captured.resolve = undefined
