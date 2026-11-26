@@ -455,6 +455,55 @@ describe('Feed page', () => {
     expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('')
     expect(screen.getByRole('link', { name: 'Older' })).toHaveAttribute('href', '/items?status=handled&page=2')
   })
+
+  it.each<[string, FeedProps['filters'], [string, string][]]>([
+    ['every value of a list', { status: ['new', 'claimed'] }, [['status[]', 'new'], ['status[]', 'claimed']]],
+    ['since', { since: '2026-09-01T00:00:00.000Z' }, [['since', '2026-09-01T00:00:00.000Z']]],
+    ['until', { until: '2026-09-02T00:00:00.000Z' }, [['until', '2026-09-02T00:00:00.000Z']]],
+    ['source_kind', { source_kind: ['slack'] }, [['source_kind', 'slack']]],
+    ['min_actionability', { min_actionability: 0 }, [['min_actionability', '0']]],
+    ['needs_review', { needs_review: true }, [['needs_review', '1']]],
+    ['overdue', { overdue: true }, [['overdue', '1']]],
+    ['anomaly', { anomaly: '12' }, [['anomaly', '12']]],
+    ['sort', { sort: 'actionability' }, [['sort', 'actionability']]],
+    ['relevance', { relevance: 'all' }, [['relevance', 'all']]],
+    [
+      'relevant when asking for noise would widen it',
+      { actionability: ['noise'], relevance: 'relevant' },
+      [['actionability', 'noise'], ['relevance', 'relevant']],
+    ],
+  ])('keeps %s in the Older and Newer links', (_name, filters, expected) => {
+    render(<ItemsIndex {...props({ filters, pagination: { page: 2, prev_page: 1, next_page: 3 } })} />)
+
+    for (const [name, page] of [['Newer', '1'], ['Older', '3']]) {
+      const href = screen.getByRole('link', { name }).getAttribute('href') ?? ''
+      expect([...new URL(href, 'http://localhost').searchParams]).toEqual([...expected, ['page', page]])
+    }
+  })
+
+  it('keeps every applied filter when removing a search chip', () => {
+    const search = {
+      query: 'angry Cora',
+      chips: [{ key: 'anger', label: 'anger', kind: 'filter' as const, name: 'Anger' }],
+      removed: [],
+      relaxed_labels: [],
+      relaxed_notice: null,
+      invite_row: null,
+      encoding_status: 'cached' as const,
+      explicit_action: 'enter',
+      run_id: null,
+    }
+    const filters = { status: ['new', 'claimed'], since: '2026-09-01T00:00:00.000Z' }
+    render(<ItemsIndex {...props({ search, filters })} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Anger' }))
+
+    expect(get).toHaveBeenCalledWith(
+      '/items',
+      { ...filters, q: 'angry Cora', removed: ['anger'] },
+      { preserveState: true, preserveScroll: true },
+    )
+  })
 })
 
 describe('toQuery', () => {
