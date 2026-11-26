@@ -59,7 +59,7 @@ class Anomalies::SeriesTest < ActiveSupport::TestCase
     assert_equal 2, line("volume").first_index
   end
 
-  test "every line has one point per window, in order, when messages are sparse" do
+  test "sparse messages leave empty windows blank and occupied windows in place" do
     first = @windows.first.first
     bug = customer_message!(at: first + 1.minute, sentiment: "complaint", anger: 0.9, category: categories(:bug), author: "ana")
     older = customer_message!(at: @last + 1.minute, sentiment: "praise", anger: 0.1, category: categories(:praise), author: "bo")
@@ -73,7 +73,9 @@ class Anomalies::SeriesTest < ActiveSupport::TestCase
     end
 
     assert_equal [ 1, 0, 0 ], line("category_volume", dimension: categories(:bug).id.to_s).points.map(&:value)
-    assert_equal [ 0, 0, 2 ], line("category_volume", dimension: categories(:praise).id.to_s).points.map(&:value)
+    praise = line("category_volume", dimension: categories(:praise).id.to_s).points
+    assert_equal [ 0, 0, 2 ], praise.map(&:value)
+    assert_equal [ 0, [] ], [ praise.first.count, praise.first.item_ids ]
     assert_equal [ 1, 0, 2 ], line("volume").points.map(&:count)
     assert_equal [ 1.0, nil, 0.0 ], line("mood_share", dimension: "furious").points.map(&:value)
     assert_equal [ 0.0, nil, 1.0 ], line("mood_share", dimension: "beaming").points.map(&:value)

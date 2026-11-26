@@ -30,7 +30,7 @@ module Anomalies
         new(0, [], 0, 0, [], [], [], Hash.new { |hash, key| hash[key] = [] }, {})
       end
 
-      # Memoized, so read it only once every message is in the bucket.
+      # Memoized: call only after every message has been added.
       def items_by_mood
         @items_by_mood ||= customers.values.reverse.each_with_object({}) do |(mood, item_id), items|
           (items[mood] ||= []) << item_id
@@ -116,9 +116,11 @@ module Anomalies
       line = ->(metric, dimension = nil, &point) do
         points = blank_points(metric).dup
         by_window.each do |index, bucket|
-          value, count, item_ids = point.call(bucket)
-          next unless count
+          # A nil result keeps the blank point.
+          result = point.call(bucket)
+          next unless result
 
+          value, count, item_ids = result
           window_start, window_end = @windows[index]
           points[index] = Point.new(window_start:, window_end:, value:, count:, item_ids: item_ids.uniq)
         end
