@@ -21,10 +21,12 @@ interface CategoriesIndexProps {
   retired_categories: CategoryRow[]
 }
 
+type TextField = 'name' | 'description' | 'search_blurb'
+
 interface TextFieldsForm {
-  data: { name: string; description: string; search_blurb: string }
-  errors: { name?: string[]; description?: string[]; search_blurb?: string[] }
-  setData(field: 'name' | 'description' | 'search_blurb', value: string): void
+  data: Record<TextField, string>
+  errors: Partial<Record<TextField, string[]>>
+  setData(field: TextField, value: string): void
 }
 
 function TextFields({ form, prefix, nameHint }: { form: TextFieldsForm; prefix: string; nameHint?: string }) {
