@@ -172,6 +172,12 @@ describe('editing a category', () => {
     expect(hints(control(formNamed('Edit praise'), 'Name'))).toEqual(['0 items'])
   })
 
+  it('counts one item in the singular', () => {
+    renderPage({ categories: [{ ...bug, item_count: 1 }] })
+
+    expect(hints(control(formNamed('Edit bug'), 'Name'))).toEqual(['1 item'])
+  })
+
   it('renders its fields in order', () => {
     renderPage()
 
@@ -251,6 +257,136 @@ describe('editing a category', () => {
     expect(control(form, 'Name').value).toBe('defect')
     expect(button(form, 'Save')).toBeDisabled()
     change(form, 'Name', 'bug')
+    expect(button(form, 'Save')).toBeEnabled()
+  })
+
+  // A reload, or the page a visit came back with: the same page with the rows the server has now.
+  function reload(view: ReturnType<typeof renderPage>, changes: Partial<Category>) {
+    view.rerender(<CategoriesIndex categories={[{ ...bug, ...changes }, praise]} retired_categories={[]} />)
+  }
+
+  it('keeps text typed while it is being saved, ready for the next save', async () => {
+    const view = renderPage()
+    const form = formNamed('Edit bug')
+    change(form, 'Name', 'defect')
+    const options = save()
+    act(() => void options.onStart?.({} as never))
+
+    change(form, 'Description', 'It fails.')
+    reload(view, { name: 'defect' })
+    await act(async () => void (await options.onSuccess?.({} as never)))
+    act(() => void options.onFinish?.({} as never))
+
+    expect(values(form, EDIT_FIELDS)).toEqual({ ...storedBug, name: 'defect', description: 'It fails.' })
+    expect(button(form, 'Save')).toBeEnabled()
+    fireEvent.submit(form)
+    expect(visits.patch.mock.calls[1][1]).toEqual({
+      category: { ...storedBug, name: 'defect', description: 'It fails.' },
+    })
+  })
+
+  it('keeps a field typed back to its old value while it is being saved', async () => {
+    const view = renderPage()
+    const form = formNamed('Edit bug')
+    change(form, 'Name', 'defect')
+    const options = save()
+    act(() => void options.onStart?.({} as never))
+
+    change(form, 'Name', 'bug')
+    reload(view, { name: 'defect' })
+    await act(async () => void (await options.onSuccess?.({} as never)))
+    act(() => void options.onFinish?.({} as never))
+
+    expect(control(form, 'Name').value).toBe('bug')
+    expect(button(form, 'Save')).toBeEnabled()
+  })
+
+  it('keeps text typed right as the save finishes', async () => {
+    const view = renderPage()
+    const form = formNamed('Edit bug')
+    const description = control(form, 'Description')
+    change(form, 'Name', 'defect')
+    const options = save()
+    act(() => void options.onStart?.({} as never))
+    reload(view, { name: 'defect' })
+    await act(async () => void (await options.onSuccess?.({} as never)))
+
+    // act would run every effect before the text arrives, so this finish and this input go without it, as in a browser.
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', false)
+    try {
+      const typed = new Promise<void>((resolve) => {
+        const observer = new MutationObserver(() => {
+          observer.disconnect()
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(description, 'It fails.')
+          description.dispatchEvent(new Event('input', { bubbles: true }))
+          resolve()
+        })
+        observer.observe(form, { subtree: true, attributes: true, childList: true, characterData: true })
+      })
+      options.onFinish?.({} as never)
+      await typed
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    } finally {
+      vi.unstubAllGlobals()
+    }
+
+    expect(description.value).toBe('It fails.')
+    expect(button(form, 'Save')).toBeEnabled()
+  })
+
+  it.each([
+    { typed: ' defect ', stored: 'defect' },
+    { typed: ' bug ', stored: 'bug' },
+  ])('shows "$stored" when the server stores "$typed" as that', async ({ typed, stored }) => {
+    const view = renderPage()
+    const form = formNamed('Edit bug')
+    change(form, 'Name', typed)
+    const options = save()
+    act(() => void options.onStart?.({} as never))
+    reload(view, { name: stored })
+    await act(async () => void (await options.onSuccess?.({} as never)))
+    act(() => void options.onFinish?.({} as never))
+
+    expect(control(form, 'Name').value).toBe(stored)
+    expect(button(form, 'Save')).toBeDisabled()
+  })
+
+  it('shows values the server changed', () => {
+    const view = renderPage()
+    const changed = { name: 'defect', description: null, search_blurb: 'defect', position: 4 }
+
+    reload(view, changed)
+
+    const form = formNamed('Edit defect')
+    expect(values(form, EDIT_FIELDS)).toEqual({ ...changed, description: '', position: '4' })
+    expect(button(form, 'Save')).toBeDisabled()
+  })
+
+  it('keeps what is being typed when the server changes the row', () => {
+    const view = renderPage()
+    const form = formNamed('Edit bug')
+    change(form, 'Name', 'defect')
+
+    reload(view, { name: 'fault', description: 'It fails.' })
+
+    expect(values(form, EDIT_FIELDS)).toEqual({ ...storedBug, name: 'defect', description: 'It fails.' })
+    expect(button(form, 'Save')).toBeEnabled()
+    change(form, 'Name', 'fault')
+    expect(button(form, 'Save')).toBeDisabled()
+  })
+
+  it('keeps a rejected edit when the server changed the row meanwhile', () => {
+    const view = renderPage()
+    const form = formNamed('Edit bug')
+    change(form, 'Name', 'praise')
+    const options = save()
+    act(() => void options.onStart?.({} as never))
+    reload(view, { name: 'fault', description: 'It fails.' })
+    act(() => void options.onError?.(rejection(EDIT_FIELDS.slice(1, 2))))
+    act(() => void options.onFinish?.({} as never))
+
+    expect(values(form, EDIT_FIELDS)).toEqual({ ...storedBug, name: 'praise', description: 'It fails.' })
+    expect(alerts(form)).toEqual(['Name rejects name, is wrong'])
     expect(button(form, 'Save')).toBeEnabled()
   })
 
@@ -362,6 +498,36 @@ describe('adding a category', () => {
     expect(values(form, NEW_FIELDS)).toEqual(blank)
   })
 
+  it('keeps text typed while a category is being added', async () => {
+    renderPage()
+    const form = formNamed('Add category')
+    NEW_FIELDS.forEach(({ label, edited }) => change(form, label, edited))
+    const options = add()
+    act(() => void options.onStart?.({} as never))
+
+    change(form, 'Name', 'privacy')
+    await act(async () => void (await options.onSuccess?.({} as never)))
+    act(() => void options.onFinish?.({} as never))
+
+    expect(values(form, NEW_FIELDS)).toEqual({ ...blank, name: 'privacy' })
+    fireEvent.click(button(form, 'Add category'))
+    expect(visits.post.mock.calls[1][1]).toEqual({ category: { ...blank, name: 'privacy' } })
+  })
+
+  it('is blank again after a later add, too', async () => {
+    renderPage()
+    const form = formNamed('Add category')
+    change(form, 'Name', 'security')
+    const first = add()
+    change(form, 'Name', 'privacy')
+    await act(async () => void (await first.onSuccess?.({} as never)))
+
+    add()
+    await act(async () => void (await visits.post.mock.calls[1][2]!.onSuccess?.({} as never)))
+
+    expect(values(form, NEW_FIELDS)).toEqual(blank)
+  })
+
   it('shows its own validation errors and keeps what was typed', () => {
     renderPage()
     const form = formNamed('Add category')
@@ -404,6 +570,12 @@ describe('retiring and restoring a category', () => {
         .map((item) => item.querySelector('span')!.textContent),
     ).toEqual(['pricing (4 items)', 'legal (0 items)'])
     expect(screen.queryByRole('form', { name: 'Edit pricing' })).not.toBeInTheDocument()
+  })
+
+  it('counts one retired item in the singular', () => {
+    renderPage({ retired_categories: [{ ...pricing, item_count: 1 }] })
+
+    expect(screen.getByText('(1 item)')).toBeInTheDocument()
   })
 
   it('lists retired categories when no active ones are left', () => {
