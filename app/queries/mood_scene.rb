@@ -18,14 +18,36 @@ class MoodScene
   end
 
   def props
+    { scene: scene, today: today, filters: filters, options: options }
+  end
+
+  def scene
+    groups.map { |group| group_props(group) }
+  end
+
+  def today
+    moods = people.map(&:mood)
+    tally = counts(moods)
     {
-      scene: groups.map { |group| group_props(group) },
-      today: summary_props,
-      filters: { range: range, product: product&.slug },
-      options: {
-        ranges: RANGES.keys,
-        products: Product.active.ordered.map { |option| { slug: option.slug, name: option.name } }
-      }
+      range: range,
+      mood: Mood.overall(moods),
+      people: moods.size,
+      counts: tally,
+      smiling: tally["beaming"] + tally["content"] + tally["relieved"],
+      relieved: tally["relieved"],
+      grumpy: tally["grumpy"] + tally["furious"],
+      updated_at: @now.iso8601
+    }
+  end
+
+  def filters
+    { range: range, product: product&.slug }
+  end
+
+  def options
+    {
+      ranges: RANGES.keys,
+      products: Product.active.ordered.map { |option| { slug: option.slug, name: option.name } }
     }
   end
 
@@ -69,21 +91,6 @@ class MoodScene
       counts: counts(moods),
       overflow: group.overflow,
       characters: group.people.first(CHARACTERS_PER_PRODUCT).map { |person| character_props(person) }
-    }
-  end
-
-  def summary_props
-    moods = people.map(&:mood)
-    tally = counts(moods)
-    {
-      range: range,
-      mood: Mood.overall(moods),
-      people: moods.size,
-      counts: tally,
-      smiling: tally["beaming"] + tally["content"] + tally["relieved"],
-      relieved: tally["relieved"],
-      grumpy: tally["grumpy"] + tally["furious"],
-      updated_at: @now.iso8601
     }
   end
 

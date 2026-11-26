@@ -6,8 +6,17 @@ class HomeController < InertiaController
 
   def index
     product = Product.find_by(slug: params[:product]) if params[:product].present?
-    render inertia: "home/index", props: MoodScene.new(range: params[:range], product: product).props
-      .merge(anomalies: active_anomalies)
+    mood = MoodScene.new(range: params[:range], product: product)
+
+    # Lambdas, so a partial reload computes only the props it asks for. Live
+    # reloads and the 30-second poll ask for `scene` and `today`.
+    render inertia: "home/index", props: {
+      scene: -> { mood.scene },
+      today: -> { mood.today },
+      filters: mood.filters,
+      options: -> { mood.options },
+      anomalies: -> { active_anomalies }
+    }
   end
 
   private
