@@ -75,7 +75,7 @@ class MoodScene
   end
 
   def groups
-    people.group_by { |person| person.item.product }
+    @groups ||= people.group_by { |person| person.item.product }
       .sort_by { |group_product, _| group_product ? [ 0, group_product.name ] : [ 1, "" ] }
       .map do |group_product, members|
         Group.new(product: group_product, people: members,
@@ -90,8 +90,12 @@ class MoodScene
       mood: Mood.overall(moods),
       counts: counts(moods),
       overflow: group.overflow,
-      characters: group.people.first(CHARACTERS_PER_PRODUCT).map { |person| character_props(person) }
+      characters: drawn(group).map { |person| character_props(person) }
     }
+  end
+
+  def drawn(group)
+    group.people.first(CHARACTERS_PER_PRODUCT)
   end
 
   def counts(moods)
@@ -131,9 +135,10 @@ class MoodScene
     @default_escalation_threshold ||= Setting.current.escalation_threshold
   end
 
+  # Only drawn characters show an excerpt.
   def latest_bodies
     @latest_bodies ||= begin
-      ids = people.map { |person| person.item.id }
+      ids = groups.flat_map { |group| drawn(group).map { |person| person.item.id } }
       ranked = Message.from_customers.where(item_id: ids)
         .select(:item_id, :body, "ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY occurred_at DESC, id DESC) AS position")
       Message.from(ranked, :messages).where(position: 1).pluck(:item_id, :body).to_h
