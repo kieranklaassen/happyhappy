@@ -85,6 +85,15 @@ export default function FeedSearch({ search, filterQuery }: Props) {
     reloads.current = 0
   }, [search?.query])
 
+  // Background visits sent during a Smart POST carry no run_id, or an older one. One that lands after the
+  // redirect would put its URL back and hide the new run, so none starts until the POST's page is applied.
+  useEffect(() => {
+    if (smartPosts === 0) return
+    return router.on('before', ({ detail: { visit } }) => !visit.async)
+  }, [smartPosts])
+
+  // An encoding response that lands late would put back a URL without run_id and hide the run, so none is
+  // scheduled while a Smart POST is open.
   useEffect(() => {
     if (smartPosts > 0 || search?.encoding_status !== 'pending' || reloads.current >= MAX_ENCODING_RELOADS) return
     const timer = window.setTimeout(() => {
