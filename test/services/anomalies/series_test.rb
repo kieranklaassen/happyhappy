@@ -59,6 +59,28 @@ class Anomalies::SeriesTest < ActiveSupport::TestCase
     assert_equal 2, line("volume").first_index
   end
 
+  test "every line has one point per window, in order, when messages are sparse" do
+    first = @windows.first.first
+    bug = customer_message!(at: first + 1.minute, sentiment: "complaint", anger: 0.9, category: categories(:bug), author: "ana")
+    older = customer_message!(at: @last + 1.minute, sentiment: "praise", anger: 0.1, category: categories(:praise), author: "bo")
+    newer = customer_message!(at: @last + 2.minutes, sentiment: "praise", anger: 0.1, category: categories(:praise), author: "cy")
+
+    lines.each do |candidate|
+      assert_equal @windows, candidate.points.map { |point| [ point.window_start, point.window_end ] },
+        [ candidate.metric, candidate.dimension ].inspect
+      empty = candidate.points.second
+      assert_equal [ candidate.count_metric? ? 0 : nil, 0, [] ], [ empty.value, empty.count, empty.item_ids ]
+    end
+
+    assert_equal [ 1, 0, 0 ], line("category_volume", dimension: categories(:bug).id.to_s).points.map(&:value)
+    assert_equal [ 0, 0, 2 ], line("category_volume", dimension: categories(:praise).id.to_s).points.map(&:value)
+    assert_equal [ 1, 0, 2 ], line("volume").points.map(&:count)
+    assert_equal [ 1.0, nil, 0.0 ], line("mood_share", dimension: "furious").points.map(&:value)
+    assert_equal [ 0.0, nil, 1.0 ], line("mood_share", dimension: "beaming").points.map(&:value)
+    assert_equal [ [ bug.item_id ], [], [] ], line("mood_share", dimension: "furious").points.map(&:item_ids)
+    assert_equal [ newer.item_id, older.item_id ], line("mood_share", dimension: "beaming").points.last.item_ids
+  end
+
   test "each customer counts once, by their latest message in the window" do
     customer_message!(at: @last + 1.minute, sentiment: "complaint", anger: 0.95, author: "ana")
     customer_message!(at: @last + 5.minutes, sentiment: "praise", anger: 0.0, author: "ana")
