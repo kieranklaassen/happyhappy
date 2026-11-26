@@ -5,7 +5,8 @@ import { router } from '@inertiajs/react'
  * `router.reload` included. Inertia reloads by itself only for ordinary visits
  * once the server sends X-Inertia-Version (inertia_rails 3.23): background
  * requests just stop updating, which would leave an open dashboard frozen after
- * a deploy. For an ordinary visit this repeats what Inertia does next.
+ * a deploy. Returning false keeps Inertia from navigating a second time, which
+ * could use up a flash message.
  */
 export function reloadOnNewVersion(): () => void {
   return router.on('location', ({ detail: { url, versionChange } }) => {
@@ -16,6 +17,8 @@ export function reloadOnNewVersion(): () => void {
     } else {
       window.location.href = url.href
     }
+
+    return false
   })
 }
 

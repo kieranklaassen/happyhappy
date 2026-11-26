@@ -25,10 +25,10 @@ afterEach(() => {
 
 describe('reloadOnNewVersion', () => {
   it('reloads the page when a poll of it meets a new asset version', () => {
-    const allowed = locationVisit('https://happy.test/items?page=2', true)
+    const inertiaNavigates = locationVisit('https://happy.test/items?page=2', true)
 
     expect(location.reload).toHaveBeenCalledOnce()
-    expect(allowed).toBe(true)
+    expect(inertiaNavigates).toBe(false)
   })
 
   it('goes to the visited page when that is another one', () => {
@@ -39,8 +39,8 @@ describe('reloadOnNewVersion', () => {
   })
 
   it('leaves other location visits to Inertia', () => {
-    locationVisit('https://happy.test/items?page=2', false)
-    locationVisit('https://elsewhere.test/', false)
+    expect(locationVisit('https://happy.test/items?page=2', false)).toBe(true)
+    expect(locationVisit('https://elsewhere.test/', false)).toBe(true)
 
     expect(location.reload).not.toHaveBeenCalled()
     expect(location.href).toBe('https://happy.test/items?page=2#top')
