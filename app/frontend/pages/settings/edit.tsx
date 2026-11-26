@@ -1,7 +1,8 @@
 import { Head, useForm } from '@inertiajs/react'
-import { type FormEvent } from 'react'
+import { type ChangeEvent, type FormEvent, type InputHTMLAttributes } from 'react'
 import AppNav from '../../components/app-nav'
 import { Field, FlashNotice, inputClass, primaryButtonClass } from '../../components/form-field'
+import { formatHour } from '../../lib/format'
 
 interface SettingsEditProps {
   setting: {
@@ -26,40 +27,72 @@ interface SettingsEditProps {
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
-function hourLabel(hour: number) {
-  return `${hour.toString().padStart(2, '0')}:00`
+type TextSetting = Exclude<keyof SettingsEditProps['setting'], 'slack_interactivity'>
+
+interface InputField {
+  name: TextSetting
+  label: string
+  hint: string
+  attributes: InputHTMLAttributes<HTMLInputElement>
 }
 
-type AnomalyField = 'anomaly_sensitivity' | 'anomaly_min_count' | 'anomaly_min_baseline_windows' | 'anomaly_active_days'
+const PROBABILITY = { type: 'number', min: 0, max: 1, step: 0.01, required: true }
+const WHOLE_NUMBER = { type: 'number', min: 1, step: 1, required: true }
 
-const ANOMALY_FIELDS: { name: AnomalyField; label: string; hint: string; step: number; min: number }[] = [
+const INPUT_FIELDS: InputField[] = [
+  {
+    name: 'low_confidence_threshold',
+    label: 'Low-confidence threshold',
+    hint: 'Labels with a probability below this, from 0 to 1, are flagged for human review.',
+    attributes: PROBABILITY,
+  },
+  {
+    name: 'escalation_threshold',
+    label: 'Default escalation threshold',
+    hint: 'Anger probability, from 0 to 1, that posts an escalation to Slack. Products can override it.',
+    attributes: PROBABILITY,
+  },
+  {
+    name: 'report_back_window_minutes',
+    label: 'Report-back window (minutes)',
+    hint: 'A claimed item with no agent report for longer than this is flagged overdue.',
+    attributes: WHOLE_NUMBER,
+  },
   {
     name: 'anomaly_sensitivity',
     label: 'Anomaly sensitivity',
     hint: 'How many standard deviations above normal a window must be to count as an anomaly. Lower finds more.',
-    step: 0.1,
-    min: 0.1,
+    attributes: { type: 'number', min: 0.1, step: 0.1, required: true },
   },
   {
     name: 'anomaly_min_count',
     label: 'Minimum messages per window',
     hint: 'Windows with fewer messages (or customers, for moods) are ignored, so a handful of messages never alerts.',
-    step: 1,
-    min: 1,
+    attributes: WHOLE_NUMBER,
   },
   {
     name: 'anomaly_min_baseline_windows',
     label: 'Minimum baseline windows',
     hint: 'How many earlier windows with enough data a series needs before it can be judged.',
-    step: 1,
-    min: 1,
+    attributes: WHOLE_NUMBER,
   },
   {
     name: 'anomaly_active_days',
     label: 'Active window (days)',
     hint: 'Anomalies older than this, such as spikes in imported history, are kept as history and never alert.',
-    step: 1,
-    min: 1,
+    attributes: WHOLE_NUMBER,
+  },
+  {
+    name: 'slack_channel_id',
+    label: 'Slack channel',
+    hint: 'Channel ID (like C0AGB2RKA6R) for the daily overview of all products, alerts about bad-news anomalies, and escalations of products without a channel of their own. Invite the happyhappy bot there. Leave empty to turn these off.',
+    attributes: { type: 'text' },
+  },
+  {
+    name: 'incident_window_minutes',
+    label: 'Incident window (minutes)',
+    hint: "Bad-news anomalies of one product this close together join one incident and one Slack ping in the product's alert channel.",
+    attributes: WHOLE_NUMBER,
   },
 ]
 
@@ -106,6 +139,19 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
     form.patch('/settings', { onSuccess: () => form.setDefaults() })
   }
 
+  function fieldProps(name: keyof typeof form.data) {
+    return { htmlFor: `setting_${name}`, error: form.errors[name] }
+  }
+
+  function controlProps(name: TextSetting) {
+    return {
+      id: `setting_${name}`,
+      value: form.data[name],
+      onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => form.setData(name, e.target.value),
+      className: inputClass,
+    }
+  }
+
   return (
     <>
       <Head title="Settings" />
@@ -115,114 +161,15 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
         <FlashNotice />
 
         <form onSubmit={submit} className="flex flex-col gap-5">
-          <Field
-            label="Low-confidence threshold"
-            htmlFor="setting_low_confidence_threshold"
-            error={form.errors.low_confidence_threshold}
-            hint="Labels with a probability below this, from 0 to 1, are flagged for human review."
-          >
-            <input
-              id="setting_low_confidence_threshold"
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
-              required
-              value={form.data.low_confidence_threshold}
-              onChange={(e) => form.setData('low_confidence_threshold', e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-
-          <Field
-            label="Default escalation threshold"
-            htmlFor="setting_escalation_threshold"
-            error={form.errors.escalation_threshold}
-            hint="Anger probability, from 0 to 1, that posts an escalation to Slack. Products can override it."
-          >
-            <input
-              id="setting_escalation_threshold"
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
-              required
-              value={form.data.escalation_threshold}
-              onChange={(e) => form.setData('escalation_threshold', e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-
-          <Field
-            label="Report-back window (minutes)"
-            htmlFor="setting_report_back_window_minutes"
-            error={form.errors.report_back_window_minutes}
-            hint="A claimed item with no agent report for longer than this is flagged overdue."
-          >
-            <input
-              id="setting_report_back_window_minutes"
-              type="number"
-              min={1}
-              step={1}
-              required
-              value={form.data.report_back_window_minutes}
-              onChange={(e) => form.setData('report_back_window_minutes', e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-
-          {ANOMALY_FIELDS.map((field) => (
-            <Field key={field.name} label={field.label} htmlFor={`setting_${field.name}`} error={form.errors[field.name]} hint={field.hint}>
-              <input
-                id={`setting_${field.name}`}
-                type="number"
-                min={field.min}
-                step={field.step}
-                required
-                value={form.data[field.name]}
-                onChange={(e) => form.setData(field.name, e.target.value)}
-                className={inputClass}
-              />
+          {INPUT_FIELDS.map(({ name, label, hint, attributes }) => (
+            <Field key={name} label={label} hint={hint} {...fieldProps(name)}>
+              <input {...attributes} {...controlProps(name)} />
             </Field>
           ))}
 
           <Field
-            label="Slack channel"
-            htmlFor="setting_slack_channel_id"
-            error={form.errors.slack_channel_id}
-            hint="Channel ID (like C0AGB2RKA6R) for the daily overview of all products, alerts about bad-news anomalies, and escalations of products without a channel of their own. Invite the happyhappy bot there. Leave empty to turn these off."
-          >
-            <input
-              id="setting_slack_channel_id"
-              type="text"
-              value={form.data.slack_channel_id}
-              onChange={(e) => form.setData('slack_channel_id', e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-
-          <Field
-            label="Incident window (minutes)"
-            htmlFor="setting_incident_window_minutes"
-            error={form.errors.incident_window_minutes}
-            hint="Bad-news anomalies of one product this close together join one incident and one Slack ping in the product's alert channel."
-          >
-            <input
-              id="setting_incident_window_minutes"
-              type="number"
-              min={1}
-              step={1}
-              required
-              value={form.data.incident_window_minutes}
-              onChange={(e) => form.setData('incident_window_minutes', e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-
-          <Field
             label="Slack interactivity"
-            htmlFor="setting_slack_interactivity"
-            error={form.errors.slack_interactivity}
+            {...fieldProps('slack_interactivity')}
             hint="Turn on once the Slack app's Interactivity Request URL is set to /webhooks/slack/interactions. Then Mark resolved in incident pings resolves right in Slack; while off it opens the incident page."
           >
             <label className="flex items-center gap-2 text-gray-700">
@@ -238,16 +185,10 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
 
           <Field
             label="Daily overview time zone"
-            htmlFor="setting_digest_time_zone"
-            error={form.errors.digest_time_zone}
+            {...fieldProps('digest_time_zone')}
             hint="The overview covers the previous calendar day in this time zone."
           >
-            <select
-              id="setting_digest_time_zone"
-              value={form.data.digest_time_zone}
-              onChange={(e) => form.setData('digest_time_zone', e.target.value)}
-              className={inputClass}
-            >
+            <select {...controlProps('digest_time_zone')}>
               {time_zones.map((zone) => (
                 <option key={zone} value={zone}>
                   {zone}
@@ -258,39 +199,21 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
 
           <Field
             label="Daily overview time"
-            htmlFor="setting_digest_hour"
-            error={form.errors.digest_hour}
+            {...fieldProps('digest_hour')}
             hint="When the overview posts, in the time zone above."
           >
-            <select
-              id="setting_digest_hour"
-              value={form.data.digest_hour}
-              onChange={(e) => form.setData('digest_hour', e.target.value)}
-              className={inputClass}
-            >
+            <select {...controlProps('digest_hour')}>
               {HOURS.map((hour) => (
                 <option key={hour} value={hour.toString()}>
-                  {hourLabel(hour)}
+                  {formatHour(hour)}
                 </option>
               ))}
             </select>
           </Field>
 
-          {TEAM_LISTS.map((list) => (
-            <Field
-              key={list.name}
-              label={list.label}
-              htmlFor={`setting_${list.name}`}
-              error={form.errors[list.name]}
-              hint={`${list.hint} Separate entries with commas.`}
-            >
-              <input
-                id={`setting_${list.name}`}
-                type="text"
-                value={form.data[list.name]}
-                onChange={(e) => form.setData(list.name, e.target.value)}
-                className={inputClass}
-              />
+          {TEAM_LISTS.map(({ name, label, hint }) => (
+            <Field key={name} label={label} hint={`${hint} Separate entries with commas.`} {...fieldProps(name)}>
+              <input type="text" {...controlProps(name)} />
             </Field>
           ))}
 

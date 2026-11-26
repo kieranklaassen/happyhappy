@@ -22,11 +22,19 @@ module Anomalies
     Point = Data.define(:window_start, :window_end, :value, :count, :item_ids)
 
     COUNT_METRICS = %w[volume category_volume].freeze
+    NO_ITEMS = [].freeze
 
     Bucket = Struct.new(:messages, :items, :complaints, :sentiments, :complaint_items, :angers, :angry_items,
       :categories, :customers) do
       def self.blank
         new(0, [], 0, 0, [], [], [], Hash.new { |hash, key| hash[key] = [] }, {})
+      end
+
+      # Memoized: call only after every message has been added.
+      def items_by_mood
+        @items_by_mood ||= customers.values.reverse.each_with_object({}) do |(mood, item_id), items|
+          (items[mood] ||= []) << item_id
+        end
       end
     end
 
@@ -106,9 +114,15 @@ module Anomalies
 
     def metric_lines(product_id, source_id, by_window, first_index)
       line = ->(metric, dimension = nil, &point) do
-        points = @windows.each_with_index.map do |(window_start, window_end), index|
-          value, count, item_ids = point.call(by_window.fetch(index) { Bucket.blank })
-          Point.new(window_start:, window_end:, value:, count:, item_ids: item_ids.uniq)
+        points = blank_points(metric).dup
+        by_window.each do |index, bucket|
+          # A nil result keeps the blank point.
+          result = point.call(bucket)
+          next unless result
+
+          value, count, item_ids = result
+          window_start, window_end = @windows[index]
+          points[index] = Point.new(window_start:, window_end:, value:, count:, item_ids: item_ids.uniq)
         end
         Line.new(product_id:, source_id:, granularity: @granularity, metric:, dimension:, points:, first_index:)
       end
@@ -127,17 +141,26 @@ module Anomalies
         end,
         *moods.map do |mood|
           line.("mood_share", mood) do |bucket|
-            in_mood = bucket.customers.values.select { |customer_mood, _| customer_mood == mood }.map(&:last).reverse
+            in_mood = bucket.items_by_mood.fetch(mood, NO_ITEMS)
             [ ratio(in_mood.size, bucket.customers.size), bucket.customers.size, in_mood ]
           end
         end,
         *categories.map do |category_id|
           line.("category_volume", category_id.to_s) do |bucket|
-            items = bucket.categories.fetch(category_id, [])
-            [ items.size, items.size, items.reverse ]
+            items = bucket.categories.fetch(category_id, nil)
+            [ items.size, items.size, items.reverse ] if items
           end
         end
       ]
+    end
+
+    # Most windows have no messages, so every line shares the points for empty windows.
+    def blank_points(metric)
+      value = metric.in?(COUNT_METRICS) ? 0 : nil
+      @blank_points ||= {}
+      @blank_points[value] ||= @windows.map do |window_start, window_end|
+        Point.new(window_start:, window_end:, value:, count: 0, item_ids: NO_ITEMS)
+      end
     end
 
     def ratio(numerator, denominator)
