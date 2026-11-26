@@ -22,11 +22,19 @@ module Anomalies
     Point = Data.define(:window_start, :window_end, :value, :count, :item_ids)
 
     COUNT_METRICS = %w[volume category_volume].freeze
+    NO_ITEMS = [].freeze
 
     Bucket = Struct.new(:messages, :items, :complaints, :sentiments, :complaint_items, :angers, :angry_items,
       :categories, :customers) do
       def self.blank
         new(0, [], 0, 0, [], [], [], Hash.new { |hash, key| hash[key] = [] }, {})
+      end
+
+      # Memoized, so read it only once every message is in the bucket.
+      def items_by_mood
+        @items_by_mood ||= customers.values.reverse.each_with_object({}) do |(mood, item_id), items|
+          (items[mood] ||= []) << item_id
+        end
       end
     end
 
@@ -131,7 +139,7 @@ module Anomalies
         end,
         *moods.map do |mood|
           line.("mood_share", mood) do |bucket|
-            in_mood = bucket.customers.values.select { |customer_mood, _| customer_mood == mood }.map(&:last).reverse
+            in_mood = bucket.items_by_mood.fetch(mood, NO_ITEMS)
             [ ratio(in_mood.size, bucket.customers.size), bucket.customers.size, in_mood ]
           end
         end,
@@ -149,7 +157,7 @@ module Anomalies
       value = metric.in?(COUNT_METRICS) ? 0 : nil
       @blank_points ||= {}
       @blank_points[value] ||= @windows.map do |window_start, window_end|
-        Point.new(window_start:, window_end:, value:, count: 0, item_ids: [].freeze)
+        Point.new(window_start:, window_end:, value:, count: 0, item_ids: NO_ITEMS)
       end
     end
 
