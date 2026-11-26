@@ -80,7 +80,7 @@ const RANGE_LABELS: Record<string, string> = {
   '90d': 'Last 90 days',
 }
 
-function initialState(filters: FeedFilters, products: ProductOption[]): FormState {
+function formState(filters: FeedFilters, products: ProductOption[]): FormState {
   const product = filters.product?.[0] ?? ''
   const bySlug = products.find((candidate) => candidate.slug === product)
 
@@ -165,14 +165,101 @@ export function AnomalyBanner({ anomalies, filter }: { anomalies: AnomalyProps[]
   )
 }
 
-const SELECT = 'rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm'
+type SelectKey = Exclude<keyof FormState, 'needs_review' | 'overdue' | 'anomaly'>
+
+interface SelectOption {
+  value: string
+  label: string
+}
+
+function option(value: string, label: string): SelectOption {
+  return { value, label }
+}
+
+function retirableOption({ id, name, retired }: ProductOption | CategoryOption): SelectOption {
+  return option(String(id), retired ? `${name} (retired)` : name)
+}
+
+function filterSelects(options: FeedProps['options']): { key: SelectKey; label: string; options: SelectOption[] }[] {
+  return [
+    {
+      key: 'product',
+      label: 'Product',
+      options: [option('', 'All products'), option('none', 'No product'), ...options.products.map(retirableOption)],
+    },
+    {
+      key: 'sentiment',
+      label: 'Sentiment',
+      options: [option('', 'All sentiments'), ...options.sentiments.map((value) => option(value, sentimentLabel(value)))],
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      options: [option('', 'All categories'), ...options.categories.map(retirableOption)],
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      options: [option('', 'All statuses'), ...options.statuses.map((value) => option(value, statusLabel(value)))],
+    },
+    {
+      key: 'source',
+      label: 'Source',
+      options: [
+        option('', 'All sources'),
+        ...options.sources.map(({ id, kind, name }) => option(String(id), `${sourceKindLabel(kind)}: ${name}`)),
+      ],
+    },
+    {
+      key: 'range',
+      label: 'Time range',
+      options: [option('', 'Any time'), ...options.ranges.map((value) => option(value, RANGE_LABELS[value] ?? value))],
+    },
+    {
+      key: 'actionability',
+      label: 'Actionability',
+      options: [option('', 'Any (noise hidden)'), ...options.actionability.map((value) => option(value, actionabilityLabel(value)))],
+    },
+    {
+      key: 'sort',
+      label: 'Sort',
+      options: options.sorts.map((value) => option(value, value === 'actionability' ? 'Most actionable first' : 'Most recent first')),
+    },
+    {
+      key: 'relevance',
+      label: 'Relevance',
+      options: [option('relevant', 'Relevant only'), option('not_relevant', 'Not relevant only'), option('all', 'Everything')],
+    },
+  ]
+}
+
+interface FilterCheckboxProps {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}
+
+function FilterCheckbox({ label, checked, onChange }: FilterCheckboxProps) {
+  return (
+    <label className="flex items-center gap-2 py-1.5 text-sm text-gray-700">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="rounded border-gray-300"
+      />
+      {label}
+    </label>
+  )
+}
 
 const LIVE_PROPS = ['items', 'anomalies']
 
 export default function ItemsIndex({ items, filters, pagination, options, anomalies, search, smart, error }: FeedProps) {
   useMoodStream(LIVE_PROPS)
-  const [form, setForm] = useState<FormState>(() => initialState(filters, options.products))
-  const query = toQuery(initialState(filters, options.products))
+  const applied = formState(filters, options.products)
+  const [form, setForm] = useState(applied)
+  const query = toQuery(applied)
   const selectedProduct = options.products.find((product) => String(product.id) === form.product)
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -181,7 +268,7 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    router.get('/items', search ? { ...toQuery(form), ...searchQuery(search) } : toQuery(form), { preserveScroll: true })
+    router.get('/items', { ...toQuery(form), ...(search && searchQuery(search)) }, { preserveScroll: true })
   }
 
   function pageHref(page: number) {
@@ -212,142 +299,34 @@ export default function ItemsIndex({ items, filters, pagination, options, anomal
           aria-label="Filter the feed"
           className="flex flex-wrap items-end gap-3 rounded border border-gray-200 bg-white p-4"
         >
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Product
-            <select className={SELECT} value={form.product} onChange={(e) => update('product', e.target.value)}>
-              <option value="">All products</option>
-              <option value="none">No product</option>
-              {options.products.map((product) => (
-                <option key={product.id} value={String(product.id)}>
-                  {product.name}
-                  {product.retired ? ' (retired)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+          {filterSelects(options).map((select) => (
+            <label key={select.key} className="flex flex-col gap-1 text-xs font-medium text-gray-700">
+              {select.label}
+              <select
+                className="rounded border border-gray-300 bg-white py-1.5 pr-8 pl-2 text-sm"
+                value={form[select.key]}
+                onChange={(e) => update(select.key, e.target.value)}
+              >
+                {select.options.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Sentiment
-            <select className={SELECT} value={form.sentiment} onChange={(e) => update('sentiment', e.target.value)}>
-              <option value="">All sentiments</option>
-              {options.sentiments.map((sentiment) => (
-                <option key={sentiment} value={sentiment}>
-                  {sentimentLabel(sentiment)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Category
-            <select className={SELECT} value={form.category} onChange={(e) => update('category', e.target.value)}>
-              <option value="">All categories</option>
-              {options.categories.map((category) => (
-                <option key={category.id} value={String(category.id)}>
-                  {category.name}
-                  {category.retired ? ' (retired)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Status
-            <select className={SELECT} value={form.status} onChange={(e) => update('status', e.target.value)}>
-              <option value="">All statuses</option>
-              {options.statuses.map((status) => (
-                <option key={status} value={status}>
-                  {statusLabel(status)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Source
-            <select className={SELECT} value={form.source} onChange={(e) => update('source', e.target.value)}>
-              <option value="">All sources</option>
-              {options.sources.map((source) => (
-                <option key={source.id} value={String(source.id)}>
-                  {sourceKindLabel(source.kind)}: {source.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Time range
-            <select className={SELECT} value={form.range} onChange={(e) => update('range', e.target.value)}>
-              <option value="">Any time</option>
-              {options.ranges.map((range) => (
-                <option key={range} value={range}>
-                  {RANGE_LABELS[range] ?? range}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Actionability
-            <select className={SELECT} value={form.actionability} onChange={(e) => update('actionability', e.target.value)}>
-              <option value="">Any (noise hidden)</option>
-              {options.actionability.map((band) => (
-                <option key={band} value={band}>
-                  {actionabilityLabel(band)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Sort
-            <select className={SELECT} value={form.sort} onChange={(e) => update('sort', e.target.value)}>
-              {options.sorts.map((sort) => (
-                <option key={sort} value={sort}>
-                  {sort === 'actionability' ? 'Most actionable first' : 'Most recent first'}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
-            Relevance
-            <select className={SELECT} value={form.relevance} onChange={(e) => update('relevance', e.target.value)}>
-              <option value="relevant">Relevant only</option>
-              <option value="not_relevant">Not relevant only</option>
-              <option value="all">Everything</option>
-            </select>
-          </label>
-
-          <label className="flex items-center gap-2 py-1.5 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={form.needs_review}
-              onChange={(e) => update('needs_review', e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            Needs review
-          </label>
-
-          <label className="flex items-center gap-2 py-1.5 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={form.overdue}
-              onChange={(e) => update('overdue', e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            Overdue
-          </label>
-
-          <label className="flex items-center gap-2 py-1.5 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={form.anomaly !== ''}
-              onChange={(e) => update('anomaly', e.target.checked ? 'active' : '')}
-              className="rounded border-gray-300"
-            />
-            In an active anomaly
-          </label>
+          <FilterCheckbox
+            label="Needs review"
+            checked={form.needs_review}
+            onChange={(checked) => update('needs_review', checked)}
+          />
+          <FilterCheckbox label="Overdue" checked={form.overdue} onChange={(checked) => update('overdue', checked)} />
+          <FilterCheckbox
+            label="In an active anomaly"
+            checked={form.anomaly !== ''}
+            onChange={(checked) => update('anomaly', checked ? 'active' : '')}
+          />
 
           <div className="flex gap-2">
             <button type="submit" className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white">
