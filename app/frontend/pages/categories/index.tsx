@@ -1,7 +1,8 @@
 import { Head, router, useForm } from '@inertiajs/react'
-import { type FormEvent } from 'react'
+import { type FormEvent, useEffect, useRef } from 'react'
 import AppNav from '../../components/app-nav'
 import { Field, FlashNotice, inputClass, primaryButtonClass, secondaryButtonClass } from '../../components/form-field'
+import { plural } from '../../components/mood/format'
 
 interface CategoryRow {
   id: number
@@ -62,19 +63,47 @@ function TextFields({ form, prefix, nameHint }: { form: TextFieldsForm; prefix: 
   )
 }
 
-function CategoryEditor({ category }: { category: CategoryRow }) {
-  const form = useForm({
+const BLANK: Record<TextField, string> = { name: '', description: '', search_blurb: '' }
+
+// Fields still as they were in `from` move to `to`; a field typed in since then keeps its text.
+function moveUntyped<T extends Record<string, string>>(data: T, from: T, to: T): T {
+  return Object.fromEntries(Object.keys(data).map((key) => [key, data[key] === from[key] ? to[key] : data[key]])) as T
+}
+
+function storedValues(category: CategoryRow) {
+  return {
     name: category.name,
     description: category.description ?? '',
     search_blurb: category.search_blurb ?? '',
     position: category.position.toString(),
-  })
+  }
+}
+
+function CategoryEditor({ category }: { category: CategoryRow }) {
+  const form = useForm(storedValues(category))
+  // The form's defaults, which useForm does not expose.
+  const defaults = useRef(form.data)
   const prefix = `category_${category.id}`
+
+  function setDefaults(values: typeof form.data) {
+    defaults.current = values
+    form.setDefaults(values)
+  }
+
+  // Waits for a save in flight to finish, because only then is it known whether what it sent was stored.
+  useEffect(() => {
+    if (form.processing) return
+    const stored = storedValues(category)
+    const from = defaults.current
+    form.setData((data) => moveUntyped(data, from, stored))
+    setDefaults(stored)
+  }, [category, form.processing])
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    const sent = form.data
     form.transform((data) => ({ category: data }))
-    form.patch(`/categories/${category.id}`, { preserveScroll: true, errorBag: prefix, onSuccess: () => form.setDefaults() })
+    form.patch(`/categories/${category.id}`, { preserveScroll: true, errorBag: prefix, onSuccess: () => setDefaults(sent) })
   }
 
   return (
@@ -89,7 +118,7 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
           className={inputClass}
         />
       </Field>
-      <TextFields form={form} prefix={prefix} nameHint={`${category.item_count} items`} />
+      <TextFields form={form} prefix={prefix} nameHint={plural(category.item_count, 'item')} />
       <div className="flex gap-2 sm:pt-6">
         <button type="submit" disabled={form.processing || !form.isDirty} className={secondaryButtonClass}>
           Save
@@ -107,12 +136,17 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
 }
 
 function NewCategoryForm() {
-  const form = useForm({ name: '', description: '', search_blurb: '' })
+  const form = useForm(BLANK)
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    const sent = form.data
     form.transform((data) => ({ category: data }))
-    form.post('/categories', { preserveScroll: true, errorBag: 'new_category', onSuccess: () => form.reset() })
+    form.post('/categories', {
+      preserveScroll: true,
+      errorBag: 'new_category',
+      onSuccess: () => form.setData((data) => moveUntyped(data, sent, BLANK)),
+    })
   }
 
   return (
@@ -155,7 +189,7 @@ export default function CategoriesIndex({ categories, retired_categories }: Cate
               {retired_categories.map((category) => (
                 <li key={category.id} className="flex items-center justify-between px-4 py-3 text-sm">
                   <span className="text-gray-600">
-                    {category.name} <span className="text-xs text-gray-500">({category.item_count} items)</span>
+                    {category.name} <span className="text-xs text-gray-500">({plural(category.item_count, 'item')})</span>
                   </span>
                   <button
                     type="button"
