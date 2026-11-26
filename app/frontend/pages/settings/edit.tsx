@@ -135,8 +135,9 @@ export default function SettingsEdit({ setting, time_zones }: SettingsEditProps)
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    const sent = form.data
     form.transform((data) => ({ setting: data }))
-    form.patch('/settings', { onSuccess: () => form.setDefaults() })
+    form.patch('/settings', { onSuccess: () => form.setDefaults(sent) })
   }
 
   function fieldProps(name: keyof typeof form.data) {
