@@ -254,6 +254,183 @@ describe('Feed page', () => {
     expect(screen.getByRole('heading', { name: 'Nothing in the feed matches “praise for Thesis”' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /No keyword matches/ })).toBeInTheDocument()
   })
+
+  it.each([
+    [
+      'Product',
+      [
+        ['', 'All products'],
+        ['none', 'No product'],
+        ['3', 'Cora'],
+        ['9', 'Lex (retired)'],
+      ],
+    ],
+    [
+      'Sentiment',
+      [
+        ['', 'All sentiments'],
+        ['complaint', 'Complaint'],
+        ['praise', 'Praise'],
+        ['question', 'Question'],
+        ['neutral', 'Neutral'],
+      ],
+    ],
+    [
+      'Category',
+      [
+        ['', 'All categories'],
+        ['4', 'bug'],
+        ['5', 'old (retired)'],
+      ],
+    ],
+    [
+      'Status',
+      [
+        ['', 'All statuses'],
+        ['new', 'New'],
+        ['claimed', 'Claimed'],
+        ['in_progress', 'In progress'],
+        ['handled', 'Handled'],
+        ['dismissed', 'Dismissed'],
+      ],
+    ],
+    [
+      'Source',
+      [
+        ['', 'All sources'],
+        ['1', 'Slack: Community Slack'],
+      ],
+    ],
+    [
+      'Time range',
+      [
+        ['', 'Any time'],
+        ['24h', 'Last 24 hours'],
+        ['7d', 'Last 7 days'],
+        ['30d', 'Last 30 days'],
+        ['90d', 'Last 90 days'],
+        ['1y', '1y'],
+      ],
+    ],
+    [
+      'Actionability',
+      [
+        ['', 'Any (noise hidden)'],
+        ['act_now', 'Act now'],
+        ['should_reply', 'Should reply'],
+        ['fyi', 'FYI'],
+        ['noise', 'Noise'],
+      ],
+    ],
+    [
+      'Sort',
+      [
+        ['recent', 'Most recent first'],
+        ['actionability', 'Most actionable first'],
+      ],
+    ],
+    [
+      'Relevance',
+      [
+        ['relevant', 'Relevant only'],
+        ['not_relevant', 'Not relevant only'],
+        ['all', 'Everything'],
+      ],
+    ],
+  ])('offers the %s options in order', (name, expected) => {
+    const base = props()
+    const options = {
+      ...base.options,
+      categories: [...base.options.categories, { id: 5, name: 'old', retired: true }],
+      ranges: [...base.options.ranges, '1y'],
+    }
+    render(<ItemsIndex {...base} options={options} />)
+
+    const select = screen.getByRole('combobox', { name })
+    expect(within(select).getAllByRole<HTMLOptionElement>('option').map((option) => [option.value, option.textContent])).toEqual(expected)
+  })
+
+  it.each([
+    ['Product', 'none', { product: 'none' }],
+    ['Sentiment', 'praise', { sentiment: 'praise' }],
+    ['Category', '4', { category: '4' }],
+    ['Status', 'handled', { status: 'handled' }],
+    ['Source', '1', { source: '1' }],
+    ['Time range', '7d', { range: '7d' }],
+    ['Actionability', 'fyi', { actionability: 'fyi' }],
+    ['Sort', 'actionability', { sort: 'actionability' }],
+    ['Relevance', 'not_relevant', { relevance: 'not_relevant' }],
+  ])('submits only the changed %s select', (name, value, query) => {
+    render(<ItemsIndex {...props()} />)
+
+    fireEvent.change(screen.getByRole('combobox', { name }), { target: { value } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+
+    expect(get).toHaveBeenCalledWith('/items', query, { preserveScroll: true })
+  })
+
+  it.each([
+    ['Needs review', { needs_review: true }, { needs_review: '1' }],
+    ['Overdue', { overdue: true }, { overdue: '1' }],
+    ['In an active anomaly', { anomaly: 'active' }, { anomaly: 'active' }],
+  ])('turns the %s checkbox on and off', (name, filters, query) => {
+    const { unmount } = render(<ItemsIndex {...props()} />)
+    expect(screen.getByRole('checkbox', { name })).not.toBeChecked()
+    fireEvent.click(screen.getByRole('checkbox', { name }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(get).toHaveBeenLastCalledWith('/items', query, { preserveScroll: true })
+    unmount()
+
+    render(<ItemsIndex {...props({ filters })} />)
+    expect(screen.getByRole('checkbox', { name })).toBeChecked()
+    fireEvent.click(screen.getByRole('checkbox', { name }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(get).toHaveBeenLastCalledWith('/items', {}, { preserveScroll: true })
+  })
+
+  it('fills every select from the current filters', () => {
+    render(
+      <ItemsIndex
+        {...props({
+          filters: {
+            product: ['none'],
+            sentiment: ['praise'],
+            category: ['4'],
+            status: ['handled'],
+            source: ['1'],
+            range: '7d',
+            actionability: ['fyi'],
+            sort: 'actionability',
+            relevance: 'all',
+          },
+        })}
+      />,
+    )
+
+    const values = screen.getAllByRole<HTMLSelectElement>('combobox').map((select) => select.value)
+    expect(values).toEqual(['none', 'praise', '4', 'handled', '1', '7d', 'fyi', 'actionability', 'all'])
+  })
+
+  it('keeps unsubmitted choices out of the pagination links', () => {
+    render(<ItemsIndex {...props({ pagination: { page: 1, prev_page: null, next_page: 2 } })} />)
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sentiment' }), { target: { value: 'praise' } })
+
+    expect(screen.getByRole('link', { name: 'Older' })).toHaveAttribute('href', '/items?page=2')
+  })
+
+  it('keeps unsubmitted choices when new props arrive, while links follow the props', () => {
+    const { rerender } = render(<ItemsIndex {...props()} />)
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sentiment' }), { target: { value: 'praise' } })
+
+    rerender(
+      <ItemsIndex {...props({ filters: { status: ['handled'] }, pagination: { page: 1, prev_page: null, next_page: 2 } })} />,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Sentiment' })).toHaveValue('praise')
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('')
+    expect(screen.getByRole('link', { name: 'Older' })).toHaveAttribute('href', '/items?status=handled&page=2')
+  })
 })
 
 describe('toQuery', () => {
