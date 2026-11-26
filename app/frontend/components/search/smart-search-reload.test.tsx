@@ -110,6 +110,7 @@ it('a background reload sent during the Smart POST cannot take the new run off t
   await settle()
   expect(runInUrl()).toBe('r1')
   expect(screen.getByText(/reading the top 30 matches/)).toBeInTheDocument()
+  expect(reloads('items')).toHaveLength(0)
 
   // The new page's own reloads still go out, with its run, and so do live ones.
   sent = []

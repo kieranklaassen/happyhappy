@@ -92,8 +92,8 @@ export default function FeedSearch({ search, filterQuery }: Props) {
     return router.on('before', ({ detail: { visit } }) => !visit.async)
   }, [smartPosts])
 
-  // An encoding response that lands late would put back a URL without run_id and hide the run, so none is
-  // scheduled while a Smart POST is open.
+  // An encoding response that lands late would put back a URL without run_id and hide the run. The hold
+  // above would drop the reload without a retry, so none is scheduled while a Smart POST is open.
   useEffect(() => {
     if (smartPosts > 0 || search?.encoding_status !== 'pending' || reloads.current >= MAX_ENCODING_RELOADS) return
     const timer = window.setTimeout(() => {
