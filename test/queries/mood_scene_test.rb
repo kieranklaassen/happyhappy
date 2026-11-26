@@ -162,4 +162,23 @@ class MoodSceneTest < ActiveSupport::TestCase
 
     assert_equal %w[cora sparkle spiral], slugs
   end
+
+  test "someone past the drawn crowd still counts in the mood and the summary" do
+    source = sources(:x_mentions)
+    (MoodScene::CHARACTERS_PER_PRODUCT + 3).times do |index|
+      item = Item.create!(source: source, product: products(:spiral), thread_key: "spiral-#{index}",
+        author_handle: "fan#{index}", sentiment: "praise", sentiment_probability: 0.9, anger_probability: 0.0,
+        last_message_at: index.minutes.ago)
+      item.messages.create!(source: source, external_id: "spiral-#{index}", body: "Message #{index}", occurred_at: index.minutes.ago)
+    end
+
+    props = scene(product: products(:spiral))
+    group = props[:scene].first
+    last = group[:characters].last
+
+    assert_equal MoodScene::CHARACTERS_PER_PRODUCT + 3, props[:today][:people]
+    assert_equal MoodScene::CHARACTERS_PER_PRODUCT + 3, group[:counts]["beaming"]
+    assert_equal "Message #{MoodScene::CHARACTERS_PER_PRODUCT - 1}", last[:excerpt]
+    assert group[:characters].all? { |character| character[:excerpt].present? }
+  end
 end

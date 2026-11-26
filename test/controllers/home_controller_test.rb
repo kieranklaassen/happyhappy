@@ -4,6 +4,7 @@ require "test_helper"
 
 class HomeControllerTest < ActionDispatch::IntegrationTest
   include AnomalyHelper
+  include PartialReloadHelper
 
   test "the mood dashboard needs a signed-in person" do
     get root_path
@@ -72,5 +73,50 @@ class HomeControllerTest < ActionDispatch::IntegrationTest
     storm = create_anomaly!(severity: "low")
     get root_path
     assert_equal [ storm.id, huge.id ], inertia.props[:anomalies]["cora"].map { |row| row["id"] }
+  end
+
+  test "a live reload sends the full page's scene and today without querying the other props" do
+    sign_in_as users(:one)
+    create_anomaly!
+
+    freeze_time do
+      unsent = /FROM "anomalies"|"retired_at" IS NULL/
+      assert_equal 2, matching_queries(unsent) { get root_path, params: { range: "7d" } }.size
+      full = inertia.props.to_h.as_json
+
+      props = nil
+      assert_empty matching_queries(unsent) { props = partial_reload(only: %w[scene today]) }
+
+      assert_equal full.slice("scene", "today"), props.slice("scene", "today")
+      assert_empty props.keys & %w[filters options anomalies]
+    end
+  end
+
+  test "each dashboard prop reloads alone, and is left out alone, with the full page's value" do
+    sign_in_as users(:one)
+    create_anomaly!
+    names = %w[scene today filters options anomalies]
+
+    freeze_time do
+      get root_path
+      full = inertia.props.to_h.as_json.slice(*names)
+      assert_equal names.sort, full.keys.sort
+
+      names.each do |name|
+        get root_path
+        assert_equal full.slice(name), partial_reload(only: [ name ]).slice(*names)
+
+        get root_path
+        assert_equal full.except(name), partial_reload(except: [ name ]).slice(*names)
+      end
+    end
+  end
+
+  test "a reload that leaves out the scene and today reads no items" do
+    sign_in_as users(:one)
+    unsent = /FROM "items"|FROM "messages"/
+    assert_not_empty matching_queries(unsent) { get root_path }
+
+    assert_empty matching_queries(unsent) { partial_reload(only: %w[anomalies]) }
   end
 end
