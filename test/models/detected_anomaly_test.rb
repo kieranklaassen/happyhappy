@@ -125,28 +125,28 @@ class DetectedAnomalyTest < ActiveSupport::TestCase
   end
 
   test "slack_alertable? requires active, non-historical, negative, high-severity, all-sources, and no product alert channel" do
-    assert create_anomaly!.slack_alertable?
+    assert build_anomaly.slack_alertable?
 
-    refute create_anomaly!(status: "ended", ended_at: Time.current).slack_alertable?
-    refute create_anomaly!(historical: true).slack_alertable?
-    refute create_anomaly!(polarity: "positive", severity: nil, highlight: "huge").slack_alertable?
-    refute create_anomaly!(polarity: "neutral", severity: nil, highlight: nil).slack_alertable?
-    refute create_anomaly!(severity: "medium").slack_alertable?
-    refute create_anomaly!(severity: "low").slack_alertable?
-    refute create_anomaly!(source: sources(:slack_community)).slack_alertable?
+    refute build_anomaly(status: "ended", ended_at: Time.current).slack_alertable?
+    refute build_anomaly(historical: true).slack_alertable?
+    refute build_anomaly(polarity: "positive", severity: nil, highlight: "huge").slack_alertable?
+    refute build_anomaly(polarity: "neutral", severity: nil, highlight: nil).slack_alertable?
+    refute build_anomaly(severity: "medium").slack_alertable?
+    refute build_anomaly(severity: "low").slack_alertable?
+    refute build_anomaly(source: sources(:slack_community)).slack_alertable?
 
     products(:cora).update!(alert_channel_id: "C0AGCDCD6KG")
-    refute create_anomaly!.slack_alertable?
+    refute build_anomaly.slack_alertable?
   end
 
   test "incident_worthy? is true only for active, non-historical, negative anomalies" do
-    assert create_anomaly!.incident_worthy?
-    assert create_anomaly!(severity: "low", source: sources(:slack_community)).incident_worthy?
+    assert build_anomaly.incident_worthy?
+    assert build_anomaly(severity: "low", source: sources(:slack_community)).incident_worthy?
 
-    refute create_anomaly!(status: "ended", ended_at: Time.current).incident_worthy?
-    refute create_anomaly!(historical: true).incident_worthy?
-    refute create_anomaly!(polarity: "positive", severity: nil, highlight: "big").incident_worthy?
-    refute create_anomaly!(polarity: "neutral", severity: nil, highlight: nil).incident_worthy?
+    refute build_anomaly(status: "ended", ended_at: Time.current).incident_worthy?
+    refute build_anomaly(historical: true).incident_worthy?
+    refute build_anomaly(polarity: "positive", severity: nil, highlight: "big").incident_worthy?
+    refute build_anomaly(polarity: "neutral", severity: nil, highlight: nil).incident_worthy?
   end
 
   test "resolved?, positive?, negative?, and strength reflect anomaly state" do
