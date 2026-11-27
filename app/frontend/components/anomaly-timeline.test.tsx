@@ -44,8 +44,12 @@ describe('AnomalyTimeline', () => {
     expect(times).toHaveLength(2)
     expect(times[0]).toHaveAttribute('datetime', entry.window_start)
     expect(times[0]).toHaveTextContent(formatDateTime(entry.window_start))
+    expect(times[0].textContent).toMatch(/2026/)
+    expect(times[0]).not.toHaveTextContent(entry.window_start)
     expect(times[1]).toHaveAttribute('datetime', entry.window_end)
     expect(times[1]).toHaveTextContent(formatDateTime(entry.window_end))
+    expect(times[1].textContent).toMatch(/2026/)
+    expect(times[1]).not.toHaveTextContent(entry.window_end)
 
     expect(within(item).getByRole('link', { name: '2 items' })).toHaveAttribute('href', '/items?anomaly=12')
     expect(within(item).getByRole('link', { name: 'Resolve incident' })).toHaveAttribute('href', '/incidents/4')
@@ -69,7 +73,7 @@ describe('AnomalyTimeline', () => {
     )
 
     const item = screen.getByRole('listitem')
-    expect(item).not.toHaveTextContent('on ')
+    expect(within(item).queryByText(/^on /)).not.toBeInTheDocument()
     expect(item).toHaveTextContent('62% against an expected 18% per day')
   })
 

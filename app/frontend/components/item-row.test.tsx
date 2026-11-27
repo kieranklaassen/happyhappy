@@ -36,11 +36,20 @@ function item(overrides: Partial<ItemRowData> = {}): ItemRowData {
 }
 
 function renderRow(overrides: Partial<ItemRowData> = {}) {
-  return render(
+  const view = render(
     <ul>
       <ItemRow item={item(overrides)} />
     </ul>,
   )
+  return {
+    ...view,
+    rerenderRow: (nextOverrides: Partial<ItemRowData> = {}) =>
+      view.rerender(
+        <ul>
+          <ItemRow item={item(nextOverrides)} />
+        </ul>,
+      ),
+  }
 }
 
 describe('ItemRow', () => {
@@ -58,6 +67,8 @@ describe('ItemRow', () => {
     const time = link.querySelector('time')
     expect(time).toHaveAttribute('datetime', entry.last_message_at)
     expect(time).toHaveTextContent(formatTime(entry.last_message_at))
+    expect(time?.textContent).toMatch(/2026/)
+    expect(time).not.toHaveTextContent(entry.last_message_at)
 
     expect(within(link).getByText('Act now 91%')).toBeInTheDocument()
     expect(within(link).getByText('Complaint')).toBeInTheDocument()
@@ -86,19 +97,11 @@ describe('ItemRow', () => {
   })
 
   it('shows retired and missing product states and omits a missing category', () => {
-    const { rerender } = render(
-      <ul>
-        <ItemRow item={item({ product: null, category: null })} />
-      </ul>,
-    )
+    const { rerenderRow } = renderRow({ product: null, category: null })
     expect(screen.getByText('No product')).toBeInTheDocument()
     expect(screen.queryByText('bug')).not.toBeInTheDocument()
 
-    rerender(
-      <ul>
-        <ItemRow item={item({ product: { id: 9, name: 'Lex', slug: 'lex', retired: true } })} />
-      </ul>,
-    )
+    rerenderRow({ product: { id: 9, name: 'Lex', slug: 'lex', retired: true } })
     expect(screen.getByText('Lex (retired)')).toBeInTheDocument()
   })
 
@@ -150,22 +153,14 @@ describe('ItemRow', () => {
   })
 
   it('shows optional claim, overdue, review, and relevance badges only when active', () => {
-    const { rerender } = render(
-      <ul>
-        <ItemRow item={item({ claimed_by: null, overdue: false, needs_review: false, relevant: true })} />
-      </ul>,
-    )
+    const { rerenderRow } = renderRow({ claimed_by: null, overdue: false, needs_review: false, relevant: true })
 
     expect(screen.queryByText(/Claimed by/)).not.toBeInTheDocument()
     expect(screen.queryByText('Overdue')).not.toBeInTheDocument()
     expect(screen.queryByText('Needs review')).not.toBeInTheDocument()
     expect(screen.queryByText('Not relevant')).not.toBeInTheDocument()
 
-    rerender(
-      <ul>
-        <ItemRow item={item({ claimed_by: 'Cursor', overdue: true, needs_review: true, relevant: false })} />
-      </ul>,
-    )
+    rerenderRow({ claimed_by: 'Cursor', overdue: true, needs_review: true, relevant: false })
 
     expect(screen.getByText('Claimed by Cursor')).toBeInTheDocument()
     expect(screen.getByText('Overdue')).toBeInTheDocument()
@@ -174,32 +169,16 @@ describe('ItemRow', () => {
   })
 
   it('shows the anger badge only at or above the 0.5 threshold', () => {
-    const { rerender } = render(
-      <ul>
-        <ItemRow item={item({ anger_probability: null })} />
-      </ul>,
-    )
+    const { rerenderRow } = renderRow({ anger_probability: null })
     expect(screen.queryByText(/Anger/)).not.toBeInTheDocument()
 
-    rerender(
-      <ul>
-        <ItemRow item={item({ anger_probability: 0.49 })} />
-      </ul>,
-    )
+    rerenderRow({ anger_probability: 0.49 })
     expect(screen.queryByText(/Anger/)).not.toBeInTheDocument()
 
-    rerender(
-      <ul>
-        <ItemRow item={item({ anger_probability: 0.5 })} />
-      </ul>,
-    )
+    rerenderRow({ anger_probability: 0.5 })
     expect(screen.getByText('Anger 50%')).toBeInTheDocument()
 
-    rerender(
-      <ul>
-        <ItemRow item={item({ anger_probability: 0.864 })} />
-      </ul>,
-    )
+    rerenderRow({ anger_probability: 0.864 })
     expect(screen.getByText('Anger 86%')).toBeInTheDocument()
   })
 })
