@@ -23,9 +23,11 @@ class PostIncidentResolutionJobTest < ActiveJob::TestCase
     assert_empty slack_calls
   end
 
-  test "does nothing when the incident is missing a Slack message timestamp" do
+  test "does nothing when Slack channel or message timestamp is missing" do
     resolve_incident!(slack_message_ts: nil)
+    PostIncidentResolutionJob.perform_now(@incident)
 
+    resolve_incident!(slack_channel_id: nil, slack_message_ts: SLACK_OK_TS)
     PostIncidentResolutionJob.perform_now(@incident)
 
     assert_empty slack_calls
@@ -34,8 +36,7 @@ class PostIncidentResolutionJobTest < ActiveJob::TestCase
   test "reloads a stale incident, updates the original ping, and posts a threaded reply" do
     stale = Incident.find(@incident.id)
     resolve_incident!(resolved_by_name: "Ana Every", resolution_note: "Fixed the IMAP sync")
-    stub_slack_method("chat.update")
-    stub_slack_method("chat.postMessage", { ok: true, ts: "1727200001.000100" })
+    stub_resolution_slack
 
     PostIncidentResolutionJob.perform_now(stale)
 
@@ -56,8 +57,7 @@ class PostIncidentResolutionJobTest < ActiveJob::TestCase
 
   test "falls back to someone when resolved_by_name is nil and omits blank notes" do
     resolve_incident!(resolved_by_name: nil, resolution_note: "   ", items_handled: false)
-    stub_slack_method("chat.update")
-    stub_slack_method("chat.postMessage", { ok: true, ts: "1727200001.000100" })
+    stub_resolution_slack
 
     PostIncidentResolutionJob.perform_now(@incident)
 
@@ -67,8 +67,7 @@ class PostIncidentResolutionJobTest < ActiveJob::TestCase
   test "escapes mrkdwn and channel mentions in resolver name and note and truncates long notes" do
     long_note = "<tag> & @channel " + ("a" * 500)
     resolve_incident!(resolved_by_name: "Ana <ops> & @here", resolution_note: long_note)
-    stub_slack_method("chat.update")
-    stub_slack_method("chat.postMessage", { ok: true, ts: "1727200001.000100" })
+    stub_resolution_slack
 
     PostIncidentResolutionJob.perform_now(@incident)
 
@@ -79,8 +78,7 @@ class PostIncidentResolutionJobTest < ActiveJob::TestCase
 
   test "appends driving items suffix when items_handled is true" do
     resolve_incident!(resolved_by_name: "Ana Every", resolution_note: nil, items_handled: true)
-    stub_slack_method("chat.update")
-    stub_slack_method("chat.postMessage", { ok: true, ts: "1727200001.000100" })
+    stub_resolution_slack
 
     PostIncidentResolutionJob.perform_now(@incident)
 
@@ -90,8 +88,7 @@ class PostIncidentResolutionJobTest < ActiveJob::TestCase
 
   test "includes both resolution note and driving items suffix when both are set" do
     resolve_incident!(resolved_by_name: "Ana Every", resolution_note: "Fixed sync", items_handled: true)
-    stub_slack_method("chat.update")
-    stub_slack_method("chat.postMessage", { ok: true, ts: "1727200001.000100" })
+    stub_resolution_slack
 
     PostIncidentResolutionJob.perform_now(@incident)
 
@@ -126,5 +123,10 @@ class PostIncidentResolutionJobTest < ActiveJob::TestCase
 
   def resolve_incident!(**attributes)
     @incident.update!({ status: :resolved, resolved_at: Time.current, resolved_by_name: "Ana Every" }.merge(attributes))
+  end
+
+  def stub_resolution_slack
+    stub_slack_method("chat.update")
+    stub_slack_method("chat.postMessage", { ok: true, ts: "1727200001.000100" })
   end
 end
