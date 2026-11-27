@@ -47,12 +47,10 @@ class WebhookDeliveryTest < ActiveSupport::TestCase
     freeze_time do
       cutoff = WebhookDelivery::RETENTION.ago
       expired = create_delivery(created_at: cutoff - 1.second)
-      at_cutoff = create_delivery(created_at: cutoff)
-      recent = create_delivery(created_at: cutoff + 1.second)
+      create_delivery(created_at: cutoff)
+      create_delivery(created_at: cutoff + 1.second)
 
       assert_equal [ expired ], WebhookDelivery.expired.to_a
-      assert_not_includes WebhookDelivery.expired, at_cutoff
-      assert_not_includes WebhookDelivery.expired, recent
     end
   end
 
@@ -81,9 +79,9 @@ class WebhookDeliveryTest < ActiveSupport::TestCase
       assert_equal "happyhappy-webhooks", request.headers["User-Agent"]
       assert_equal delivery.event, request.headers["X-Happyhappy-Event"]
       assert_equal delivery.id.to_s, request.headers["X-Happyhappy-Delivery"]
-      expected_signature = Webhooks::Signature.sign(@endpoint.secret, request.body, time: now)
-      assert_equal expected_signature, request.headers[Webhooks::Signature::HEADER]
-      assert Webhooks::Signature.verify(@endpoint.secret, request.body, expected_signature, now: now)
+      signature = request.headers[Webhooks::Signature::HEADER]
+      assert_equal Webhooks::Signature.sign(@endpoint.secret, request.body, time: now), signature
+      assert Webhooks::Signature.verify(@endpoint.secret, request.body, signature, now: now)
     end
 
     delivery.reload
@@ -151,7 +149,8 @@ class WebhookDeliveryTest < ActiveSupport::TestCase
   test "attempt! records network failures, clears response_code, and truncates long messages" do
     now = Time.current.change(usec: 0)
     delivery = create_delivery(response_code: 500)
-    stub_request(:post, WEBHOOK_TEST_URL).to_raise(Errno::ECONNREFUSED.new("connect(2)"))
+    error = Errno::ECONNREFUSED.new("connect(2)")
+    stub_request(:post, WEBHOOK_TEST_URL).to_raise(error)
 
     assert_not delivery.attempt!(now: now)
 
@@ -160,7 +159,7 @@ class WebhookDeliveryTest < ActiveSupport::TestCase
     assert_equal 1, delivery.attempts
     assert_equal now, delivery.last_attempted_at
     assert_nil delivery.response_code
-    assert_equal "Errno::ECONNREFUSED: #{Errno::ECONNREFUSED.new("connect(2)").message}", delivery.last_error
+    assert_equal "Errno::ECONNREFUSED: #{error.message}", delivery.last_error
 
     later = now + 1.minute
     stub_request(:post, WEBHOOK_TEST_URL).to_raise(Net::OpenTimeout.new("t" * (WebhookDelivery::ERROR_BODY_LIMIT + 100)))
