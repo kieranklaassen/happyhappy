@@ -8,9 +8,9 @@
 # to the modules listed here, applies them in order, and bumps template_version.
 # See docs/changelog/README.md and docs/template-manifest.md.
 
-# Every entry through 0.8.0 is applied: the 0.7.0 entries in U23 and webmcp
-# from 0.8.0 in U21.
-template_version: "0.8.0"
+# Every entry through 0.8.1 is applied: the 0.7.0 entries in U23, webmcp
+# from 0.8.0 in U21, and 0.8.1-001 (drop precompile SQLite) in #58.
+template_version: "0.8.1"
 
 # module name -> the template_version at which this app adopted it.
 modules:
