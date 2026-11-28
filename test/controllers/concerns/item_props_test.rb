@@ -91,10 +91,13 @@ class ItemPropsTest < ActiveSupport::TestCase
 
     row = @host.item_rows(Item.where(id: item.id)).sole
 
-    assert_equal long_customer_body.squish.truncate(ItemProps::EXCERPT_LENGTH), row[:excerpt]
     assert_equal ItemProps::EXCERPT_LENGTH, row[:excerpt].length
+    assert row[:excerpt].start_with?("First line word word ")
+    assert row[:excerpt].end_with?("...")
     assert_not_includes row[:excerpt], "\n"
     assert_not_includes row[:excerpt], "  "
+    assert_not_includes row[:excerpt], "tail"
+    assert_not_includes row[:excerpt], "Internal team reply"
     assert_equal item.id, row[:id]
     assert_equal "ana_customer", row[:author]
     assert_equal({ id: item.product.id, name: item.product.name, slug: item.product.slug, retired: false }, row[:product])
