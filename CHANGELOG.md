@@ -5,6 +5,13 @@ Human-readable index of the agent-executable entries under
 instructions an agent applies to a downstream app — see the README there for the
 filter+apply algorithm.
 
+## 0.8.1
+
+- **0.8.1-001** · _fix_ · deploy — [Drop the SQLite file precompile leaves in the image](docs/changelog/0.8.1-001-drop-precompile-sqlite.md).
+  `assets:precompile` left an empty `storage/production.sqlite3` in the image,
+  which Docker copies into a brand-new storage volume, so a first deploy skipped
+  the queue, cache, and cable schemas and Solid Queue crashed on boot.
+
 ## 0.8.0
 
 - **0.8.0-001** · _feat_ · webmcp — [Add WebMCP module](docs/changelog/0.8.0-001-add-webmcp-module.md).
