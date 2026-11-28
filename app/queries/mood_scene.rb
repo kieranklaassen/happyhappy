@@ -8,6 +8,10 @@ class MoodScene
   CHARACTERS_PER_PRODUCT = 48
   ITEM_LIMIT = 2_000
   EXCERPT_LENGTH = 220
+  ITEM_COLUMNS = %i[
+    id product_id source_kind author_email author_handle author_name sentiment sentiment_probability
+    anger_probability status last_message_at
+  ].freeze
 
   attr_reader :range, :product
 
@@ -18,61 +22,14 @@ class MoodScene
   end
 
   def props
-    {
-      scene: groups.map { |group| group_props(group) },
-      today: summary_props,
-      filters: { range: range, product: product&.slug },
-      options: {
-        ranges: RANGES.keys,
-        products: Product.active.ordered.map { |option| { slug: option.slug, name: option.name } }
-      }
-    }
+    { scene: scene, today: today, filters: filters, options: options }
   end
 
-  private
-
-  Person = Data.define(:item, :seed, :threads, :mood)
-  Group = Data.define(:product, :people, :overflow)
-
-  def items
-    @items ||= begin
-      scope = Item.relevant.includes(:product)
-        .where(last_message_at: (@now - RANGES.fetch(range))..)
-        .recent_first
-        .limit(ITEM_LIMIT)
-      product ? scope.where(product: product) : scope
-    end
+  def scene
+    groups.map { |group| group_props(group) }
   end
 
-  def people
-    @people ||= items.group_by { |item| [ item.product_id, author_key(item) ] }.map do |(_, key), threads|
-      latest = threads.first
-      Person.new(item: latest, seed: Digest::SHA256.hexdigest(key).first(16), threads: threads.size,
-        mood: mood_for(latest))
-    end
-  end
-
-  def groups
-    people.group_by { |person| person.item.product }
-      .sort_by { |group_product, _| group_product ? [ 0, group_product.name ] : [ 1, "" ] }
-      .map do |group_product, members|
-        Group.new(product: group_product, people: members,
-          overflow: [ members.size - CHARACTERS_PER_PRODUCT, 0 ].max)
-      end
-  end
-
-  def group_props(group)
-    moods = group.people.map(&:mood)
-    {
-      product: group.product && { slug: group.product.slug, name: group.product.name, retired: group.product.retired? },
-      mood: Mood.overall(moods),
-      counts: counts(moods),
-      overflow: group.overflow,
-      characters: group.people.first(CHARACTERS_PER_PRODUCT).map { |person| character_props(person) }
-    }
-  end
-
-  def summary_props
+  def today
     moods = people.map(&:mood)
     tally = counts(moods)
     {
@@ -87,15 +44,73 @@ class MoodScene
     }
   end
 
+  def filters
+    { range: range, product: product&.slug }
+  end
+
+  def options
+    {
+      ranges: RANGES.keys,
+      products: Product.active.ordered.map { |option| { slug: option.slug, name: option.name } }
+    }
+  end
+
+  private
+
+  Person = Data.define(:item, :author, :threads, :mood)
+  Group = Data.define(:product, :people, :overflow)
+
+  def items
+    @items ||= begin
+      scope = Item.relevant.select(ITEM_COLUMNS).includes(:product)
+        .where(last_message_at: (@now - RANGES.fetch(range))..)
+        .recent_first
+        .limit(ITEM_LIMIT)
+      product ? scope.where(product: product) : scope
+    end
+  end
+
+  def people
+    @people ||= items.group_by { |item| [ item.product_id, author_key(item) ] }.map do |(_, key), threads|
+      latest = threads.first
+      Person.new(item: latest, author: key, threads: threads.size, mood: mood_for(latest))
+    end
+  end
+
+  def groups
+    @groups ||= people.group_by { |person| person.item.product }
+      .sort_by { |group_product, _| group_product ? [ 0, group_product.name ] : [ 1, "" ] }
+      .map do |group_product, members|
+        Group.new(product: group_product, people: members,
+          overflow: [ members.size - CHARACTERS_PER_PRODUCT, 0 ].max)
+      end
+  end
+
+  def group_props(group)
+    moods = group.people.map(&:mood)
+    {
+      product: group.product && { slug: group.product.slug, name: group.product.name, retired: group.product.retired? },
+      mood: Mood.overall(moods),
+      counts: counts(moods),
+      overflow: group.overflow,
+      characters: drawn(group).map { |person| character_props(person) }
+    }
+  end
+
+  def drawn(group)
+    group.people.first(CHARACTERS_PER_PRODUCT)
+  end
+
   def counts(moods)
     (Mood::ALL + [ Mood::PENDING ]).index_with { |mood| moods.count(mood) }
   end
 
   def character_props(person)
     item = person.item
+    seed = Digest::SHA256.hexdigest(person.author).first(16)
     {
-      key: "#{item.product_id || 'none'}-#{person.seed}",
-      seed: person.seed,
+      key: "#{item.product_id || 'none'}-#{seed}",
+      seed: seed,
       item_id: item.id,
       name: display_name(item),
       handle: handle(item),
@@ -124,9 +139,10 @@ class MoodScene
     @default_escalation_threshold ||= Setting.current.escalation_threshold
   end
 
+  # Only drawn characters show an excerpt.
   def latest_bodies
     @latest_bodies ||= begin
-      ids = people.map { |person| person.item.id }
+      ids = groups.flat_map { |group| drawn(group).map { |person| person.item.id } }
       ranked = Message.from_customers.where(item_id: ids)
         .select(:item_id, :body, "ROW_NUMBER() OVER (PARTITION BY item_id ORDER BY occurred_at DESC, id DESC) AS position")
       Message.from(ranked, :messages).where(position: 1).pluck(:item_id, :body).to_h

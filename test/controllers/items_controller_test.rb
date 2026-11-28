@@ -2,6 +2,9 @@ require "test_helper"
 
 class ItemsControllerTest < ActionDispatch::IntegrationTest
   include AnomalyHelper
+  include PartialReloadHelper
+
+  OPTION_QUERIES = /ORDER BY "(products|categories|sources)"/
 
   setup do
     sign_in_as users(:every_ana)
@@ -169,5 +172,28 @@ class ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal({ "anomaly" => "active", "relevance" => "relevant" }, inertia.props[:filters].as_json)
     assert_equal [ anomaly.id ], inertia.props[:anomalies].map { |row| row["id"] }
     assert_equal "Bug messages", inertia.props[:anomalies].first["label"]
+  end
+
+  test "a live reload sends the feed and anomalies without querying the filter options" do
+    create_anomaly!
+    assert_equal 3, matching_queries(OPTION_QUERIES) { get items_path }.size
+    full = inertia.props.to_h.as_json
+
+    props = nil
+    assert_empty matching_queries(OPTION_QUERIES) { props = partial_reload(only: %w[items anomalies]) }
+
+    assert_equal full.slice("items", "anomalies"), props.slice("items", "anomalies")
+    assert_not props.key?("options")
+  end
+
+  test "a Smart reload during search leaves the filter options alone, and options still reload on request" do
+    get items_path, params: { q: "refund" }
+    full = inertia.props.to_h.as_json
+    props = nil
+    assert_empty matching_queries(OPTION_QUERIES) { props = partial_reload(only: %w[smart]) }
+    assert_not props.key?("options")
+
+    get items_path, params: { q: "refund" }
+    assert_equal full.fetch("options"), partial_reload(only: %w[options]).fetch("options")
   end
 end
