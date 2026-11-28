@@ -16,7 +16,7 @@ void createServer((page) =>
     // Mirror the CSR entrypoint's snake_case "controller/action" resolution.
     resolve: (name) => {
       const pages = import.meta.glob<{ default: ComponentType }>(
-        '../pages/**/*.tsx',
+        ['../pages/**/*.tsx', '!../pages/**/*.{test,spec}.tsx'],
         { eager: true },
       )
       return pages[`../pages/${name}.tsx`]

@@ -1,7 +1,8 @@
 import { Head, router, useForm } from '@inertiajs/react'
-import { type FormEvent } from 'react'
+import { type FormEvent, useLayoutEffect, useRef } from 'react'
 import AppNav from '../../components/app-nav'
 import { Field, FlashNotice, inputClass, primaryButtonClass, secondaryButtonClass } from '../../components/form-field'
+import { plural } from '../../components/mood/format'
 
 interface CategoryRow {
   id: number
@@ -21,34 +22,18 @@ interface CategoriesIndexProps {
   retired_categories: CategoryRow[]
 }
 
-function CategoryEditor({ category }: { category: CategoryRow }) {
-  const form = useForm({
-    name: category.name,
-    description: category.description ?? '',
-    search_blurb: category.search_blurb ?? '',
-    position: category.position.toString(),
-  })
-  const prefix = `category_${category.id}`
+type TextField = 'name' | 'description' | 'search_blurb'
 
-  function submit(event: FormEvent) {
-    event.preventDefault()
-    form.transform((data) => ({ category: data }))
-    form.patch(`/categories/${category.id}`, { preserveScroll: true, errorBag: prefix, onSuccess: () => form.setDefaults() })
-  }
+interface TextFieldsForm {
+  data: Record<TextField, string>
+  errors: Partial<Record<TextField, string[]>>
+  setData(field: TextField, value: string): void
+}
 
+function TextFields({ form, prefix, nameHint }: { form: TextFieldsForm; prefix: string; nameHint?: string }) {
   return (
-    <form onSubmit={submit} aria-label={`Edit ${category.name}`} className="grid gap-3 px-4 py-4 sm:grid-cols-[5rem_1fr_2fr_1fr_auto] sm:items-start">
-      <Field label="Order" htmlFor={`${prefix}_position`} error={form.errors.position}>
-        <input
-          id={`${prefix}_position`}
-          type="number"
-          step={1}
-          value={form.data.position}
-          onChange={(e) => form.setData('position', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Name" htmlFor={`${prefix}_name`} error={form.errors.name} hint={`${category.item_count} items`}>
+    <>
+      <Field label="Name" htmlFor={`${prefix}_name`} error={form.errors.name} hint={nameHint}>
         <input
           id={`${prefix}_name`}
           required
@@ -74,6 +59,67 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
           className={inputClass}
         />
       </Field>
+    </>
+  )
+}
+
+const BLANK: Record<TextField, string> = { name: '', description: '', search_blurb: '' }
+
+// Fields still as they were in `from` move to `to`; a field typed in since then keeps its text.
+function moveUntyped<T extends Record<string, string>>(data: T, from: T, to: T): T {
+  return Object.fromEntries(Object.keys(data).map((key) => [key, data[key] === from[key] ? to[key] : data[key]])) as T
+}
+
+function storedValues(category: CategoryRow) {
+  return {
+    name: category.name,
+    description: category.description ?? '',
+    search_blurb: category.search_blurb ?? '',
+    position: category.position.toString(),
+  }
+}
+
+function CategoryEditor({ category }: { category: CategoryRow }) {
+  const form = useForm(storedValues(category))
+  // The form's defaults, which useForm does not expose.
+  const defaults = useRef(form.data)
+  const prefix = `category_${category.id}`
+
+  function setDefaults(values: typeof form.data) {
+    defaults.current = values
+    form.setDefaults(values)
+  }
+
+  // Waits for a save in flight, which moves the defaults to what it sent once it succeeds. A layout effect, because
+  // useForm would lose text typed between the render and a passive one.
+  useLayoutEffect(() => {
+    if (form.processing) return
+    const stored = storedValues(category)
+    const from = defaults.current
+    form.setData((data) => moveUntyped(data, from, stored))
+    setDefaults(stored)
+  }, [category, form.processing])
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    const sent = form.data
+    form.transform((data) => ({ category: data }))
+    form.patch(`/categories/${category.id}`, { preserveScroll: true, errorBag: prefix, onSuccess: () => setDefaults(sent) })
+  }
+
+  return (
+    <form onSubmit={submit} aria-label={`Edit ${category.name}`} className="grid gap-3 px-4 py-4 sm:grid-cols-[5rem_1fr_2fr_1fr_auto] sm:items-start">
+      <Field label="Order" htmlFor={`${prefix}_position`} error={form.errors.position}>
+        <input
+          id={`${prefix}_position`}
+          type="number"
+          step={1}
+          value={form.data.position}
+          onChange={(e) => form.setData('position', e.target.value)}
+          className={inputClass}
+        />
+      </Field>
+      <TextFields form={form} prefix={prefix} nameHint={plural(category.item_count, 'item')} />
       <div className="flex gap-2 sm:pt-6">
         <button type="submit" disabled={form.processing || !form.isDirty} className={secondaryButtonClass}>
           Save
@@ -91,42 +137,22 @@ function CategoryEditor({ category }: { category: CategoryRow }) {
 }
 
 function NewCategoryForm() {
-  const form = useForm({ name: '', description: '', search_blurb: '' })
+  const form = useForm(BLANK)
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    const sent = form.data
     form.transform((data) => ({ category: data }))
-    form.post('/categories', { preserveScroll: true, errorBag: 'new_category', onSuccess: () => form.reset() })
+    form.post('/categories', {
+      preserveScroll: true,
+      errorBag: 'new_category',
+      onSuccess: () => form.setData((data) => moveUntyped(data, sent, BLANK)),
+    })
   }
 
   return (
     <form onSubmit={submit} aria-label="Add category" className="grid gap-3 rounded border border-gray-200 bg-white px-4 py-4 sm:grid-cols-[1fr_2fr_1fr_auto] sm:items-start">
-      <Field label="Name" htmlFor="new_category_name" error={form.errors.name}>
-        <input
-          id="new_category_name"
-          required
-          value={form.data.name}
-          onChange={(e) => form.setData('name', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Description" htmlFor="new_category_description" error={form.errors.description}>
-        <input
-          id="new_category_description"
-          value={form.data.description}
-          onChange={(e) => form.setData('description', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-      <Field label="Search words" htmlFor="new_category_search_blurb" error={form.errors.search_blurb} hint={SEARCH_BLURB_HINT}>
-        <input
-          id="new_category_search_blurb"
-          maxLength={SEARCH_BLURB_MAX}
-          value={form.data.search_blurb}
-          onChange={(e) => form.setData('search_blurb', e.target.value)}
-          className={inputClass}
-        />
-      </Field>
+      <TextFields form={form} prefix="new_category" />
       <div className="sm:pt-6">
         <button type="submit" disabled={form.processing} className={primaryButtonClass}>
           Add category
@@ -164,7 +190,7 @@ export default function CategoriesIndex({ categories, retired_categories }: Cate
               {retired_categories.map((category) => (
                 <li key={category.id} className="flex items-center justify-between px-4 py-3 text-sm">
                   <span className="text-gray-600">
-                    {category.name} <span className="text-xs text-gray-500">({category.item_count} items)</span>
+                    {category.name} <span className="text-xs text-gray-500">({plural(category.item_count, 'item')})</span>
                   </span>
                   <button
                     type="button"
