@@ -38,7 +38,7 @@ class Agents::ResultTest < ActiveSupport::TestCase
   end
 
   test "failure accepts every documented agent error code" do
-    Agents::Result::ERRORS.each do |code|
+    %i[missing_token invalid_token revoked taken not_claimable not_holder invalid].each do |code|
       result = Agents::Result.failure(code, "failed because #{code}")
 
       assert_not result.success?, "expected #{code.inspect} to be a failure"
