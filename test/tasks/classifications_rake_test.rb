@@ -106,10 +106,7 @@ class ClassificationsRakeTest < ActiveSupport::TestCase
     own_method = Classification::Rerun.singleton_class.method_defined?(:new, false)
     original = Classification::Rerun.method(:new) if own_method
     Classification::Rerun.define_singleton_method(:new) do |items:, logger:|
-      runner = factory.call(items: items, logger: logger)
-      Struct.new(:callable) do
-        def call = callable.call
-      end.new(runner)
+      factory.call(items: items, logger: logger)
     end
     yield
   ensure
