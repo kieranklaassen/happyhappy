@@ -76,6 +76,18 @@ class ProductTest < ActiveSupport::TestCase
     assert_includes Product.active, product
   end
 
+  test "retire! is idempotent and preserves the original retired_at timestamp" do
+    product = products(:lex)
+    original_retired_at = product.retired_at
+    assert_not_nil original_retired_at
+
+    travel 1.day do
+      product.retire!
+    end
+
+    assert_equal original_retired_at, product.reload.retired_at
+  end
+
   test "cannot be destroyed while items reference it" do
     refute products(:cora).destroy
     assert Product.exists?(products(:cora).id)
